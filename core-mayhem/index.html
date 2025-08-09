@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Core Mayhem</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <span class="brand">CORE MAYHEM</span>
+      <small>— 90s chaos sim (TS + Vite).</small>
+      <div class="right">
+        <button id="btnStart">▶ Start</button>
+        <button id="btnStop" disabled>■ Stop</button>
+      </div>
+    </header>
+    <main id="stage">
+      <canvas id="view"></canvas>
+      <div id="hud">
+        <div class="chip"><b>Left</b> <span id="hpL">—</span></div>
+        <div class="chip"><b>Right</b> <span id="hpR">—</span></div>
+        <div class="chip"><b>State</b> <span id="state">Idle</span></div>
+      </div>
+    </main>
+    <footer>Made for modern Firefox/Chrome. <span id="fps">0</span> FPS</footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

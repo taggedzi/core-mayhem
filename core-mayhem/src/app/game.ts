@@ -1,0 +1,332 @@
+import { Events, World, Body, Query, Composite } from 'matter-js';
+import { DEFAULTS } from '../config';
+import { COOLDOWN_MS, WEAPON_WINDUP_MS } from '../config';
+import { sim } from '../state';
+import { Side } from '../types';
+import { initWorld, clearWorld } from '../sim/world';
+import { makePins } from '../sim/pins';
+import { makeBins, nudgeBinsFromPipes  } from '../sim/containers';
+import { makeCore, angleToSeg } from '../sim/core';
+import { spawnAmmo, beforeUpdateAmmo } from '../sim/ammo';
+import { makePipe, applyPipeForces, addPaddle, tickPaddles, gelRect } from '../sim/obstacles';
+import { buildLanes } from '../sim/channels';
+import { makeWeapons, queueFireCannon, queueFireLaser, queueFireMissiles, queueFireMortar } from '../sim/weapons';
+import { tickHoming } from '../sim/weapons';
+import { applyGelForces } from '../sim/gel';
+import { drawFrame } from '../render/draw';
+import { updateHUD } from '../render/hud';
+import { FX_MS } from '../config';
+import { SHIELD_DECAY_PER_SEC } from '../config';
+import { EXPLOSION } from '../config';
+import { SHOTS_PER_FILL, SHIELD_EFFECT, REPAIR_EFFECT } from '../config';
+import { GAMEOVER } from '../config';
+
+console.log('cooldowns', COOLDOWN_MS);
+
+const nowMs = () => performance.now();
+const sideKey = (s: Side) => (s === Side.LEFT ? 'L' : 'R');
+
+let _explosionCount = 0, _explosionWindowT0 = 0;
+
+function explodeAt(x: number, y: number, baseDmg: number, shooterSide: Side) {
+  if (!EXPLOSION.enabled) return;
+
+  // rate limit
+  const now = performance.now();
+  if (now - _explosionWindowT0 > 1000) { _explosionWindowT0 = now; _explosionCount = 0; }
+  if (_explosionCount++ > EXPLOSION.maxPerSec) return;
+
+  // FX (burst)
+  const color = shooterSide === Side.LEFT ? css('--left') : css('--right');
+  (sim.fxImp ||= []).push({ x, y, t0: now, ms: 350, color, kind: 'burst' });
+
+  // query nearby & push
+  const r = EXPLOSION.radius;
+  const aabb = { min: { x: x - r, y: y - r }, max: { x: x + r, y: y + r } };
+  const bodies = Query.region(Composite.allBodies(sim.world), aabb);
+
+  for (const b of bodies) {
+    const plug = (b as any).plugin || {};
+    // Push ammo & projectiles away
+    if (plug.kind === 'ammo' || plug.kind === 'projectile') {
+      const dx = b.position.x - x, dy = b.position.y - y;
+      const dist = Math.max(6, Math.hypot(dx, dy));
+      const k = EXPLOSION.force / dist;
+      Body.applyForce(b, b.position, { x: dx * k * b.mass, y: dy * k * b.mass });
+
+      // Optional: destroy ammo with probability
+      if (plug.kind === 'ammo' && Math.random() < EXPLOSION.ammoDestroyPct) {
+        World.remove(sim.world, b);
+        if (plug.side === Side.LEFT) sim.ammoL = Math.max(0, sim.ammoL - 1);
+        else if (plug.side === Side.RIGHT) sim.ammoR = Math.max(0, sim.ammoR - 1);
+      }
+    }
+  }
+}
+
+export function startGame(canvas: HTMLCanvasElement) {
+  clearWorld();
+  initWorld(canvas);
+  // Only seed settings once; keep whatever was already configured between runs
+  if (!sim.settings) sim.settings = { ...DEFAULTS };
+
+  sim.started = true;
+  
+  if ((sim as any).restartTO) { clearTimeout((sim as any).restartTO); (sim as any).restartTO = 0; }
+  (sim as any).gameOver = false;
+  (sim as any).winner = null;
+  (sim as any).winnerAt = 0;
+
+
+  // Edge pipes
+  const pipeL = makePipe(Side.LEFT);
+  const pipeR = makePipe(Side.RIGHT);
+  sim.pipes = [pipeL, pipeR];
+
+  // Layout
+  const pinsL = makePins(Side.LEFT,  { anchor: pipeL.innerX });
+  const pinsR = makePins(Side.RIGHT, { anchor: pipeR.innerX });
+  sim.binsL = makeBins(Side.LEFT, pinsL.mid, pinsL.width);
+  sim.binsR = makeBins(Side.RIGHT, pinsR.mid, pinsR.width);
+  // push bins away from pipe inner wall by 5px
+  nudgeBinsFromPipes(Side.LEFT,  sim.binsL, 5);
+  nudgeBinsFromPipes(Side.RIGHT, sim.binsR, 5);
+
+  gelRect(pinsL.mid, sim.H*0.14, pinsL.width*0.96, Math.max(36, sim.H*0.06), { dampX: 2.2, dampY: 3.2 });
+  gelRect(pinsR.mid, sim.H*0.14, pinsR.width*0.96, Math.max(36, sim.H*0.06), { dampX: 2.2, dampY: 3.2 });
+ 
+  sim.coreL = makeCore(Side.LEFT, css('--left'));
+  sim.coreR = makeCore(Side.RIGHT, css('--right'));
+
+  // Top gel + splitter + funnels
+  buildLanes(pinsL.mid, pinsL.width);
+  buildLanes(pinsR.mid, pinsR.width);
+
+  // Shaker bars
+  addPaddle(pinsL.mid - pinsL.width * 0.20, sim.H * 0.60, 28, 1.2, +1);
+  addPaddle(pinsL.mid + pinsL.width * 0.20, sim.H * 0.60, 28, 1.2, -1);
+  addPaddle(pinsR.mid - pinsR.width * 0.20, sim.H * 0.60, 28, 1.2, +1);
+  addPaddle(pinsR.mid + pinsR.width * 0.20, sim.H * 0.60, 28, 1.2, -1);
+
+  // Weapons (positions are computed; firing happens on bin fill)
+  const wepL = makeWeapons(Side.LEFT);
+  const wepR = makeWeapons(Side.RIGHT);
+  (sim as any).wepL = wepL;
+  (sim as any).wepR = wepR;
+
+  // Collisions: deposits + core hits
+Events.on(sim.engine, 'collisionStart', (e) => {
+  for (const p of e.pairs) {
+    const A = p.bodyA as any, B = p.bodyB as any;
+    const a = A.plugin || {}, b = B.plugin || {};
+
+    // deposits (unchanged)
+    if (a.kind === 'ammo' && b.kind === 'container') { deposit(A, B); continue; }
+    if (b.kind === 'ammo' && a.kind === 'container') { deposit(B, A); continue; }
+
+    // direct core hits (apply damage + FX; we also explode below inside hit())
+    if (a.kind === 'projectile' && (b.kind === 'coreRing' || b.kind === 'coreCenter')) { hit(A, B); continue; }
+    if (b.kind === 'projectile' && (a.kind === 'coreRing' || a.kind === 'coreCenter')) { hit(B, A); continue; }
+
+    // explode-on-anything (except mounts) with grace period
+    const explodeIf = (proj: any, other: any) => {
+      const pp = proj?.plugin || {};
+      if (pp.kind !== 'projectile') return;
+      if (other?.plugin?.kind === 'weaponMount') return; // ignore mounts
+      if (performance.now() - (pp.spawnT || 0) < EXPLOSION.graceMs) return; // grace
+
+      explodeAt(proj.position.x, proj.position.y, pp.dmg || 8, pp.side);
+      World.remove(sim.world, proj);
+    };
+
+    // pop if projectile touches anything (ammo, pins, walls, containers, beamSensor, etc.)
+    explodeIf(A, B);
+    explodeIf(B, A);
+  }
+});
+
+  function deposit(ammo: any, container: any) {
+    const accept = container.plugin.accept as string[];
+    if (!accept.includes(ammo.plugin.type)) return;
+    World.remove(sim.world, ammo);
+    (ammo.plugin.side === Side.LEFT ? sim.ammoL-- : sim.ammoR--);
+    const bins = (container.plugin.side === Side.LEFT ? sim.binsL : sim.binsR) as any;
+    const key = container.plugin.label as string;
+    if (bins[key]) bins[key].fill++;
+  }
+
+  function hit(proj: any, coreBody: any) {
+    const side: Side = coreBody.plugin.side;
+    const core = side === Side.LEFT ? sim.coreL : sim.coreR;
+    const dmg = (proj.plugin.dmg || 8) * (core.shield > 0 ? 0.35 : 1);
+    if (coreBody.plugin.kind === 'coreCenter') core.centerHP -= dmg;
+    else {
+      const sp = angleToSeg(core, proj.position);
+      const d0 = Math.round(dmg * sp.w0), d1 = dmg - d0;
+      core.segHP[sp.i0] = Math.max(0, core.segHP[sp.i0] - d0);
+      core.segHP[sp.i1] = Math.max(0, core.segHP[sp.i1] - d1);
+      if (Math.random() < 0.08) core.centerHP--;
+    }
+    // spawn a small FX at impact ---
+    const ptype = proj?.plugin?.ptype || 'cannon';
+    const shooterSide = proj?.plugin?.side;
+    const color = shooterSide === Side.LEFT ? css('--left') : css('--right');
+    (sim.fxImp ||= []).push({
+      x: proj.position.x, y: proj.position.y,
+      t0: performance.now(),
+      ms: ptype === 'laser' ? FX_MS.burn : FX_MS.impact,
+      color,
+      kind: ptype === 'laser' ? 'burn' : 'burst'
+    });
+    explodeAt(proj.position.x, proj.position.y, proj.plugin.dmg || 8, proj.plugin.side);
+    World.remove(sim.world, proj);
+    maybeEndMatch(); // <-- add this
+  }
+
+  // Game update
+  Events.on(sim.engine, 'beforeUpdate', () => {
+    const dtMs = (sim.engine.timing.lastDelta || 16.6);
+    const dt = dtMs / 1000;
+    // stop all game logic once over
+    if ((sim as any).gameOver) return;
+
+    beforeUpdateAmmo();
+    applyGelForces();  
+    applyPipeForces(sim.pipes);
+    tickPaddles(dt);
+    tickHoming(dtMs);
+
+    sim.coreL.shield = Math.max(0, (sim.coreL.shield || 0) - dt * SHIELD_DECAY_PER_SEC);
+    sim.coreR.shield = Math.max(0, (sim.coreR.shield || 0) - dt * SHIELD_DECAY_PER_SEC);
+
+    // soft target spawn
+    sim.spawnAcc += dtMs;
+    const per = 1000 / sim.settings.spawnRate;
+    const softMin = sim.settings.targetAmmo * 0.75, softMax = sim.settings.targetAmmo * 1.25;
+    while (sim.spawnAcc > per) {
+      sim.spawnAcc -= per;
+      if (sim.ammoL < softMax) { if (sim.ammoL < softMin) { spawnAmmo(Side.LEFT); spawnAmmo(Side.LEFT); } else spawnAmmo(Side.LEFT); }
+      if (sim.ammoR < softMax) { if (sim.ammoR < softMin) { spawnAmmo(Side.RIGHT); spawnAmmo(Side.RIGHT); } else spawnAmmo(Side.RIGHT); }
+    }
+
+    // bin triggers
+    const doSide = (side: Side, bins: any, wep: any) => {
+      const key = sideKey(side);
+      const color = side === Side.LEFT ? css('--left') : css('--right');
+
+      if (bins.cannon.fill >= bins.cannon.cap && nowMs() >= sim.cooldowns[key].cannon) {
+        bins.cannon.fill = 0;
+        sim.cooldowns[key].cannon = nowMs() + COOLDOWN_MS.cannon;
+        sim.fxArm.push({ x: wep.cannon.pos.x, y: wep.cannon.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
+        queueFireCannon(side, wep.cannon.pos, (side === Side.LEFT ? sim.coreR.center : sim.coreL.center), SHOTS_PER_FILL.cannon);
+      }
+
+      if (bins.laser.fill >= bins.laser.cap && nowMs() >= sim.cooldowns[key].laser) {
+        bins.laser.fill = 0;
+        sim.cooldowns[key].laser = nowMs() + COOLDOWN_MS.laser;
+        sim.fxArm.push({ x: wep.laser.pos.x, y: wep.laser.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
+        queueFireLaser(side, wep.laser.pos, (side === Side.LEFT ? sim.coreR : sim.coreL), SHOTS_PER_FILL.laserMs);
+      }
+
+      if (bins.missile.fill >= bins.missile.cap && nowMs() >= sim.cooldowns[key].missile) {
+        bins.missile.fill = 0;
+        sim.cooldowns[key].missile = nowMs() + COOLDOWN_MS.missile;
+        sim.fxArm.push({ x: wep.missile.pos.x, y: wep.missile.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
+        queueFireMissiles(side, wep.missile.pos, SHOTS_PER_FILL.missile);
+      }
+
+      if (bins.mortar.fill >= bins.mortar.cap && nowMs() >= sim.cooldowns[key].mortar) {
+        bins.mortar.fill = 0;
+        sim.cooldowns[key].mortar = nowMs() + COOLDOWN_MS.mortar;
+        sim.fxArm.push({ x: wep.mortar.pos.x, y: wep.mortar.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
+        queueFireMortar(side, wep.mortar.pos, SHOTS_PER_FILL.mortar);
+      }
+      
+      if (bins.repair.fill >= bins.repair.cap) {
+        bins.repair.fill = 0;
+        repair(side); // uses REPAIR_EFFECT below
+      }
+
+      if (bins.shield.fill >= bins.shield.cap) {
+        bins.shield.fill = 0;
+        const core = (side === Side.LEFT ? sim.coreL : sim.coreR);
+        core.shield = Math.max(core.shield, SHIELD_EFFECT.gain);
+      }
+    };
+    doSide(Side.LEFT, sim.binsL, wepL);
+    doSide(Side.RIGHT, sim.binsR, wepR);
+
+    sim.coreL.rot += sim.coreL.rotSpeed;
+    sim.coreR.rot += sim.coreR.rotSpeed;
+    
+    // did someone die this frame?
+    maybeEndMatch();
+  });
+
+  // Render loop
+  const ctx = canvas.getContext('2d')!;
+  let raf = 0, frames = 0, fpsTimer = performance.now();
+  const loop = () => {
+    drawFrame(ctx);
+    updateHUD();
+    const now = performance.now(); frames++;
+    if (now - fpsTimer > 500) { (document.getElementById('fps')!).textContent = String(Math.round(frames * 1000 / (now - fpsTimer))); fpsTimer = now; frames = 0; }
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+
+  return function stop() {
+    sim.started = false;
+    cancelAnimationFrame(raf);
+    clearWorld();
+    updateHUD(); 
+  };
+}
+
+function repair(side: Side) {
+  const core = side === Side.LEFT ? sim.coreL : sim.coreR;
+
+  // heal N weakest segments
+  for (let k = 0; k < REPAIR_EFFECT.segmentsToHeal; k++) {
+    let idx = 0, min = 1e9;
+    for (let i = 0; i < core.segHP.length; i++) {
+      const hp = core.segHP[i];
+      if (hp < min) { min = hp; idx = i; }
+    }
+    core.segHP[idx] = Math.min(core.segHPmax, core.segHP[idx] + REPAIR_EFFECT.segHealAmount);
+  }
+
+  // occasional center repair
+  if (Math.random() < REPAIR_EFFECT.centerChance) {
+    core.centerHP = Math.min(core.centerHPmax, core.centerHP + REPAIR_EFFECT.centerAmount);
+  }
+}
+
+const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function isDead(core: any) {
+  return (core?.centerHP | 0) <= 0;
+}
+
+function declareWinner(winner: Side | 0) {
+  (sim as any).winner = winner;   // 0 = tie
+  (sim as any).gameOver = true;
+  (sim as any).winnerAt = performance.now();
+  
+  // Schedule auto-restart (once)
+  if (GAMEOVER.autoRestart && !(sim as any).restartTO) {
+    (sim as any).restartTO = setTimeout(() => {
+      // tell main.ts to stop+start
+      window.dispatchEvent(new CustomEvent('coreMayhem:restart'));
+      (sim as any).restartTO = 0;
+    }, GAMEOVER.bannerMs);
+  }
+}
+
+function maybeEndMatch() {
+  if ((sim as any).gameOver) return;
+  const deadL = isDead(sim.coreL);
+  const deadR = isDead(sim.coreR);
+  if (!deadL && !deadR) return;
+  declareWinner(deadL && deadR ? 0 : (deadL ? Side.RIGHT : Side.LEFT));
+}
