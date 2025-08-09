@@ -6,7 +6,7 @@ export const DEFAULTS: Settings = {
   spawnRate: 26, 
   targetAmmo: 100, 
   timescale: .9, 
-  pipeUpSpeed: 20,   // px/sec the ammo tries to climb
+  pipeUpSpeed: 28,   // px/sec the ammo tries to climb
   pipeUpGain:  2.2, // how aggressively we steer toward that speed (1/s)
   loop:false, 
 };
@@ -26,7 +26,7 @@ export const BIN_H_SPREAD = 1.35; // ~+20% horizontal
 export const BIN_V_SPREAD = 1.25; // ~+10% vertical
 
 // Global wind-up (arming) delay
-export const WEAPON_WINDUP_MS = 1000;
+export const WEAPON_WINDUP_MS = 3000;
 
 // Per-weapon cooldowns (ms)
 export const COOLDOWN_MS = {
@@ -108,9 +108,9 @@ export const SHOTS_PER_FILL = {
 
 // Damage tuning (integers unless noted)
 export const DAMAGE = {
-  cannon: 8,         // dmg per cannon ball
-  missile: 24,       // dmg per missile (on direct core hit)
-  mortar: 22,        // dmg per shell
+  cannon: 3,         // dmg per cannon ball
+  missile: 27,       // dmg per missile (on direct core hit)
+  mortar: 18,        // dmg per shell
   laserDps: 40,      // damage per second while laser is on
 } as const;
 
@@ -123,7 +123,7 @@ export const REPAIR_EFFECT = {
   segmentsToHeal: 3,     // heal this many weakest rim segments
   segHealAmount: 85,     // HP added per healed segment
   centerChance: 0.5,    // chance to also heal center
-  centerAmount: 25,       // HP to heal at center when it procs
+  centerAmount: 90,       // HP to heal at center when it procs
 } as const;
 
 // Visual thickness of the normal rim (when no shield)
@@ -153,14 +153,14 @@ export const CORE_POS = {
 
 // How long to show the winner banner, and whether to auto-restart
 export const GAMEOVER = {
-  bannerMs: 20000,   // 20 seconds
+  bannerMs: 10000,   // 20 seconds
   autoRestart: true, // turn off if you ever want manual restarts only
 } as const;
 
 // Mortar launched by angle + speed (per tick), with optional extra gravity
 export const MORTAR_ANGLE = {
   angleDeg: 72,        // launch angle above horizontal
-  angleJitterDeg: 8,   // random ± jitter
+  angleJitterDeg: 6,   // random ± jitter
   speedPerTick: 22,    // launch speed in *px per simulation tick*
   speedJitter: 0.12,   // random ± jitter (fraction)
   extraGravity: 0.0    // per-tick^2 downward accel just for mortars (try 0.25–0.45 if arcs too flat)
@@ -256,21 +256,21 @@ export interface BinSpec {
 // Left-side only; right mirrors automatically
 export const BINS_LEFT: Readonly<BinSpec[]> = [
   { id:'cannon',  accepts:['basic','heavy','volatile'], cap:40, pos:[0,0.80], sizeFrac:[0.16,0.025], intake:'top', label:'Cannon', style:{fill:'#480072'} },
-  { id:'laser',   accepts:['basic','emp'],              cap:30, pos:[0.45,0.80], sizeFrac:[0.16,0.025], intake:'top', label:'Laser',   style:{fill:'#ff5d5d'} },
-  { id:'missile', accepts:['heavy','volatile'],         cap:55, pos:[0.78,0.75], sizeFrac:[0.16,0.025], intake:'top', label:'Missile', style:{fill:'#ffb84d'} },
+  { id:'laser',   accepts:['basic','emp'],              cap:25, pos:[0.45,0.80], sizeFrac:[0.16,0.025], intake:'top', label:'Laser',   style:{fill:'#ff5d5d'} },
+  { id:'missile', accepts:['heavy','volatile'],         cap:35, pos:[0.78,0.75], sizeFrac:[0.16,0.025], intake:'top', label:'Missile', style:{fill:'#ffb84d'} },
   { id:'buff',    accepts:['basic','heavy', 'emp','shield','repair'],
                    cap:50, pos:[1.1,0.72], sizeFrac:[0.16,0.025], intake:'top', label:'Buff',    style:{fill:'#5CFF7A'} },
 
   { id:'mortar',  accepts:['basic','heavy'],            cap:12, pos:[0.25,0.89], sizeFrac:[0.16,0.025], intake:'top', label:'Mortar',  style:{fill:'#bd9cff'} },
-  { id:'shield',  accepts:['emp','shield'],             cap:100, pos:[0.60,0.89], sizeFrac:[0.16,0.025], intake:'top', label:'Shield',  style:{fill:'#72f0ff'} },
-  { id:'repair',  accepts:['repair', 'heavy'],                   cap:50, pos:[0.95,0.82], sizeFrac:[0.16,0.025], intake:'top', label:'Repair',  style:{fill:'#9cff72'} },
+  { id:'shield',  accepts:['emp','shield'],             cap:45, pos:[0.60,0.89], sizeFrac:[0.16,0.025], intake:'top', label:'Shield',  style:{fill:'#72f0ff'} },
+  { id:'repair',  accepts:['repair', 'heavy'],                   cap:30, pos:[0.95,0.82], sizeFrac:[0.16,0.025], intake:'top', label:'Repair',  style:{fill:'#9cff72'} },
   { id:'debuff',  accepts:['basic','heavy','volatile','emp','shield'],
                    cap:60, pos:[1.35,0.74], sizeFrac:[0.16,0.025], intake:'top', label:'Debuff',  style:{fill:'#FF6B6B'} },
 ] as const;
 
 // How shields behave (ablative pool)
 export const SHIELD = {
-  startHP: 120,          // starting shield HP each round
+  startHP: 200,          // starting shield HP each round
   maxHP: 200,            // hard cap
   onPickup: 60,          // how much the Shield bin adds when it fires
   projectileFactor: 1.0, // how strongly non-laser hits drain the shield
