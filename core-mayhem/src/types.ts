@@ -10,3 +10,8 @@ export interface Core {
   centerBody: Matter.Body; ringBody: Matter.Body; shield:number;
 }
 export interface Bins { [k:string]: { body: Matter.Body; accept: AmmoType[]; fill:number; cap:number; label:string } }
+export type Bins = {
+  cannon: any; laser: any; missile: any;
+  mortar: any; shield: any; repair: any;
+  buff?: any;  debuff?: any; // NEW
+};

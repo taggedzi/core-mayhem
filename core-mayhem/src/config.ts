@@ -213,5 +213,67 @@ export const DEBUG_DAMAGE = false;
 // Set enabled:false or ms:0 to disable.
 export const MATCH_LIMIT = {
   enabled: true,
-  ms: 1 * 60 * 1000, // 30 minutes
+  ms: 30 * 60 * 1000, // 30 minutes
 } as const;
+
+// Global modifier containers & effects
+export const GLOBAL_MODS = {
+  // container fill caps (per side)
+  cap: { buff: 1, debuff: 1 },
+
+  // effect durations
+  buffMs:   30_000,   // +damage window
+  debuffMs: 30_000,   // disable one weapon window
+
+  // effect strengths
+  dmgMultiplier: 2.0,  // x2 damage during buff
+
+  // pool of weapon types eligible for global disable (must exist on both sides)
+  debuffable: ['cannon','laser','missile','mortar'] as const,
+} as const;
+
+
+
+export type BinId =
+  | 'cannon' | 'laser' | 'missile' | 'mortar'
+  | 'shield' | 'repair' | 'buff' | 'debuff';
+
+export type AmmoKind = 'basic' | 'heavy' | 'volatile' | 'emp' | 'shield' | 'repair';
+export type IntakeSide = 'top' | 'bottom' | 'left' | 'right';
+
+export interface BinStyle {
+  strokePx?: number;   // optional absolute px (omit to let our default scale)
+  stroke?: string;
+  box?: string;
+  fill?: string;
+  gauge?: string;
+  text?: string;
+}
+
+export interface BinSpec {
+  id: BinId;
+  accepts: AmmoKind[];
+  cap: number;
+  pos: [number, number];     // FRACTIONS (left side panel): x 0..1 (outer wall→midline), y 0..1 (top→bottom)
+  sizeFrac: [number, number]; // FRACTIONS: [wFrac of channel width, hFrac of canvas height]
+  intake: IntakeSide;
+  rotation?: number;         // degrees
+  label?: string;            // default: id
+  enabled?: boolean;         // default: true
+  style?: BinStyle;
+}
+
+// Left-side only; right mirrors automatically
+export const BINS_LEFT: Readonly<BinSpec[]> = [
+  { id:'cannon',  accepts:['basic','heavy','volatile'], cap:40, pos:[0,0.80], sizeFrac:[0.16,0.025], intake:'top', label:'Cannon', style:{fill:'#480072'} },
+  { id:'laser',   accepts:['basic','emp'],              cap:38, pos:[0.45,0.80], sizeFrac:[0.16,0.025], intake:'top', label:'Laser',   style:{fill:'#ff5d5d'} },
+  { id:'missile', accepts:['heavy','volatile'],         cap:42, pos:[0.78,0.75], sizeFrac:[0.16,0.025], intake:'top', label:'Missile', style:{fill:'#ffb84d'} },
+  { id:'buff',    accepts:['basic','heavy', 'emp','shield','repair'],
+                   cap:18, pos:[1.1,0.72], sizeFrac:[0.16,0.025], intake:'top', label:'Buff',    style:{fill:'#5CFF7A'} },
+
+  { id:'mortar',  accepts:['basic','heavy'],            cap:36, pos:[0.25,0.89], sizeFrac:[0.16,0.025], intake:'top', label:'Mortar',  style:{fill:'#bd9cff'} },
+  { id:'shield',  accepts:['emp','shield'],             cap:36, pos:[0.60,0.89], sizeFrac:[0.16,0.025], intake:'top', label:'Shield',  style:{fill:'#72f0ff'} },
+  { id:'repair',  accepts:['repair', 'heavy'],                   cap:24, pos:[0.95,0.82], sizeFrac:[0.16,0.025], intake:'top', label:'Repair',  style:{fill:'#9cff72'} },
+  { id:'debuff',  accepts:['basic','heavy','volatile','emp','shield'],
+                   cap:18, pos:[1.35,0.74], sizeFrac:[0.16,0.025], intake:'top', label:'Debuff',  style:{fill:'#FF6B6B'} },
+] as const;

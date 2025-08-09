@@ -10,7 +10,8 @@ import { HOMING, HOMING_ENABLED } from '../config';
 import { MORTAR_ANGLE } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { angleToSeg } from '../sim/core';
-import { applyCoreDamage } from './damage'; // adjust path to match your structure
+import { applyCoreDamage } from './damage';
+import { currentDmgMul } from '../sim/mods';
 
 const DEG = Math.PI / 180;
 const rad = (d:number) => d * DEG;
@@ -130,8 +131,8 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
     : enemyCore.center;
 
   // --- damage application (keep your existing logic) ---
-  const base = DAMAGE.laserDps || 40; // or your configured pulse damage
-  const dmg  = (enemyCore.shield && enemyCore.shield > 0) ? base * 0.35 : base;
+  const base = DAMAGE.laserDps || 40;
+  const dmg  = ((enemyCore.shield && enemyCore.shield > 0) ? base * 0.35 : base) * currentDmgMul();
 
   applyCoreDamage(enemyCore as any, aim, dmg, angleToSeg);
 

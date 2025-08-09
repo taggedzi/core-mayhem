@@ -197,71 +197,161 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   drawGameOverBanner(ctx);
 }
 
-function drawBins(ctx: CanvasRenderingContext2D, bins: any, color: string) {
-  Object.values(bins).forEach((bin: any) => {
-    const m = bin.body.bounds;
-    const x = m.min.x, y = m.min.y, w = m.max.x - m.min.x, h = m.max.y - m.min.y;
+export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
+  if (!bins) return;
 
-    // outline only (thin)
-    ctx.lineWidth = BIN_T;
-    ctx.strokeStyle = color;
-    ctx.strokeRect(x, y, w, h);
+  const css = (name: string) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-    // fill bar inside
-    const pct = Math.max(0, Math.min(1, bin.fill / bin.cap));
-    const pad = 3;
+  const lineT =
+    parseFloat(css('--wall-t')) ||
+    Math.max(2, sim.W * 0.0025);
+
+  const now = performance.now();
+  const mods = (sim as any).mods || { dmgUntil:0, dmgMul:1, disableUntil:0, disabledType:null };
+
+  // helper: active state for buff/debuff
+  const buffActive   = now < (mods.dmgUntil || 0);
+  const debuffActive = now < (mods.disableUntil || 0);
+
+  // deterministic order just for consistent z-draw; positions still come from bin.pos
+  const order = ['buff','cannon','laser','missile','debuff','mortar','shield','repair'];
+  const keys = order.filter(k => bins[k]).concat(Object.keys(bins).filter(k => !order.includes(k)));
+
+  for (const key of keys) {
+    const bin = (bins as any)[key];
+    if (!bin) continue;
+
+    // prefer our thin-wall rectangle for geometry; fall back if needed
+    const wall = bin.box || bin.body || bin.intake;
+    if (!wall || !wall.bounds) continue;
+
+    const cx = (bin.pos?.x ?? wall.position.x);
+    const cy = (bin.pos?.y ?? wall.position.y);
+    const w  = wall.bounds.max.x - wall.bounds.min.x;
+    const h  = wall.bounds.max.y - wall.bounds.min.y;
+
+    // style overrides per-bin (fallbacks preserved)
+    const s = (bin as any).style || {};
+    const stroke   = s.stroke    ?? '#94a8ff';
+    const boxBg    = s.box       ?? 'rgba(14,23,48,0.35)';
+    const fillCol  = s.fill      ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#8fb0ff');
+    const gaugeCol = s.gauge     ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#ffffff');
+    const textCol  = s.text      ?? '#cfe1ff';
+    const lineW    = s.strokePx  ?? lineT;  // keep your scaling fallback
+
+    // ---- 1) Outline (thin wall) ----
     ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = color;
-    ctx.fillRect(x + pad, y + pad, (w - pad * 2) * pct, h - pad * 2);
-    ctx.restore();
-
-    // visible intake strip (from intake sensor bounds if present)
-    const ib = bin.intake?.bounds;
-    const ix = ib ? ib.min.x : x + w * 0.04;
-    const iy = ib ? ib.min.y : y - BIN_INTAKE_H;
-    const iw = ib ? (ib.max.x - ib.min.x) : w * 0.92;
-    const ih = ib ? (ib.max.y - ib.min.y) : BIN_INTAKE_H;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,255,213,0.25)';
-    ctx.fillRect(ix, iy, iw, ih);
-    ctx.setLineDash([3, 3]);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0,255,213,0.35)';
-    ctx.strokeRect(ix, iy, iw, ih);
-    ctx.restore();
-    ctx.setLineDash([]); // hygiene
-
-    // --- labels (centered, two lines, clipped to bin width) ---
-    const label = String(bin.label).toUpperCase();
-    const count = `${Math.floor(bin.fill)}/${bin.cap}`;
-
-    const textTop = y + h + 2;
-    const lineH = 11; // pixels between lines
-
-    ctx.save();
-    // clip so long labels don't bleed into neighbors
+    ctx.lineWidth = lineW;
+    ctx.strokeStyle = stroke;
     ctx.beginPath();
-    ctx.rect(x, textTop - 1, w, lineH * 2 + 4);
-    ctx.clip();
+    ctx.rect(cx - w/2, cy - h/2, w, h);
+    ctx.stroke();
 
-    ctx.textAlign = 'center';
+    // ---- 2) Internal fill (bottom-up) ----
+    if (typeof bin.fill === 'number' && typeof bin.cap === 'number' && bin.cap > 0) {
+      const frac = Math.max(0, Math.min(1, bin.fill / bin.cap));
+      const inset = Math.max(1, lineT * 0.65);
+      const innerW = w - inset*2;
+      const innerH = h - inset*2;
+      const fillH  = innerH * frac;
 
-    // label line
-    ctx.textBaseline = 'top';
-    ctx.font = '10px Verdana';
-    ctx.fillStyle = '#cfe6ff';
-    ctx.fillText(label, x + w / 2, textTop);
+      // background (empty tank)
+      ctx.fillStyle = boxBg;
+      ctx.fillRect(cx - innerW/2, cy - innerH/2, innerW, innerH);
 
-    // count line (second line)
-    ctx.textBaseline = 'top';
-    ctx.font = '10px Verdana';
-    ctx.fillStyle = '#9fb8ff';
-    ctx.fillText(count, x + w / 2, textTop + lineH);
+      // filled portion
+      ctx.fillStyle = fillCol;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(cx - innerW/2, cy + innerH/2 - fillH, innerW, fillH);
+      ctx.globalAlpha = 1.0;
+
+      // ---- 5) Labels under the box (auto-fit) ----
+      const bw = w; // box width
+      const ch = h; // box height
+
+      const nameText = key.toUpperCase();
+      const cap = (bin.cap|0);
+      const fill = Math.min((bin.fill|0), cap);
+      const statText = `${fill}/${cap}`;
+
+      // positions under the box — tweak offsets if you want tighter spacing
+      const labelY = cy + ch/2 + 12;
+      const statsY = labelY + 12;
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+
+      // first line (name)
+      const namePx = fitFontPx(ctx, nameText, 12, bw * 0.95); // max 12px, fit to ~95% box width
+      ctx.font = `${namePx}px var(--mono, monospace)`;
+      ctx.fillStyle = css('--fg-weak');
+      ctx.fillStyle = textCol; // for the name/values you draw
+      ctx.fillText(nameText, cx, labelY);
+
+      // second line (fill/cap)
+      const statPx = fitFontPx(ctx, statText, 11, bw * 0.90);
+      ctx.font = `${statPx}px var(--mono, monospace)`;
+      ctx.fillStyle = css('--fg-dim');
+      ctx.fillStyle = textCol; // for the name/values you draw
+      ctx.fillText(statText, cx, statsY);
+    }
+
+    // ---- 3) Intake strip (collector surface) ----
+    if (bin.intake?.bounds) {
+      const ib = bin.intake.bounds;
+      const ix1 = ib.min.x, ix2 = ib.max.x;
+      const iy  = (ib.min.y + ib.max.y) / 2;
+      ctx.lineWidth = Math.max(1, lineW * 0.8);
+      ctx.strokeStyle = gaugeCol;
+      ctx.beginPath();
+      ctx.moveTo(ix1, iy);
+      ctx.lineTo(ix2, iy);
+      ctx.stroke();
+    }
+
+    // ---- 4) Active FX for Buff / Debuff ----
+    if (key === 'buff' && buffActive) {
+      const tLeft = Math.ceil(((mods.dmgUntil || 0) - now) / 1000);
+      const pulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(now * 0.012));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#5CFF7A';
+      ctx.lineWidth = lineT * 2.2;
+      ctx.globalAlpha = pulse * 0.7;
+      ctx.strokeRect(cx - w/2, cy - h/2, w, h);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#032e12cc';
+      ctx.fillRect(cx - w/2, cy - h/2 - 16, w, 14);
+      ctx.fillStyle = '#5CFF7A';
+      ctx.font = `${Math.max(10, sim.H*0.016)}px var(--mono, monospace)`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(`DMG x${(mods.dmgMul || 1).toFixed(1)}  ${tLeft}s`, cx, cy - h/2 - 14);
+      ctx.restore();
+    }
+
+    if (key === 'debuff' && debuffActive) {
+      const tLeft = Math.ceil(((mods.disableUntil || 0) - now) / 1000);
+      const kind  = (mods.disabledType || '').toUpperCase();
+      const pulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(now * 0.012));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#FF6B6B';
+      ctx.lineWidth = lineT * 2.2;
+      ctx.globalAlpha = pulse * 0.7;
+      ctx.strokeRect(cx - w/2, cy - h/2, w, h);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#3b0c0ccc';
+      ctx.fillRect(cx - w/2, cy - h/2 - 16, w, 14);
+      ctx.fillStyle = '#FFB1B1';
+      ctx.font = `${Math.max(10, sim.H*0.016)}px var(--mono, monospace)`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(kind ? `DISABLED ${kind}  ${tLeft}s` : `DISABLED  ${tLeft}s`, cx, cy - h/2 - 14);
+      ctx.restore();
+    }
 
     ctx.restore();
-  });
+  }
 }
 
 function drawCore(ctx:CanvasRenderingContext2D, core:any){
@@ -884,4 +974,14 @@ export function drawLaserFX(ctx: CanvasRenderingContext2D) {
     const life01 = Math.max(0, Math.min(1, (f.tEnd - now) / LASER_FX.flashMs));
     drawBurst(ctx, f.x, f.y, teamColor(f.side ?? -1), life01, f.kind);
   }
+}
+
+function fitFontPx(ctx: CanvasRenderingContext2D, text: string, maxPx: number, maxW: number, minPx = 8): number {
+  let px = maxPx;
+  while (px > minPx) {
+    ctx.font = `${px}px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial`;
+    if (ctx.measureText(text).width <= maxW) break;
+    px -= 0.5;
+  }
+  return Math.max(px, minPx);
 }

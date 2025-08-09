@@ -26,6 +26,9 @@ import { DEV_KEYS } from '../config';
 import { applyCoreDamage } from '../sim/damage';
 import { ARMOR } from '../config';
 import { MATCH_LIMIT } from '../config';
+import { GLOBAL_MODS } from '../config';
+import { currentDmgMul } from '../sim/mods'; // NEW
+
 
 const devKeysOn = (import.meta.env?.DEV === true) || DEV_KEYS.enabledInProd;
 
@@ -75,6 +78,22 @@ function explodeAt(x: number, y: number, baseDmg: number, shooterSide: Side) {
 export function startGame(canvas: HTMLCanvasElement) {
   clearWorld();
   initWorld(canvas);
+  (sim as any).cooldowns = {
+    L: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
+    R: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
+  };
+  (sim as any).fxArm = [];      // wind-up ring FX store
+  (sim as any).fxBeam = [];     // laser beams store
+  (sim as any).fxImp  = [];     // impact/burn FX store
+  (sim as any).fxSweep = [];    // missile sweep pointer FX store
+  (sim as any).homing = [];     // missiles to home
+
+  // Persistent global modifiers – initialize ONCE per match here
+  (sim as any).mods = {
+    dmgUntil: 0, dmgMul: 1,
+    disableUntil: 0, disabledType: null as null | 'cannon'|'laser'|'missile'|'mortar',
+  };
+
   // Only seed settings once; keep whatever was already configured between runs
   if (!sim.settings) sim.settings = { ...DEFAULTS };
 
@@ -204,7 +223,7 @@ Events.on(sim.engine, 'collisionStart', (e) => {
   function hit(proj: any, coreBody: any) {
     const side: Side = coreBody.plugin.side;
     const core = side === Side.LEFT ? sim.coreL : sim.coreR;
-    const dmg = (proj.plugin.dmg || 8) * (core.shield > 0 ? 0.35 : 1);
+    const dmg = ((proj.plugin.dmg || 8) * (core.shield > 0 ? 0.35 : 1)) * currentDmgMul();
 
     // Center sensor hit → direct center damage
     if (coreBody.plugin.kind === 'coreCenter') {
@@ -246,6 +265,12 @@ Events.on(sim.engine, 'collisionStart', (e) => {
       }
     }
 
+    // Global modifiers live across the match, reset on start
+    (sim as any).mods = {
+      dmgUntil: 0, dmgMul: 1,
+      disableUntil: 0, disabledType: null as null | string,
+    };
+
     beforeUpdateAmmo();
     applyGelForces();  
     applyPipeForces(sim.pipes);
@@ -267,35 +292,40 @@ Events.on(sim.engine, 'collisionStart', (e) => {
 
     // bin triggers
     const doSide = (side: Side, bins: any, wep: any) => {
-      const key = sideKey(side);
+      const key = side === Side.LEFT ? 'L' : 'R';
       const color = side === Side.LEFT ? css('--left') : css('--right');
+      const now = performance.now();
 
-      if (bins.cannon.fill >= bins.cannon.cap && nowMs() >= sim.cooldowns[key].cannon) {
+      // NEW global mod bins
+      if (bins.buff   && bins.buff.fill   >= bins.buff.cap)   { bins.buff.fill = 0;   activateBuff(); }
+      if (bins.debuff && bins.debuff.fill >= bins.debuff.cap) { bins.debuff.fill = 0; activateDebuff(); }
+
+      if (bins.cannon.fill >= bins.cannon.cap && now >= sim.cooldowns[key].cannon) {
         bins.cannon.fill = 0;
-        sim.cooldowns[key].cannon = nowMs() + COOLDOWN_MS.cannon;
-        sim.fxArm.push({ x: wep.cannon.pos.x, y: wep.cannon.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
-        queueFireCannon(side, wep.cannon.pos, (side === Side.LEFT ? sim.coreR.center : sim.coreL.center), SHOTS_PER_FILL.cannon);
+        sim.cooldowns[key].cannon = now + COOLDOWN_MS.cannon;
+        sim.fxArm.push({ x: wep.cannon.pos.x, y: wep.cannon.pos.y, until: now + WEAPON_WINDUP_MS, color });
+        queueFireCannon(side, wep.cannon.pos, (side === Side.LEFT ? sim.coreR.center : sim.coreL.center));
       }
 
-      if (bins.laser.fill >= bins.laser.cap && nowMs() >= sim.cooldowns[key].laser) {
+      if (bins.laser.fill >= bins.laser.cap && now >= sim.cooldowns[key].laser) {
         bins.laser.fill = 0;
-        sim.cooldowns[key].laser = nowMs() + COOLDOWN_MS.laser;
-        sim.fxArm.push({ x: wep.laser.pos.x, y: wep.laser.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
-        queueFireLaser(side, wep.laser.pos, (side === Side.LEFT ? sim.coreR : sim.coreL), SHOTS_PER_FILL.laserMs);
+        sim.cooldowns[key].laser = now + COOLDOWN_MS.laser;
+        sim.fxArm.push({ x: wep.laser.pos.x, y: wep.laser.pos.y, until: now + WEAPON_WINDUP_MS, color });
+        queueFireLaser(side, wep.laser.pos, (side === Side.LEFT ? sim.coreR : sim.coreL));
       }
 
-      if (bins.missile.fill >= bins.missile.cap && nowMs() >= sim.cooldowns[key].missile) {
+      if (bins.missile.fill >= bins.missile.cap && now >= sim.cooldowns[key].missile) {
         bins.missile.fill = 0;
-        sim.cooldowns[key].missile = nowMs() + COOLDOWN_MS.missile;
-        sim.fxArm.push({ x: wep.missile.pos.x, y: wep.missile.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
-        queueFireMissiles(side, wep.missile.pos, SHOTS_PER_FILL.missile);
+        sim.cooldowns[key].missile = now + COOLDOWN_MS.missile;
+        sim.fxArm.push({ x: wep.missile.pos.x, y: wep.missile.pos.y, until: now + WEAPON_WINDUP_MS, color });
+        queueFireMissiles(side, wep.missile.pos);
       }
 
-      if (bins.mortar.fill >= bins.mortar.cap && nowMs() >= sim.cooldowns[key].mortar) {
+      if (bins.mortar.fill >= bins.mortar.cap && now >= sim.cooldowns[key].mortar) {
         bins.mortar.fill = 0;
-        sim.cooldowns[key].mortar = nowMs() + COOLDOWN_MS.mortar;
-        sim.fxArm.push({ x: wep.mortar.pos.x, y: wep.mortar.pos.y, until: nowMs() + WEAPON_WINDUP_MS, color });
-        queueFireMortar(side, wep.mortar.pos, SHOTS_PER_FILL.mortar);
+        sim.cooldowns[key].mortar = now + COOLDOWN_MS.mortar;
+        sim.fxArm.push({ x: wep.mortar.pos.x, y: wep.mortar.pos.y, until: now + WEAPON_WINDUP_MS, color });
+        queueFireMortar(side, wep.mortar.pos);
       }
       
       if (bins.repair.fill >= bins.repair.cap) {
@@ -336,6 +366,8 @@ Events.on(sim.engine, 'collisionStart', (e) => {
   };
   raf = requestAnimationFrame(loop);
 
+  console.assert(typeof WEAPON_WINDUP_MS === 'number', 'WEAPON_WINDUP_MS missing');
+  console.assert(COOLDOWN_MS && typeof COOLDOWN_MS.cannon === 'number', 'COOLDOWN_MS missing');
   return function stop() {
     sim.started = false;
     cancelAnimationFrame(raf);
@@ -414,4 +446,29 @@ function updateScoreboard() {
     ${ties ? `<span class="sep">|</span> T:${ties} <span class="sep">|</span>` : `<span class="sep">|</span>`}
     <span class="right tag">RIGHT</span> ${rWins}–${rLoss}
   `;
+}
+
+
+function isWeaponDisabled(kind: string): boolean {
+  const m = (sim as any).mods;
+  if (nowMs() > m.disableUntil) { m.disabledType = null; }
+  return m.disabledType === kind;
+}
+
+// activators
+function activateBuff() {
+  const m = (sim as any).mods || ((sim as any).mods = {});
+  const dur = Math.max(5000, Number(GLOBAL_MODS?.buffMs || 30000)); // fallback 30s, min 5s
+  const until = Math.max(m.dmgUntil || 0, nowMs() + dur);
+  m.dmgMul = Number(GLOBAL_MODS?.dmgMultiplier || 2.0);
+  m.dmgUntil = until;
+}
+
+function activateDebuff() {
+  const m = (sim as any).mods || ((sim as any).mods = {});
+  const pool = (GLOBAL_MODS?.debuffable as readonly string[]) || ['cannon','laser','missile','mortar','artillery'];
+  const dur  = Math.max(5000, Number(GLOBAL_MODS?.debuffMs || 30000)); // fallback 30s, min 5s
+  const pick = pool[Math.floor(Math.random()*pool.length)];
+  m.disabledType = pick;
+  m.disableUntil = Math.max(m.disableUntil || 0, nowMs() + dur);
 }
