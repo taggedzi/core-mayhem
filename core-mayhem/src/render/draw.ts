@@ -628,15 +628,15 @@ function drawCoreStats(ctx: CanvasRenderingContext2D, core: any, color: string) 
   if (!core?.center) return;
   const { x, y } = core.center;
 
-  // font size that scales a bit with canvas height
+  // font sizes that scale with canvas
   const fs1 = Math.max(12, Math.min(18, sim.H * 0.024)); // HP line
   const fs2 = Math.max(10, Math.min(14, sim.H * 0.018)); // Shield line
 
-  // integers for HP; shield as integer too (tweak to show 1 decimal if you prefer)
+  // Integers for readability
   const hp = Math.max(0, Math.round(core.centerHP || 0));
-  const sh = Math.max(0, Math.round(core.shield || 0));
+  const sh = Math.max(0, Math.round(core.shieldHP || 0)); // <-- ablative shield pool
 
-  // subtle dark backdrop for readability (doesn't block physics; just a visual)
+  // faint disc backdrop for contrast
   ctx.save();
   ctx.globalAlpha = 0.28;
   ctx.fillStyle = '#000';
@@ -645,21 +645,18 @@ function drawCoreStats(ctx: CanvasRenderingContext2D, core: any, color: string) 
   ctx.fill();
   ctx.restore();
 
-  // text (outline for contrast)
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   // HP (top line)
   ctx.font = `bold ${fs1}px Verdana`;
-  // outline
   ctx.strokeStyle = '#000';
   ctx.lineWidth = 3;
   ctx.strokeText(String(hp), x, y - fs2 * 0.55);
-  // fill
   ctx.fillStyle = '#fff';
   ctx.fillText(String(hp), x, y - fs2 * 0.55);
 
-  // Shield (bottom line) — dimmer if zero
+  // Shield HP (bottom line)
   const shieldText = `S:${sh}`;
   ctx.font = `bold ${fs2}px Verdana`;
   ctx.strokeStyle = '#000';
@@ -676,39 +673,37 @@ function coreRadius(c: any) {
 function drawShieldRing(
   ctx: CanvasRenderingContext2D,
   core: any,
-  colorOverride?: string // ← backward-compatible, optional
+  colorOverride?: string
 ) {
-  const shield = core?.shield || 0;
-  if (shield <= 0 || !core?.center) return;
+  // Use ablative shield pool
+  const hp = Math.max(0, core?.shieldHP || 0);
+  const hpMax = Math.max(1, core?.shieldHPmax || 1);
+  const frac = Math.max(0, Math.min(1, hp / hpMax));
+  if (frac <= 0 || !core?.center) return;
 
-  const R  = coreRadius(core);
-  const w  = SHIELD_RING_WIDTH_R * R;
-  const cx = core.center.x, cy = core.center.y;
+  const R = coreRadius(core);
+  const w = SHIELD_RING_WIDTH_R * R;
 
-  const pct = Math.max(0, Math.min(1, core.shieldMax ? shield / core.shieldMax : shield / 3));
-
-  // Choose color: override → team css → fallback constant
+  // Pick color (override → team CSS → fallback)
   const teamCssName = core.side < 0 ? '--left' : '--right';
   const teamFromCss =
     (typeof getCSS === 'function' ? getCSS(teamCssName)?.trim() :
      (typeof css === 'function' ? css(teamCssName)?.trim() : '')) || '';
-  const color = (colorOverride || teamFromCss || SHIELD_RING_COLOR);
+  const color = colorOverride || teamFromCss || SHIELD_RING_COLOR;
 
+  // Alpha rises with fraction; soft glow
   ctx.save();
   ctx.lineWidth = w;
   ctx.strokeStyle = color;
-  ctx.globalAlpha = 0.35 + 0.65 * pct;
+  ctx.globalAlpha = 0.30 + 0.65 * frac;
 
   ctx.shadowColor = color;
   ctx.shadowBlur  = SHIELD_RING_GLOW;
 
-  // (optional) dash animation:
-  // ctx.setLineDash([16, 10]);
-  // ctx.lineDashOffset = -(performance.now() * 0.03);
-
   ctx.beginPath();
-  ctx.arc(cx, cy, R + w * 0.5, 0, Math.PI * 2);
+  ctx.arc(core.center.x, core.center.y, R + w * 0.5, 0, Math.PI * 2);
   ctx.stroke();
+
   ctx.restore();
 }
 

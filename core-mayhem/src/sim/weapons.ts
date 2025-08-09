@@ -11,6 +11,7 @@ import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from './damage';
 import { currentDmgMul } from '../app/game';
 import { isDisabled, WeaponKind } from '../app/game';
+import { SHIELD } from '../config';
 
 const DEG = Math.PI / 180;
 const rad = (d:number) => d * DEG;
@@ -125,35 +126,42 @@ export function fireCannon(from:Side, src:{x:number;y:number}, target:{x:number;
 export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
   if ((sim as any).gameOver) return;
   if (isDisabled(side, 'laser')) return;
-  // pick an actual core for damage resolution
+
+  // Resolve core to hit (or a point)
   const enemyCore: CoreLike = (target && (target as any).center)
     ? (target as CoreLike)
     : (side === Side.LEFT ? (sim as any).coreR : (sim as any).coreL);
   if (!enemyCore || !enemyCore.center) return;
 
-  // aim: if caller passed a point, aim there; else aim at core center
   const aim: Vec2 = (target && !(target as any).center)
     ? (target as Vec2)
     : enemyCore.center;
 
-  // --- damage application (keep your existing logic) ---
-  const base = DAMAGE.laserDps || 40;
-  const dmg  = ((enemyCore.shield && enemyCore.shield > 0) ? base * 0.35 : base) * currentDmgMul(side);
+  // --- Laser damage with ablative shield ---
+  // Base damage for this laser pulse, scaled by side's buff
+  const base = DAMAGE.laserDps * currentDmgMul(side);
 
-  applyCoreDamage(enemyCore as any, aim, dmg, angleToSeg);
+  // If this core uses ablative shields, split between shield drain and core penetration.
+  // Fallback: if shieldHP is undefined, behave like no shield (apply full base to core).
+  let toCore = base;
 
-  // split vs rim segments when not hitting dead center
-  const sp = angleToSeg(enemyCore as any, aim);
-  if (sp && enemyCore.segHP) {
-    const d0 = Math.round(dmg * sp.w0), d1 = dmg - d0;
-    enemyCore.segHP[sp.i0] = Math.max(0, enemyCore.segHP[sp.i0] - d0);
-    enemyCore.segHP[sp.i1] = Math.max(0, enemyCore.segHP[sp.i1] - d1);
-    if (Math.random() < 0.08 && typeof enemyCore.centerHP === 'number') enemyCore.centerHP--;
-  } else if (typeof enemyCore.centerHP === 'number') {
-    enemyCore.centerHP = Math.max(0, enemyCore.centerHP - dmg);
+  if (typeof (enemyCore as any).shieldHP === 'number' && typeof (enemyCore as any).shieldHPmax === 'number') {
+    const coreAny = enemyCore as any;
+    if (coreAny.shieldHP > 0) {
+      // Portion that penetrates to the core while shield is up
+      toCore = base * SHIELD.laserPenetration;
+      // Portion that drains the shield pool (optionally amplified)
+      const toShield = base * (1 - SHIELD.laserPenetration) * SHIELD.laserShieldFactor;
+      coreAny.shieldHP = Math.max(0, coreAny.shieldHP - toShield);
+    } else {
+      toCore = base; // shield depleted: all damage hits core
+    }
   }
 
-  // --- FX push (uses new fancy renderer) ---
+  // Apply damage to core exactly once (your helper handles center/segments)
+  applyCoreDamage(enemyCore as any, aim, toCore, angleToSeg);
+
+  // --- FX (kept as you had it) ---
   const now = performance.now();
   (sim as any).fxBeams = (sim as any).fxBeams || [];
   (sim as any).fxBeams.push({
@@ -166,6 +174,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
   (sim as any).fxBursts.push({ x: src.x, y: src.y, t0: now, tEnd: now + LASER_FX.flashMs, side, kind: 'muzzle' });
   (sim as any).fxBursts.push({ x: aim.x, y: aim.y, t0: now, tEnd: now + LASER_FX.flashMs, side, kind: 'impact' });
 }
+
 
 // -- Missiles --
 // fireMissiles: spread + optional arc tilt (deg) relative to aim-to-target

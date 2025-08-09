@@ -2,6 +2,7 @@ import { Bodies, World } from 'matter-js';
 import { sim } from '../state';
 import { Side } from '../types';
 import { CORE_HP, CORE_SEGMENTS, CORE_POS } from '../config';
+import { SHIELD } from '../config';
 
 /**
  * Create a core with configurable segment count + HP, and physics sensors
@@ -41,7 +42,7 @@ export function makeCore(side: Side, teamColor: string) {
 
   World.add(sim.world, [ringBody, centerBody]);
 
-  // --- core model ---
+  // --- core model (ABLATIVE SHIELD fields added) ---
   const core: any = {
     side,
     center: { x: cx, y: cy },
@@ -49,12 +50,20 @@ export function makeCore(side: Side, teamColor: string) {
     ringBody, centerBody,
     rot: 0,
     rotSpeed: 0.0025 * (side === Side.LEFT ? 1 : -1),
+
     segHPmax: CORE_HP.segments,
     centerHPmax: CORE_HP.center,
     segHP: new Array(nSeg).fill(CORE_HP.segments),
     centerHP: CORE_HP.center,
+
+    // deprecated legacy fields (kept for backward-compat; no longer used for damage)
     shield: 0,
     shieldMax: CORE_HP.shieldMax ?? 3,
+
+    // NEW ablative pool
+    shieldHP: SHIELD.startHP,
+    shieldHPmax: SHIELD.maxHP,
+
     teamColor,
   };
 

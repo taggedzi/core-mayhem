@@ -267,3 +267,13 @@ export const BINS_LEFT: Readonly<BinSpec[]> = [
   { id:'debuff',  accepts:['basic','heavy','volatile','emp','shield'],
                    cap:60, pos:[1.35,0.74], sizeFrac:[0.16,0.025], intake:'top', label:'Debuff',  style:{fill:'#FF6B6B'} },
 ] as const;
+
+// How shields behave (ablative pool)
+export const SHIELD = {
+  startHP: 120,          // starting shield HP each round
+  maxHP: 200,            // hard cap
+  onPickup: 60,          // how much the Shield bin adds when it fires
+  projectileFactor: 1.0, // how strongly non-laser hits drain the shield
+  laserPenetration: 0.35,// fraction of laser damage that still reaches core while shield > 0
+  laserShieldFactor: 1.2  // lasers drain shield at this multiple (feel free to tune)
+} as const;

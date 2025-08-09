@@ -16,7 +16,6 @@ import { applyGelForces } from '../sim/gel';
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { FX_MS } from '../config';
-import { SHIELD_DECAY_PER_SEC } from '../config';
 import { EXPLOSION } from '../config';
 import { SHOTS_PER_FILL, SHIELD_EFFECT, REPAIR_EFFECT } from '../config';
 import { GAMEOVER } from '../config';
@@ -26,8 +25,8 @@ import { DEV_KEYS } from '../config';
 import { applyCoreDamage } from '../sim/damage';
 import { ARMOR } from '../config';
 import { MATCH_LIMIT } from '../config';
-import { currentDmgMul } from '../sim/mods'; // NEW
 import { MODS } from '../config';
+import { SHIELD } from '../config';
 
 const devKeysOn = (import.meta.env?.DEV === true) || DEV_KEYS.enabledInProd;
 
@@ -57,6 +56,7 @@ function modsFor(side: Side): SideMods {
   ensureMods();
   return (side === Side.LEFT ? (sim as any).modsL : (sim as any).modsR) as SideMods;
 }
+
 function modsForOpposite(side: Side): SideMods {
   return modsFor(side === Side.LEFT ? Side.RIGHT : Side.LEFT);
 }
@@ -124,6 +124,7 @@ function explodeAt(x: number, y: number, baseDmg: number, shooterSide: Side) {
 export function startGame(canvas: HTMLCanvasElement) {
   clearWorld();
   initWorld(canvas);
+  ensureMods(); // (creates modsL/modsR with defaults)
   (sim as any).cooldowns = {
     L: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
     R: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
@@ -133,12 +134,6 @@ export function startGame(canvas: HTMLCanvasElement) {
   (sim as any).fxImp  = [];     // impact/burn FX store
   (sim as any).fxSweep = [];    // missile sweep pointer FX store
   (sim as any).homing = [];     // missiles to home
-
-  // Persistent global modifiers – initialize ONCE per match here
-  (sim as any).mods = {
-    dmgUntil: 0, dmgMul: 1,
-    disableUntil: 0, disabledType: null as null | 'cannon'|'laser'|'missile'|'mortar',
-  };
 
   // Only seed settings once; keep whatever was already configured between runs
   if (!sim.settings) sim.settings = { ...DEFAULTS };
@@ -267,19 +262,40 @@ Events.on(sim.engine, 'collisionStart', (e) => {
   }
 
   function hit(proj: any, coreBody: any) {
-    const side: Side = coreBody.plugin.side;
+    const side: Side = coreBody.plugin.side;                   // the side being hit
     const core = side === Side.LEFT ? sim.coreL : sim.coreR;
-    const dmg = ((proj.plugin.dmg || 8) * (core.shield > 0 ? 0.35 : 1)) * currentDmgMul();
+    const dmg  = proj?.plugin?.dmg || 8;
+    const isCenter = (coreBody.plugin.kind === 'coreCenter');
 
-    // Center sensor hit → direct center damage
-    if (coreBody.plugin.kind === 'coreCenter') {
+    // --- ABLATIVE SHIELD: if any shieldHP remains, it absorbs projectile damage ---
+    if ((core.shieldHP|0) > 0) {
+      core.shieldHP = Math.max(0, core.shieldHP - dmg /* * SHIELD.projectileFactor if you added it */);
+
+      // FX for shield hit (nice pop)
+      const shooterSide = proj?.plugin?.side;
+      const color = shooterSide === Side.LEFT ? css('--left') : css('--right');
+      (sim.fxImp ||= []).push({
+        x: proj.position.x, y: proj.position.y,
+        t0: performance.now(),
+        ms: FX_MS.impact,
+        color,
+        kind: 'burst'
+      });
+
+      explodeAt(proj.position.x, proj.position.y, dmg, proj.plugin.side);
+      World.remove(sim.world, proj);
+      maybeEndMatch();
+      return;
+    }
+
+    // --- No shield: apply to core as before ---
+    if (isCenter) {
       core.centerHP = Math.max(0, core.centerHP - dmg);
     } else {
-      // Rim sensor hit → segments, with spillover to center as configured
       applyCoreDamage(core, proj.position, dmg, angleToSeg);
     }
-    
-    // spawn a small FX at impact ---
+
+    // impact/burn FX + explode
     const ptype = proj?.plugin?.ptype || 'cannon';
     const shooterSide = proj?.plugin?.side;
     const color = shooterSide === Side.LEFT ? css('--left') : css('--right');
@@ -290,10 +306,12 @@ Events.on(sim.engine, 'collisionStart', (e) => {
       color,
       kind: ptype === 'laser' ? 'burn' : 'burst'
     });
-    explodeAt(proj.position.x, proj.position.y, proj.plugin.dmg || 8, proj.plugin.side);
+
+    explodeAt(proj.position.x, proj.position.y, dmg, proj.plugin.side);
     World.remove(sim.world, proj);
-    maybeEndMatch(); // <-- add this
+    maybeEndMatch();
   }
+
 
   // Game update
   Events.on(sim.engine, 'beforeUpdate', () => {
@@ -311,20 +329,11 @@ Events.on(sim.engine, 'collisionStart', (e) => {
       }
     }
 
-    // Global modifiers live across the match, reset on start
-    (sim as any).mods = {
-      dmgUntil: 0, dmgMul: 1,
-      disableUntil: 0, disabledType: null as null | string,
-    };
-
     beforeUpdateAmmo();
     applyGelForces();  
     applyPipeForces(sim.pipes);
     tickPaddles(dt);
     tickHoming(dtMs);
-
-    sim.coreL.shield = Math.max(0, (sim.coreL.shield || 0) - dt * SHIELD_DECAY_PER_SEC);
-    sim.coreR.shield = Math.max(0, (sim.coreR.shield || 0) - dt * SHIELD_DECAY_PER_SEC);
 
     // soft target spawn
     sim.spawnAcc += dtMs;
@@ -387,8 +396,8 @@ Events.on(sim.engine, 'collisionStart', (e) => {
 
       if (bins.shield.fill >= bins.shield.cap) {
         bins.shield.fill = 0;
-        const core = (side === Side.LEFT ? sim.coreL : sim.coreR);
-        core.shield = Math.max(core.shield, SHIELD_EFFECT.gain);
+        const core = side === Side.LEFT ? sim.coreL : sim.coreR;
+        core.shieldHP = Math.min(core.shieldHPmax, core.shieldHP + SHIELD.onPickup);
       }
     };
     doSide(Side.LEFT, sim.binsL, wepL);
@@ -499,7 +508,6 @@ function updateScoreboard() {
     <span class="right tag">RIGHT</span> ${rWins}–${rLoss}
   `;
 }
-
 
 function isWeaponDisabled(kind: string): boolean {
   const m = (sim as any).mods;

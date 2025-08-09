@@ -8,6 +8,8 @@ export interface Core {
   side: Side; color: string; radius:number; center: Vec; rot:number; rotSpeed:number;
   segHP: number[]; segHPmax:number; centerHP:number; centerHPmax:number;
   centerBody: Matter.Body; ringBody: Matter.Body; shield:number;
+  shieldHP: number;
+  shieldHPmax: number;
 }
 export interface Bins { [k:string]: { body: Matter.Body; accept: AmmoType[]; fill:number; cap:number; label:string } }
 export type Bins = {
