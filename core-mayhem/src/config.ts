@@ -217,22 +217,28 @@ export const MATCH_LIMIT = {
 } as const;
 
 // Global modifier containers & effects
-export const GLOBAL_MODS = {
-  // container fill caps (per side)
-  cap: { buff: 1, debuff: 1 },
+// export const GLOBAL_MODS = {
+//   // container fill caps (per side)
+//   cap: { buff: 1, debuff: 1 },
 
-  // effect durations
-  buffMs:   30_000,   // +damage window
-  debuffMs: 30_000,   // disable one weapon window
+//   // effect durations
+//   buffMs:   30_000,   // +damage window
+//   debuffMs: 30_000,   // disable one weapon window
 
-  // effect strengths
-  dmgMultiplier: 2.0,  // x2 damage during buff
+//   // effect strengths
+//   dmgMultiplier: 2.0,  // x2 damage during buff
 
-  // pool of weapon types eligible for global disable (must exist on both sides)
-  debuffable: ['cannon','laser','missile','mortar'] as const,
+//   // pool of weapon types eligible for global disable (must exist on both sides)
+//   debuffable: ['cannon','laser','missile','mortar'] as const,
+// } as const;
+
+// Buff/Debuff settings (per-side)
+export const MODS = {
+  buffDurationMs: 30000,      // how long a buff lasts
+  buffMultiplier: 1.6,        // damage multiplier when buffed
+  debuffDurationMs: 30000,    // how long a debuff lasts
+  allowedDebuffs: ['cannon','laser','missile','mortar'] as const,
 } as const;
-
-
 
 export type BinId =
   | 'cannon' | 'laser' | 'missile' | 'mortar'

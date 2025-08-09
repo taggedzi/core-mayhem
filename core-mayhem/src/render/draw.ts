@@ -143,8 +143,8 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   });
 
   // bins
-  drawBins(ctx, sim.binsL, getCSS('--left'));
-  drawBins(ctx, sim.binsR, getCSS('--right'));
+  drawBins(ctx, sim.binsL);
+  drawBins(ctx, sim.binsR);
 
   // cores
   drawCore(ctx, sim.coreL);
@@ -188,6 +188,8 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
     }
   });
   
+  drawSideModsBadge(ctx, Side.LEFT);
+  drawSideModsBadge(ctx, Side.RIGHT);
   renderProjectiles(ctx);
   renderProjectilesFancy(ctx);
   drawLaserFX(ctx)
@@ -984,4 +986,46 @@ function fitFontPx(ctx: CanvasRenderingContext2D, text: string, maxPx: number, m
     px -= 0.5;
   }
   return Math.max(px, minPx);
+}
+
+
+function drawSideModsBadge(ctx: CanvasRenderingContext2D, side: Side) {
+  const anySim = sim as any;
+  const m = side === Side.LEFT ? anySim.modsL : anySim.modsR;
+  if (!m) return;
+  const now = performance.now();
+
+  // position: near top header, inset per side
+  const x = side === Side.LEFT ? sim.W * 0.22 : sim.W * 0.78;
+  const y = 26; // align with your header baseline
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${Math.max(12, sim.H*0.018)}px var(--mono, monospace)`;
+
+  // Buff badge
+  if (now < m.dmgUntil) {
+    const tLeft = Math.max(0, Math.ceil((m.dmgUntil - now) / 1000));
+    ctx.fillStyle = '#032e12';
+    ctx.strokeStyle = '#5CFF7A';
+    ctx.lineWidth = 2;
+    const w = 120, h = 22;
+    ctx.fillRect(x - w/2, y - h/2, w, h);
+    ctx.strokeRect(x - w/2, y - h/2, w, h);
+    ctx.fillStyle = '#5CFF7A';
+    ctx.fillText(`DMG x${m.dmgMul.toFixed(1)}  ${tLeft}s`, x, y);
+  }
+
+  // Debuff badge
+  if (now < m.disableUntil && m.disabledType) {
+    const tLeft = Math.max(0, Math.ceil((m.disableUntil - now) / 1000));
+    const y2 = y + 26; // stack below the buff badge if both present
+    ctx.fillStyle = '#3b0c0c';
+    ctx.strokeStyle = '#FF6B6B';
+    ctx.lineWidth = 2;
+    const w = 140, h = 22;
+    ctx.fillRect(x - w/2, y2 - h/2, w, h);
+    ctx.strokeRect(x - w/2, y2 - h/2, w, h);
+    ctx.fillStyle = '#FFB1B1';
+    ctx.fillText(`DISABLED ${m.disabledType.toUpperCase()}  ${tLeft}s`, x, y2);
+  }
 }

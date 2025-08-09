@@ -26,9 +26,8 @@ import { DEV_KEYS } from '../config';
 import { applyCoreDamage } from '../sim/damage';
 import { ARMOR } from '../config';
 import { MATCH_LIMIT } from '../config';
-import { GLOBAL_MODS } from '../config';
 import { currentDmgMul } from '../sim/mods'; // NEW
-
+import { MODS } from '../config';
 
 const devKeysOn = (import.meta.env?.DEV === true) || DEV_KEYS.enabledInProd;
 
@@ -38,6 +37,53 @@ const nowMs = () => performance.now();
 const sideKey = (s: Side) => (s === Side.LEFT ? 'L' : 'R');
 
 let _explosionCount = 0, _explosionWindowT0 = 0;
+
+export type WeaponKind = 'cannon'|'laser'|'missile'|'mortar';
+
+type SideMods = {
+  dmgUntil: number;
+  dmgMul: number;
+  disableUntil: number;
+  disabledType: WeaponKind | null;
+};
+
+function ensureMods() {
+  const anySim = sim as any;
+  if (!anySim.modsL) anySim.modsL = { dmgUntil:0, dmgMul:1, disableUntil:0, disabledType:null } as SideMods;
+  if (!anySim.modsR) anySim.modsR = { dmgUntil:0, dmgMul:1, disableUntil:0, disabledType:null } as SideMods;
+}
+
+function modsFor(side: Side): SideMods {
+  ensureMods();
+  return (side === Side.LEFT ? (sim as any).modsL : (sim as any).modsR) as SideMods;
+}
+function modsForOpposite(side: Side): SideMods {
+  return modsFor(side === Side.LEFT ? Side.RIGHT : Side.LEFT);
+}
+
+export function currentDmgMul(side: Side): number {
+  const m = modsFor(side);
+  return performance.now() < m.dmgUntil ? m.dmgMul : 1;
+}
+
+export function isDisabled(side: Side, kind: WeaponKind): boolean {
+  const m = modsFor(side);
+  return performance.now() < m.disableUntil && m.disabledType === kind;
+}
+
+export function applyBuff(side: Side) {
+  const m = modsFor(side);
+  m.dmgMul = MODS.buffMultiplier;
+  m.dmgUntil = performance.now() + MODS.buffDurationMs;
+}
+
+export function applyDebuff(targetSide: Side, kind?: WeaponKind) {
+  const m = modsFor(targetSide);
+  const pool = MODS.allowedDebuffs;
+  const k = kind ?? pool[Math.floor(Math.random() * pool.length)];
+  m.disabledType = k;
+  m.disableUntil = performance.now() + MODS.debuffDurationMs;
+}
 
 function explodeAt(x: number, y: number, baseDmg: number, shooterSide: Side) {
   if (!EXPLOSION.enabled) return;
@@ -296,9 +342,15 @@ Events.on(sim.engine, 'collisionStart', (e) => {
       const color = side === Side.LEFT ? css('--left') : css('--right');
       const now = performance.now();
 
-      // NEW global mod bins
-      if (bins.buff   && bins.buff.fill   >= bins.buff.cap)   { bins.buff.fill = 0;   activateBuff(); }
-      if (bins.debuff && bins.debuff.fill >= bins.debuff.cap) { bins.debuff.fill = 0; activateDebuff(); }
+      // --- inside doSide(side, bins, wep) ---
+      if (bins.buff && bins.buff.fill >= bins.buff.cap) {
+        bins.buff.fill = 0;
+        applyBuff(side); // buff your own side
+      }
+      if (bins.debuff && bins.debuff.fill >= bins.debuff.cap) {
+        bins.debuff.fill = 0;
+        applyDebuff(side === Side.LEFT ? Side.RIGHT : Side.LEFT); // debuff the other side
+      }
 
       if (bins.cannon.fill >= bins.cannon.cap && now >= sim.cooldowns[key].cannon) {
         bins.cannon.fill = 0;
@@ -456,19 +508,19 @@ function isWeaponDisabled(kind: string): boolean {
 }
 
 // activators
-function activateBuff() {
-  const m = (sim as any).mods || ((sim as any).mods = {});
-  const dur = Math.max(5000, Number(GLOBAL_MODS?.buffMs || 30000)); // fallback 30s, min 5s
-  const until = Math.max(m.dmgUntil || 0, nowMs() + dur);
-  m.dmgMul = Number(GLOBAL_MODS?.dmgMultiplier || 2.0);
-  m.dmgUntil = until;
-}
+// function activateBuff() {
+//   const m = (sim as any).mods || ((sim as any).mods = {});
+//   const dur = Math.max(5000, Number(GLOBAL_MODS?.buffMs || 30000)); // fallback 30s, min 5s
+//   const until = Math.max(m.dmgUntil || 0, nowMs() + dur);
+//   m.dmgMul = Number(GLOBAL_MODS?.dmgMultiplier || 2.0);
+//   m.dmgUntil = until;
+// }
 
-function activateDebuff() {
-  const m = (sim as any).mods || ((sim as any).mods = {});
-  const pool = (GLOBAL_MODS?.debuffable as readonly string[]) || ['cannon','laser','missile','mortar','artillery'];
-  const dur  = Math.max(5000, Number(GLOBAL_MODS?.debuffMs || 30000)); // fallback 30s, min 5s
-  const pick = pool[Math.floor(Math.random()*pool.length)];
-  m.disabledType = pick;
-  m.disableUntil = Math.max(m.disableUntil || 0, nowMs() + dur);
-}
+// function activateDebuff() {
+//   const m = (sim as any).mods || ((sim as any).mods = {});
+//   const pool = (GLOBAL_MODS?.debuffable as readonly string[]) || ['cannon','laser','missile','mortar','artillery'];
+//   const dur  = Math.max(5000, Number(GLOBAL_MODS?.debuffMs || 30000)); // fallback 30s, min 5s
+//   const pick = pool[Math.floor(Math.random()*pool.length)];
+//   m.disabledType = pick;
+//   m.disableUntil = Math.max(m.disableUntil || 0, nowMs() + dur);
+// }

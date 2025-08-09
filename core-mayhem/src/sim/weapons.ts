@@ -1,17 +1,16 @@
 import { Bodies, World, Body, Vector } from 'matter-js';
 import { LASER_FX } from '../config';
-import { MORTAR_ARC, DAMAGE, SHOTS_PER_FILL } from '../config';
+import { DAMAGE } from '../config';
 import { sim } from '../state';
 import { Side } from '../types';
 import { WEAPON_WINDUP_MS } from '../config';
-import { FX_MS } from '../config';
 import { PROJ_SPEED, MISSILE_SPREAD_DEG, MISSILE_JITTER_DEG, MISSILE_ARC_TILT_DEG } from '../config';
 import { HOMING, HOMING_ENABLED } from '../config';
 import { MORTAR_ANGLE } from '../config';
-import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from './damage';
-import { currentDmgMul } from '../sim/mods';
+import { currentDmgMul } from '../app/game';
+import { isDisabled, WeaponKind } from '../app/game';
 
 const DEG = Math.PI / 180;
 const rad = (d:number) => d * DEG;
@@ -27,6 +26,8 @@ export function queueFireCannon(
   windupMs = WEAPON_WINDUP_MS
 ) {
   if ((sim as any).gameOver) return;
+  // example in queueFireCannon or fireCannon
+  if (isDisabled(from, 'cannon')) return;
   setTimeout(() => {
     if ((sim as any).gameOver) return;
     fireCannon(from, src, target, burst)}, windupMs);
@@ -40,6 +41,7 @@ export function queueFireLaser(
   ms = 600 // laser on-time
 ) {
   if ((sim as any).gameOver) return;
+  if (isDisabled(from, 'laser')) return;
   setTimeout(() => {
     if ((sim as any).gameOver) return;
     fireLaser(from, src, core, ms)
@@ -54,6 +56,7 @@ export function queueFireMissiles(
   arcTiltDeg?: number // optional per-shot override
 ) {
   if ((sim as any).gameOver) return;
+  if (isDisabled(from, 'missile')) return;
   const target = (from === Side.LEFT ? sim.coreR.center : sim.coreL.center);
 
   // aim-to-target
@@ -90,6 +93,7 @@ export function queueFireMortar(
   windupMs = WEAPON_WINDUP_MS
 ) {
   if ((sim as any).gameOver) return;
+  if (isDisabled(from, 'mortar')) return;
   setTimeout(() => {
     if ((sim as any).gameOver) return;
     fireMortar(from, src, count)
@@ -99,13 +103,15 @@ export function queueFireMortar(
 // -- Cannon --
 export function fireCannon(from:Side, src:{x:number;y:number}, target:{x:number;y:number}, burst=18){
   if ((sim as any).gameOver) return;
+  if (isDisabled(from, 'cannon')) return;
   const dir = Vector.normalise({ x: target.x - src.x, y: target.y - src.y });
   const base = 22 * Math.min(1.8, Math.max(0.9, Vector.magnitude({x:target.x-src.x,y:target.y-src.y})/600));
   const speed = base * PROJ_SPEED.cannon;
+  const mul = currentDmgMul(from);
 
   for (let i = 0; i < burst; i++) setTimeout(() => {
     const b = Bodies.circle(src.x, src.y, 4, { restitution:0.2, friction:0.01, density:0.002 });
-    (b as any).plugin = { kind:'projectile', ptype:'cannon', side:from, dmg: DAMAGE.cannon, spawnT: performance.now() };
+    (b as any).plugin = { kind:'projectile', ptype:'cannon', side:from, dmg: DAMAGE.cannon * mul, spawnT: performance.now() };
     World.add(sim.world, b);
     const jitter = 3; // small spread
     Body.setVelocity(b, {
@@ -118,7 +124,7 @@ export function fireCannon(from:Side, src:{x:number;y:number}, target:{x:number;
 // -- Laser (unchanged here; no physical projectile body) --
 export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
   if ((sim as any).gameOver) return;
-
+  if (isDisabled(side, 'laser')) return;
   // pick an actual core for damage resolution
   const enemyCore: CoreLike = (target && (target as any).center)
     ? (target as CoreLike)
@@ -132,7 +138,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
 
   // --- damage application (keep your existing logic) ---
   const base = DAMAGE.laserDps || 40;
-  const dmg  = ((enemyCore.shield && enemyCore.shield > 0) ? base * 0.35 : base) * currentDmgMul();
+  const dmg  = ((enemyCore.shield && enemyCore.shield > 0) ? base * 0.35 : base) * currentDmgMul(side);
 
   applyCoreDamage(enemyCore as any, aim, dmg, angleToSeg);
 
@@ -170,6 +176,7 @@ export function fireMissiles(
   arcTiltDeg?: number
 ) {
   if ((sim as any).gameOver) return;
+  if (isDisabled(from, 'missile')) return;
   const target = (from === Side.LEFT ? sim.coreR.center : sim.coreL.center);
 
   // aim-to-target (works both sides)
@@ -183,10 +190,11 @@ export function fireMissiles(
   const center = baseAng + mirroredTilt;
   const spread = rad(MISSILE_SPREAD_DEG);
   const jitter = rad(MISSILE_JITTER_DEG);
+  const mul = currentDmgMul(from);
 
   for (let i = 0; i < count; i++) setTimeout(() => {
     const m = Bodies.circle(src.x, src.y, 5, { density:0.003, frictionAir:0.02 });
-    (m as any).plugin = { kind:'projectile', ptype:'missile', side:from, dmg: DAMAGE.missile, spawnT: performance.now() };
+    (m as any).plugin = { kind:'projectile', ptype:'missile', side:from, dmg: DAMAGE.missile * mul, spawnT: performance.now() };
     World.add(sim.world, m);
 
     const t = (count === 1) ? 0 : (i / (count - 1) - 0.5);
@@ -201,6 +209,8 @@ export function fireMissiles(
 
 // -- Mortar --
 export function fireMortar(from: Side, src: { x:number; y:number }, count = 1) {
+  if ((sim as any).gameOver) return;
+  if (isDisabled(from, 'mortar')) return;
   const target = (from === Side.LEFT ? sim.coreR.center : sim.coreL.center);
 
   for (let i = 0; i < count; i++) {
@@ -214,7 +224,7 @@ export function fireMortar(from: Side, src: { x:number; y:number }, count = 1) {
         kind: 'projectile',
         ptype: 'mortar',
         side: from,
-        dmg: DAMAGE.mortar,
+        dmg: DAMAGE.mortar * currentDmgMul(from),
         spawnT: performance.now(),
         gExtra: MORTAR_ANGLE.extraGravity || 0
       };
