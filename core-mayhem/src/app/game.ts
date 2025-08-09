@@ -78,6 +78,8 @@ export function startGame(canvas: HTMLCanvasElement) {
   if (!sim.settings) sim.settings = { ...DEFAULTS };
 
   sim.started = true;
+  (sim as any).stats = (sim as any).stats || { leftWins: 0, rightWins: 0, ties: 0 };
+  updateScoreboard(); // draw initial 0–0
   
   if ((sim as any).restartTO) { clearTimeout((sim as any).restartTO); (sim as any).restartTO = 0; }
   (sim as any).gameOver = false;
@@ -362,6 +364,13 @@ function declareWinner(winner: Side | 0) {
   (sim as any).gameOver = true;
   (sim as any).winnerAt = performance.now();
   
+  const stats = (sim as any).stats || ((sim as any).stats = { leftWins:0, rightWins:0, ties:0 });
+  if (winner === -1) stats.leftWins++;
+  else if (winner === 1) stats.rightWins++;
+  else stats.ties++;
+
+  updateScoreboard();
+
   // Schedule auto-restart (once)
   if (GAMEOVER.autoRestart && !(sim as any).restartTO) {
     (sim as any).restartTO = setTimeout(() => {
@@ -380,3 +389,19 @@ function maybeEndMatch() {
   declareWinner(deadL && deadR ? 0 : (deadL ? Side.RIGHT : Side.LEFT));
 }
 
+function updateScoreboard() {
+  const el = document.getElementById('score');
+  if (!el) return;
+  const s = (sim as any).stats || { leftWins:0, rightWins:0, ties:0 };
+  const lWins = s.leftWins|0, rWins = s.rightWins|0, ties = s.ties|0;
+
+  // losses are the opponent's wins
+  const lLoss = rWins, rLoss = lWins;
+
+  // Build inner HTML to keep colored tags
+  el.innerHTML = `
+    <span class="left tag">LEFT</span> ${lWins}–${lLoss}
+    ${ties ? `<span class="sep">|</span> T:${ties}` : `<span class="sep">|</span>`}
+    <span class="right tag">RIGHT</span> ${rWins}–${rLoss}
+  `;
+}

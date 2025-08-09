@@ -18,7 +18,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 }
 #hud{position:absolute;left:10px;bottom:8px;display:flex;gap:8px}
 .chip{background:#0e1730cc;border:1px solid #2b3a78;border-radius:6px;padding:4px 6px;font-size:12px}
-footer{position:fixed;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#bcd;border-top:2px solid #20336e;background:#0d1733;display:flex;justify-content:space-between}
+/* footer{position:fixed;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#bcd;border-top:2px solid #20336e;background:#0d1733;display:flex;justify-content:space-between} */
 .hud-inline{
   display:inline-flex;
   gap:6px;
@@ -30,3 +30,32 @@ footer{position:fixed;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;co
   padding:4px 6px;
 }
 .hud-inline .tag{opacity:.75}
+footer{
+  position: absolute;
+  bottom: 8px; left: 8px; right: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* left | center | right */
+  align-items: center;
+  font: 12px/1 var(--mono, monospace, Verdana);
+  color: #cfe1ff;
+}
+
+footer .made { justify-self: start; opacity: .85; }
+
+footer .hud-inline { justify-self: end; }
+
+.scoreboard{
+  justify-self: center;
+  display: inline-flex;
+  gap: 10px;
+  align-items: baseline;
+  background: #0e1730cc;
+  border: 1px solid #2b3a78;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.scoreboard .tag{ font-weight: 700; opacity: .9; }
+.scoreboard .left{ color: var(--left, #58e6ff); }
+.scoreboard .right{ color: var(--right, #ff69d4); }
+.scoreboard .sep{ opacity: .55; }
