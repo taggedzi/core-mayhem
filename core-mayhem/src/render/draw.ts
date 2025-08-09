@@ -1,3 +1,5 @@
+import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
+import { LASER_FX } from '../config';
 import { Composite } from 'matter-js';
 import { sim } from '../state';
 import { Side } from '../types';
@@ -187,6 +189,8 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   });
   
   renderProjectiles(ctx);
+  renderProjectilesFancy(ctx);
+  drawLaserFX(ctx)
   renderSweep(ctx);
   renderBeams(ctx);
   renderImpactFX(ctx);
@@ -659,4 +663,225 @@ function drawGameOverBanner(ctx: CanvasRenderingContext2D) {
   }
 
   ctx.restore();
+}
+
+function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any) {
+  const p = b?.plugin;
+  if (!p || p.kind !== 'projectile') return false;
+
+  const sty = (PROJECTILE_STYLE as any)[p.ptype] || PROJECTILE_STYLE.cannon;
+  const pos = b.position;
+  const vel = (b as any).velocity ?? b.velocity;
+  const speed = Math.hypot(vel.x, vel.y);
+
+  // motion trail from velocity (no history needed)
+  const trailLen = Math.min(30, 6 + speed * 2);
+  const tx = pos.x - vel.x * trailLen * 0.8;
+  const ty = pos.y - vel.y * trailLen * 0.8;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const grad = ctx.createLinearGradient(pos.x, pos.y, tx, ty);
+  grad.addColorStop(0, sty.glow);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = Math.max(2, 0.06 * trailLen);
+  ctx.beginPath();
+  ctx.moveTo(pos.x, pos.y);
+  ctx.lineTo(tx, ty);
+  ctx.stroke();
+
+  // body styling
+  ctx.shadowColor = sty.glow;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = sty.fill;
+  ctx.strokeStyle = PROJECTILE_OUTLINE;
+  ctx.lineWidth = 2;
+
+  // draw by type
+  switch (p.ptype) {
+    case 'missile': {
+      const ang = Math.atan2(vel.y, vel.x);
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.rotate(ang);
+      const r = 9;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);                 // nose
+      ctx.lineTo(-r * 0.6,  r * 0.55);  // tail fin
+      ctx.lineTo(-r * 0.6, -r * 0.55);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // engine flare
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.6, 0);
+      ctx.lineTo(-r * 1.2, 0);
+      ctx.strokeStyle = sty.glow;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'mortar': {
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      // white diagonal stripe
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(pos.x - 4, pos.y - 4);
+      ctx.lineTo(pos.x + 4, pos.y + 4);
+      ctx.stroke();
+      break;
+    }
+    case 'artillery': {
+      const ang = Math.atan2(vel.y, vel.x);
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(10, 0);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(-10, 0);
+      ctx.lineTo(0, -6);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    default: { // cannon (round but glowy)
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      break;
+    }
+  }
+
+  ctx.restore();
+  return true;
+}
+
+// Call this from drawFrame after background/obstacles:
+export function renderProjectilesFancy(ctx: CanvasRenderingContext2D) {
+  const bodies = Composite.allBodies(sim.world);
+  for (const b of bodies) {
+    drawOneProjectile(ctx, b as any);
+  }
+}
+
+function drawLaserBeams(ctx: CanvasRenderingContext2D) {
+  const arr = (sim as any).fxBeams || [];
+  const now = performance.now();
+  (sim as any).fxBeams = arr.filter((b:any) => b.tEnd > now);
+  for (const b of arr) {
+    const t = Math.max(0, (b.tEnd - now) / 180); // 0..1
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = b.color;
+    ctx.globalAlpha = 0.35 + 0.65 * t;
+    ctx.lineWidth = 6 * (0.6 + 0.4 * t);
+    ctx.beginPath();
+    ctx.moveTo(b.x1, b.y1);
+    ctx.lineTo(b.x2, b.y2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function teamColor(side: number) {
+  return side < 0 ? (css('--left') || '#58e6ff') : (css('--right') || '#ff69d4');
+}
+
+// Deterministic-ish jitter using time; no per-frame popping
+function jitterPolyline(x1:number,y1:number,x2:number,y2:number, segs:number, amp:number, t:number) {
+  const pts: {x:number;y:number;}[] = [];
+  for (let i=0;i<=segs;i++){
+    const u = i / segs;
+    const x = x1 + (x2 - x1)*u;
+    const y = y1 + (y2 - y1)*u;
+    // phase moves slowly so it shimmers
+    const k  = u*7 + t*0.002;
+    const nx = Math.sin(11*k) * Math.cos(3.7*k);
+    const ny = Math.cos(9.2*k) * Math.sin(4.1*k);
+    pts.push({ x: x + nx*amp*(1 - Math.abs(0.5 - u)*1.8), y: y + ny*amp*(1 - Math.abs(0.5 - u)*1.8) });
+  }
+  return pts;
+}
+
+function pathFromPoints(ctx:CanvasRenderingContext2D, pts:{x:number;y:number}[]){
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+}
+
+function drawBurst(ctx:CanvasRenderingContext2D, x:number, y:number, color:string, life01:number, kind:'muzzle'|'impact'){
+  const r = LASER_FX.flashSize * (0.7 + 0.3*life01);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createRadialGradient(x,y,0, x,y,r);
+  g.addColorStop(0, color);
+  g.addColorStop(0.45, 'rgba(255,255,255,0.85)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.globalAlpha = 0.45 + 0.55*life01;
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+
+  // subtle rays
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.25 * life01;
+  const rays = 6;
+  for (let i=0;i<rays;i++){
+    const a = (i/rays)*Math.PI*2 + life01*2.2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a)*r*1.3, y + Math.sin(a)*r*1.3);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+export function drawLaserFX(ctx: CanvasRenderingContext2D) {
+  const beams = (sim as any).fxBeams || [];
+  const bursts = (sim as any).fxBursts || [];
+  const now = performance.now();
+
+  // prune expired
+  (sim as any).fxBeams  = beams.filter((b:any)=> b.tEnd > now);
+  (sim as any).fxBursts = bursts.filter((b:any)=> b.tEnd > now);
+
+  // beams
+  for (const b of beams) {
+    const life = 1 - Math.max(0, Math.min(1, (now - b.t0) / (b.tEnd - b.t0)));
+    const col  = teamColor(b.side ?? -1);
+
+    // Outer glow (jittered)
+    const pts = jitterPolyline(b.x1,b.y1,b.x2,b.y2, LASER_FX.segments, LASER_FX.jitterAmp, now);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.shadowColor = col;
+    ctx.shadowBlur  = 18;
+    ctx.strokeStyle = col;
+    ctx.globalAlpha = 0.35 + 0.65*life;
+    ctx.lineWidth   = LASER_FX.outerWidth * (0.85 + 0.15*life);
+    pathFromPoints(ctx, pts); ctx.stroke();
+
+    // Inner core (straight), animated dash
+    ctx.shadowBlur  = 0;
+    ctx.strokeStyle = LASER_FX.coreColor;
+    ctx.globalAlpha = 0.85 * life;
+    ctx.lineWidth   = LASER_FX.innerWidth;
+    ctx.setLineDash([LASER_FX.dash, LASER_FX.dash*0.6]);
+    ctx.lineDashOffset = -(now*0.2);
+    ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // muzzle / impact flashes
+  for (const f of bursts){
+    const life01 = Math.max(0, Math.min(1, (f.tEnd - now) / LASER_FX.flashMs));
+    drawBurst(ctx, f.x, f.y, teamColor(f.side ?? -1), life01, f.kind);
+  }
 }

@@ -40,8 +40,8 @@ export const COOLDOWN_MS = {
 export const PROJ_SPEED = {
   cannon: 0.80,
   laser:  1.00, // laser beam stays instant-ish; visual burn handles feedback
-  missile:0.75,
-  mortar: 0.65,
+  missile:0.65,
+  mortar: 0.55,
 } as const;
 
 // Simple impact effect durations
@@ -71,7 +71,7 @@ export const HOMING = {
 } as const;
 
 // How fast shield value drains (per second). Set to 0 to disable decay.
-export const SHIELD_DECAY_PER_SEC = 0.35;
+export const SHIELD_DECAY_PER_SEC = 0.05;
 
 // Visual thickness of the shield ring in pixels (scales a bit with H too)
 export const SHIELD_RING_PX = 6;
@@ -91,11 +91,11 @@ export const EXPLOSION = {
 // How many AMMO units a container must collect to trigger its action
 export const CONTAINER_CAP = {
   cannon: 100,
-  laser: 500,
-  missile: 1000,
-  mortar: 800,
-  repair: 500,
-  shield: 10,
+  laser: 5,
+  missile: 6,
+  mortar: 2,
+  repair: 250,
+  shield: 125,
 } as const;
 
 // How much each weapon fires per trigger (or how long it runs)
@@ -108,22 +108,22 @@ export const SHOTS_PER_FILL = {
 
 // Damage tuning (integers unless noted)
 export const DAMAGE = {
-  cannon: 3,         // dmg per cannon ball
-  missile: 40,       // dmg per missile (on direct core hit)
-  mortar: 55,        // dmg per shell
+  cannon: 8,         // dmg per cannon ball
+  missile: 24,       // dmg per missile (on direct core hit)
+  mortar: 22,        // dmg per shell
   laserDps: 40,      // damage per second while laser is on
 } as const;
 
 // Shield/repair effects when those bins trigger
 export const SHIELD_EFFECT = {
-  gain: 2.5,         // set/raise shield to at least this value
+  gain: 20,         // set/raise shield to at least this value
 } as const;
 
 export const REPAIR_EFFECT = {
   segmentsToHeal: 3,     // heal this many weakest rim segments
-  segHealAmount: 65,     // HP added per healed segment
-  centerChance: 0.4,    // chance to also heal center
-  centerAmount: 12,       // HP to heal at center when it procs
+  segHealAmount: 85,     // HP added per healed segment
+  centerChance: 0.5,    // chance to also heal center
+  centerAmount: 25,       // HP to heal at center when it procs
 } as const;
 
 // Visual thickness of the normal rim (when no shield)
@@ -136,18 +136,18 @@ export const SHIELD_RING_COLOR   = 'rgba(120, 200, 255, 0.95)'; // fallback if y
 
 // Core health (starting + max per match)
 export const CORE_HP = {
-  segments: 5,  // HP for each rim segment
-  center:   10,  // HP for the core center
-  shieldMax: 3    // for visual normalization of shield ring (not gameplay)
+  segments: 100,  // HP for each rim segment
+  center:   500,  // HP for the core center
+  shieldMax: 50    // for visual normalization of shield ring (not gameplay)
 } as const;
 
 // How many rim segments to draw/use (also controls how damage is distributed)
-export const CORE_SEGMENTS = 20; // set 8..48; 16–28 looks great
+export const CORE_SEGMENTS = 28; // set 8..48; 16–28 looks great
 
 // Where cores sit on the board
 export const CORE_POS = {
   xOffsetFrac: 0.16, // fraction of canvas width from midline toward each side (was ~0.22)
-  yFrac:       0.46, // fraction of canvas height down from top
+  yFrac:       0.55, // fraction of canvas height down from top
   edgeMarginPx: 40,  // safety clamp from edges
 };
 
@@ -155,4 +155,37 @@ export const CORE_POS = {
 export const GAMEOVER = {
   bannerMs: 20000,   // 20 seconds
   autoRestart: true, // turn off if you ever want manual restarts only
+} as const;
+
+// Mortar launched by angle + speed (per tick), with optional extra gravity
+export const MORTAR_ANGLE = {
+  angleDeg: 72,        // launch angle above horizontal
+  angleJitterDeg: 8,   // random ± jitter
+  speedPerTick: 22,    // launch speed in *px per simulation tick*
+  speedJitter: 0.12,   // random ± jitter (fraction)
+  extraGravity: 0.0    // per-tick^2 downward accel just for mortars (try 0.25–0.45 if arcs too flat)
+} as const;
+
+
+export const PROJECTILE_STYLE = {
+  cannon:    { fill: '#FFD24A', glow: '#FFC400' },
+  missile:   { fill: '#66CCFF', glow: '#33B5FF' },
+  mortar:    { fill: '#FF6B6B', glow: '#FF3B3B' },
+  artillery: { fill: '#B4FF6A', glow: '#86FF2D' },
+  laser:     { fill: '#FFFFFF', glow: '#88CCFF' }, // beam uses glow only
+} as const;
+
+export const PROJECTILE_OUTLINE = '#0B0F1A'; // thin dark ink to separate from ammo
+
+// Fancy laser visuals
+export const LASER_FX = {
+  beamMs: 180,          // how long the beam stays visible
+  innerWidth: 3,        // bright inner core
+  outerWidth: 11,       // soft outer glow
+  jitterAmp: 6,         // max px offset for the lightning-like jitter
+  segments: 12,         // how many jitter points along the line
+  dash: 18,             // moving dash length on the core
+  flashMs: 140,         // muzzle/impact flash life
+  flashSize: 22,        // radius of muzzle/impact flashes
+  coreColor: '#FFFFFF', // inner core color
 } as const;

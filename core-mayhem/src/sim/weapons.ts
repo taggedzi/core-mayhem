@@ -1,24 +1,20 @@
 import { Bodies, World, Body, Vector } from 'matter-js';
+import { LASER_FX } from '../config';
+import { MORTAR_ARC, DAMAGE, SHOTS_PER_FILL } from '../config';
 import { sim } from '../state';
 import { Side } from '../types';
 import { WEAPON_WINDUP_MS } from '../config';
 import { FX_MS } from '../config';
 import { PROJ_SPEED, MISSILE_SPREAD_DEG, MISSILE_JITTER_DEG, MISSILE_ARC_TILT_DEG } from '../config';
 import { HOMING, HOMING_ENABLED } from '../config';
-import { DAMAGE } from '../config';
-import { SHOTS_PER_FILL } from '../config';
+import { MORTAR_ANGLE } from '../config';
+import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
+import { angleToSeg } from '../sim/core';
 
 const DEG = Math.PI / 180;
 const rad = (d:number) => d * DEG;
-
-// export function makeWeapons(side:Side){
-//   const {W,H} = sim; const gap = Math.max(110, W*0.11);
-//   const yTop = H*0.12; const topMid = (side===Side.LEFT? (W/2 - gap*0.6) : (W/2 + gap*0.6));
-//   const spread = Math.max(32, W*0.03); const sgn = (side===Side.RIGHT? -1 : 1);
-//   const dxs = [-spread, 0, +spread].map(d=> d*sgn); const pos = dxs.map(d=> ({x:topMid+d, y:yTop}));
-//   const bottom = {x: side===Side.LEFT? Math.min(W*0.48, W/2 - gap*0.7) : Math.max(W*0.52, W/2 + gap*0.7), y:H*0.90};
-//   return { cannon: {pos:pos[0]}, laser:{pos:pos[1]}, missile:{pos:pos[2]}, mortar:{pos:bottom} };
-// }
+type Vec2 = { x:number; y:number };
+type CoreLike = { center: Vec2; shield?: number; segHP?: number[]; centerHP?: number };
 
 // Queue versions that wait windupMs, then call the real fire functions
 export function queueFireCannon(
@@ -118,51 +114,48 @@ export function fireCannon(from:Side, src:{x:number;y:number}, target:{x:number;
 }
 
 // -- Laser (unchanged here; no physical projectile body) --
-export function fireLaser(from: Side, src: { x:number; y:number }, core: { center:{x:number; y:number} }, ms = 600) {
+export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
   if ((sim as any).gameOver) return;
-  const target = core.center;
 
-  // beam line (you already render fxBeam)
-  (sim.fxBeam ||= []).push({
-    x0: src.x, y0: src.y, x1: target.x, y1: target.y,
-    t0: performance.now(), ms, side: from
+  // pick an actual core for damage resolution
+  const enemyCore: CoreLike = (target && (target as any).center)
+    ? (target as CoreLike)
+    : (side === Side.LEFT ? (sim as any).coreR : (sim as any).coreL);
+
+  if (!enemyCore || !enemyCore.center) return; // nothing to shoot at
+
+  // aim: if caller passed a point, aim there; else aim at core center
+  const aim: Vec2 = (target && !(target as any).center)
+    ? (target as Vec2)
+    : enemyCore.center;
+
+  // --- damage application (keep your existing logic) ---
+  const base = DAMAGE.laserDps || 40; // or your configured pulse damage
+  const dmg  = (enemyCore.shield && enemyCore.shield > 0) ? base * 0.35 : base;
+
+  // split vs rim segments when not hitting dead center
+  const sp = angleToSeg(enemyCore as any, aim);
+  if (sp && enemyCore.segHP) {
+    const d0 = Math.round(dmg * sp.w0), d1 = dmg - d0;
+    enemyCore.segHP[sp.i0] = Math.max(0, enemyCore.segHP[sp.i0] - d0);
+    enemyCore.segHP[sp.i1] = Math.max(0, enemyCore.segHP[sp.i1] - d1);
+    if (Math.random() < 0.08 && typeof enemyCore.centerHP === 'number') enemyCore.centerHP--;
+  } else if (typeof enemyCore.centerHP === 'number') {
+    enemyCore.centerHP = Math.max(0, enemyCore.centerHP - dmg);
+  }
+
+  // --- FX push (uses new fancy renderer) ---
+  const now = performance.now();
+  (sim as any).fxBeams = (sim as any).fxBeams || [];
+  (sim as any).fxBeams.push({
+    x1: src.x, y1: src.y,
+    x2: aim.x, y2: aim.y,
+    side, t0: now, tEnd: now + LASER_FX.beamMs
   });
 
-  // 🔸 add a *colored* burn at impact
-  const color = from === Side.LEFT
-    ? getComputedStyle(document.documentElement).getPropertyValue('--left').trim()
-    : getComputedStyle(document.documentElement).getPropertyValue('--right').trim();
-
-  (sim.fxImp ||= []).push({
-    x: target.x, y: target.y,
-    t0: performance.now(), ms: FX_MS.burn,
-    color,
-    kind: 'burn'
-  });
-
-  // --- beam collision sensor (so projectiles can "hit" the laser) ---
-  const dx = target.x - src.x, dy = target.y - src.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const ang = Math.atan2(dy, dx);
-  const beam = Bodies.rectangle(
-    (src.x + target.x) / 2, (src.y + target.y) / 2,
-    len, 8, // 8px-thick sensor; invisible
-    { isStatic: true, isSensor: true, angle: ang }
-  );
-  (beam as any).plugin = { kind: 'beamSensor', side: from, until: performance.now() + ms };
-  World.add(sim.world, beam);
-  setTimeout(() => World.remove(sim.world, beam), ms);
-
-  // damage over time
-  const victim = (from === Side.LEFT) ? sim.coreR : sim.coreL;
-  const dps = DAMAGE.laserDps;
-  let elapsed = 0;
-  const id = setInterval(() => {
-    const dt = 50; elapsed += dt;
-    const mult = victim.shield > 0 ? 0.35 : 1;
-    victim.centerHP -= Math.floor((dps * dt / 1000) * mult);
-    if (elapsed >= ms) clearInterval(id);
-  }, 50);
+  (sim as any).fxBursts = (sim as any).fxBursts || [];
+  (sim as any).fxBursts.push({ x: src.x, y: src.y, t0: now, tEnd: now + LASER_FX.flashMs, side, kind: 'muzzle' });
+  (sim as any).fxBursts.push({ x: aim.x, y: aim.y, t0: now, tEnd: now + LASER_FX.flashMs, side, kind: 'impact' });
 }
 
 // -- Missiles --
@@ -204,22 +197,41 @@ export function fireMissiles(
 }
 
 // -- Mortar --
-export function fireMortar(
-  from: Side,
-  src: { x:number; y:number },
-  count = 1
-){
-  if ((sim as any).gameOver) return;
-  const target = (from===Side.LEFT? sim.coreR.center : sim.coreL.center);
-  for (let i = 0; i < count; i++) setTimeout(() => {
-    const shell = Bodies.circle(src.x, src.y, 6, { density:0.004, restitution:0.2 });
-    (shell as any).plugin = { kind:'projectile', ptype:'mortar', side:from, dmg: DAMAGE.mortar, spawnT: performance.now() };
-    World.add(sim.world, shell);
-    let vx = (target.x - src.x) / 40 + (Math.random()-0.5) * 2;
-    let vy = -16 + (Math.random()-0.5) * 2;
-    vx *= PROJ_SPEED.mortar; vy *= PROJ_SPEED.mortar;
-    Body.setVelocity(shell, { x: vx, y: vy });
-  }, i * 200);
+export function fireMortar(from: Side, src: { x:number; y:number }, count = 1) {
+  const target = (from === Side.LEFT ? sim.coreR.center : sim.coreL.center);
+
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const shell = Bodies.circle(src.x, src.y, 6, {
+        density: 0.004,
+        restitution: 0.2,
+        frictionAir: 0.015,
+      });
+      (shell as any).plugin = {
+        kind: 'projectile',
+        ptype: 'mortar',
+        side: from,
+        dmg: DAMAGE.mortar,
+        spawnT: performance.now(),
+        gExtra: MORTAR_ANGLE.extraGravity || 0
+      };
+      World.add(sim.world, shell);
+
+      // Aim left->right or right->left based on target
+      const dx = target.x - src.x;
+      const sgn = Math.sign(dx) || (from === Side.LEFT ? +1 : -1);
+
+      // Angle + speed with jitter (all per-tick units)
+      const angDeg = MORTAR_ANGLE.angleDeg + (Math.random()*2 - 1) * MORTAR_ANGLE.angleJitterDeg;
+      const ang    = Math.max(10, Math.min(85, angDeg)) * Math.PI / 180;
+      const spd    = MORTAR_ANGLE.speedPerTick * (1 + (Math.random()*2 - 1) * MORTAR_ANGLE.speedJitter);
+
+      const vx =  Math.cos(ang) * spd * sgn;
+      const vy = -Math.sin(ang) * spd;     // negative = up (canvas Y-down)
+
+      Body.setVelocity(shell, { x: vx, y: vy });
+    }, i * 220);
+  }
 }
 
 const getCSS = (name: string) =>
