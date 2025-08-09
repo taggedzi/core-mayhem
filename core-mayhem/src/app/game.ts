@@ -25,6 +25,7 @@ import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons'
 import { DEV_KEYS } from '../config';
 import { applyCoreDamage } from '../sim/damage';
 import { ARMOR } from '../config';
+import { MATCH_LIMIT } from '../config';
 
 const devKeysOn = (import.meta.env?.DEV === true) || DEV_KEYS.enabledInProd;
 
@@ -85,7 +86,7 @@ export function startGame(canvas: HTMLCanvasElement) {
   (sim as any).gameOver = false;
   (sim as any).winner = null;
   (sim as any).winnerAt = 0;
-
+  (sim as any).matchStart = performance.now();  // ⬅️ stamp match start
 
   // Edge pipes
   const pipeL = makePipe(Side.LEFT);
@@ -235,6 +236,15 @@ Events.on(sim.engine, 'collisionStart', (e) => {
     const dt = dtMs / 1000;
     // stop all game logic once over
     if ((sim as any).gameOver) return;
+
+    // Time-limit: declare a tie if we run too long
+    if (MATCH_LIMIT.enabled && MATCH_LIMIT.ms > 0 && !(sim as any).gameOver) {
+      const elapsed = performance.now() - ((sim as any).matchStart || 0);
+      if (elapsed >= MATCH_LIMIT.ms) {
+        // 0 means tie; this will show the banner and schedule auto-restart
+        declareWinner(0);
+      }
+    }
 
     beforeUpdateAmmo();
     applyGelForces();  
@@ -401,7 +411,7 @@ function updateScoreboard() {
   // Build inner HTML to keep colored tags
   el.innerHTML = `
     <span class="left tag">LEFT</span> ${lWins}–${lLoss}
-    ${ties ? `<span class="sep">|</span> T:${ties}` : `<span class="sep">|</span>`}
+    ${ties ? `<span class="sep">|</span> T:${ties} <span class="sep">|</span>` : `<span class="sep">|</span>`}
     <span class="right tag">RIGHT</span> ${rWins}–${rLoss}
   `;
 }

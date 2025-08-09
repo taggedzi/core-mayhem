@@ -208,3 +208,10 @@ export const ARMOR = {
 
 // Optional: quick debug prints to console for each hit
 export const DEBUG_DAMAGE = false;
+
+// End a match after this much wall-clock time.
+// Set enabled:false or ms:0 to disable.
+export const MATCH_LIMIT = {
+  enabled: true,
+  ms: 1 * 60 * 1000, // 30 minutes
+} as const;
