@@ -19,3 +19,14 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #hud{position:absolute;left:10px;bottom:8px;display:flex;gap:8px}
 .chip{background:#0e1730cc;border:1px solid #2b3a78;border-radius:6px;padding:4px 6px;font-size:12px}
 footer{position:fixed;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#bcd;border-top:2px solid #20336e;background:#0d1733;display:flex;justify-content:space-between}
+.hud-inline{
+  display:inline-flex;
+  gap:6px;
+  align-items:baseline;
+  font:12px/1 var(--mono, monospace, Verdana);
+  background:#0e1730cc;
+  border:1px solid #2b3a78;
+  border-radius:6px;
+  padding:4px 6px;
+}
+.hud-inline .tag{opacity:.75}

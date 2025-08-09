@@ -20,6 +20,13 @@ import { SHIELD_DECAY_PER_SEC } from '../config';
 import { EXPLOSION } from '../config';
 import { SHOTS_PER_FILL, SHIELD_EFFECT, REPAIR_EFFECT } from '../config';
 import { GAMEOVER } from '../config';
+import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
+// --- DEV HOTKEYS: only in Vite dev or if forced via config ---
+import { DEV_KEYS } from '../config';
+import { applyCoreDamage } from '../sim/damage';
+import { ARMOR } from '../config';
+
+const devKeysOn = (import.meta.env?.DEV === true) || DEV_KEYS.enabledInProd;
 
 console.log('cooldowns', COOLDOWN_MS);
 
@@ -114,6 +121,42 @@ export function startGame(canvas: HTMLCanvasElement) {
   (sim as any).wepL = wepL;
   (sim as any).wepR = wepR;
 
+
+  if (devKeysOn) {
+    const onKey = (e: KeyboardEvent) => {
+      if ((sim as any).gameOver) return;
+
+      // helpers
+      const L = Side.LEFT, R = Side.RIGHT;
+      const cL = sim.coreL.center, cR = sim.coreR.center;
+
+      switch (e.key) {
+        // Left side (lowercase)
+        case 'c': fireCannon(L,  (wepL as any).cannon.pos,  cR, /*speedOrDmg?*/ 16); break;
+        case 'l': fireLaser (L,  (wepL as any).laser.pos,   sim.coreR);            break;
+        case 'm': fireMissiles(L, (wepL as any).missile.pos, 5 /*count*/);         break;
+        case 'o': fireMortar(L,   (wepL as any).mortar.pos,  3 /*count*/);         break;
+
+        // Right side (uppercase)
+        case 'C': fireCannon(R,  (wepR as any).cannon.pos,  cL, 16);               break;
+        case 'L': fireLaser (R,  (wepR as any).laser.pos,   sim.coreL);            break;
+        case 'M': fireMissiles(R, (wepR as any).missile.pos, 5);                    break;
+        case 'O': fireMortar(R,   (wepR as any).mortar.pos,  3);                    break;
+
+        // (optional) quick defensive triggers while tuning:
+        // case 'S': sim.coreL.shield = Math.max(sim.coreL.shield, 2.5); break;
+        // case 'R': repair(Side.LEFT); break;
+        // case 'X': sim.coreR.shield = Math.max(sim.coreR.shield, 2.5); break;
+        // case 'T': repair(Side.RIGHT); break;
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    // Remove on stop so we don't stack listeners across restarts
+    (sim as any)._devKeyHandler = onKey;
+  }
+
+
   // Collisions: deposits + core hits
 Events.on(sim.engine, 'collisionStart', (e) => {
   for (const p of e.pairs) {
@@ -159,14 +202,15 @@ Events.on(sim.engine, 'collisionStart', (e) => {
     const side: Side = coreBody.plugin.side;
     const core = side === Side.LEFT ? sim.coreL : sim.coreR;
     const dmg = (proj.plugin.dmg || 8) * (core.shield > 0 ? 0.35 : 1);
-    if (coreBody.plugin.kind === 'coreCenter') core.centerHP -= dmg;
-    else {
-      const sp = angleToSeg(core, proj.position);
-      const d0 = Math.round(dmg * sp.w0), d1 = dmg - d0;
-      core.segHP[sp.i0] = Math.max(0, core.segHP[sp.i0] - d0);
-      core.segHP[sp.i1] = Math.max(0, core.segHP[sp.i1] - d1);
-      if (Math.random() < 0.08) core.centerHP--;
+
+    // Center sensor hit → direct center damage
+    if (coreBody.plugin.kind === 'coreCenter') {
+      core.centerHP = Math.max(0, core.centerHP - dmg);
+    } else {
+      // Rim sensor hit → segments, with spillover to center as configured
+      applyCoreDamage(core, proj.position, dmg, angleToSeg);
     }
+    
     // spawn a small FX at impact ---
     const ptype = proj?.plugin?.ptype || 'cannon';
     const shooterSide = proj?.plugin?.side;
@@ -270,7 +314,12 @@ Events.on(sim.engine, 'collisionStart', (e) => {
     drawFrame(ctx);
     updateHUD();
     const now = performance.now(); frames++;
-    if (now - fpsTimer > 500) { (document.getElementById('fps')!).textContent = String(Math.round(frames * 1000 / (now - fpsTimer))); fpsTimer = now; frames = 0; }
+    if (now - fpsTimer > 500) { 
+      const fpsVal = Math.round(frames * 1000 / (now - fpsTimer));
+      (document.getElementById('fps')!).textContent = String(fpsVal);
+      fpsTimer = now; 
+      frames = 0; 
+    }
     raf = requestAnimationFrame(loop);
   };
   raf = requestAnimationFrame(loop);
@@ -330,3 +379,4 @@ function maybeEndMatch() {
   if (!deadL && !deadR) return;
   declareWinner(deadL && deadR ? 0 : (deadL ? Side.RIGHT : Side.LEFT));
 }
+

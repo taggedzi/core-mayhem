@@ -10,6 +10,7 @@ import { HOMING, HOMING_ENABLED } from '../config';
 import { MORTAR_ANGLE } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { angleToSeg } from '../sim/core';
+import { applyCoreDamage } from './damage'; // adjust path to match your structure
 
 const DEG = Math.PI / 180;
 const rad = (d:number) => d * DEG;
@@ -121,8 +122,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
   const enemyCore: CoreLike = (target && (target as any).center)
     ? (target as CoreLike)
     : (side === Side.LEFT ? (sim as any).coreR : (sim as any).coreL);
-
-  if (!enemyCore || !enemyCore.center) return; // nothing to shoot at
+  if (!enemyCore || !enemyCore.center) return;
 
   // aim: if caller passed a point, aim there; else aim at core center
   const aim: Vec2 = (target && !(target as any).center)
@@ -132,6 +132,8 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
   // --- damage application (keep your existing logic) ---
   const base = DAMAGE.laserDps || 40; // or your configured pulse damage
   const dmg  = (enemyCore.shield && enemyCore.shield > 0) ? base * 0.35 : base;
+
+  applyCoreDamage(enemyCore as any, aim, dmg, angleToSeg);
 
   // split vs rim segments when not hitting dead center
   const sp = angleToSeg(enemyCore as any, aim);

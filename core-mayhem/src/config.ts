@@ -51,7 +51,7 @@ export const FX_MS = {
 } as const;
 
 // How wide the launcher fans missiles (in degrees)
-export const MISSILE_SPREAD_DEG = 40;   // try 26–34 for obvious spread
+export const MISSILE_SPREAD_DEG = 90;   // try 26–34 for obvious spread
 export const MISSILE_JITTER_DEG = 20;    // random per-missile wobble at launch
 
 // NEW: tilt the entire missile arc relative to the aim-to-target direction
@@ -179,7 +179,7 @@ export const PROJECTILE_OUTLINE = '#0B0F1A'; // thin dark ink to separate from a
 
 // Fancy laser visuals
 export const LASER_FX = {
-  beamMs: 180,          // how long the beam stays visible
+  beamMs: 600,          // how long the beam stays visible
   innerWidth: 3,        // bright inner core
   outerWidth: 11,       // soft outer glow
   jitterAmp: 6,         // max px offset for the lightning-like jitter
@@ -189,3 +189,22 @@ export const LASER_FX = {
   flashSize: 22,        // radius of muzzle/impact flashes
   coreColor: '#FFFFFF', // inner core color
 } as const;
+
+// Enable dev hotkeys outside Vite dev (optional)
+export const DEV_KEYS = {
+  enabledInProd: false
+} as const;
+
+// How rim armor interacts with the core
+export const ARMOR = {
+  // If true, any damage that isn't absorbed by surviving segments goes to the center.
+  spillover: true,
+  // When both adjacent segments are already 0, multiply full incoming damage by this and apply to center.
+  // 1.0 = full passthrough, 0.5 = half, 0.0 = none.
+  leakWhenBroken: 1.0,
+  // Keep or disable the old random “chip” behavior
+  chipChance: 0.0,
+} as const;
+
+// Optional: quick debug prints to console for each hit
+export const DEBUG_DAMAGE = false;
