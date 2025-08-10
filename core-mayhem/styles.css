@@ -1,38 +1,103 @@
-:root{ --bg:#0b0f1a; --panel:#0e1730; --line:#20336e; --accent:#ff00aa; --left:#ff8c1a; --right:#1a9bff; --text:#e6f0ff; }
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Verdana,Tahoma,Geneva,sans-serif}
-header{display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,#0d1942,#13234f);border-bottom:2px solid #20336e;padding:8px 12px}
-header .brand{font-weight:900;color:#00ffd5;text-shadow:0 0 6px #00ffd588}
-header .right{margin-left:auto;display:flex;gap:8px}
-button{background:linear-gradient(#19305f,#0f2149);border:1px solid #3558b6;color:#e8f3ff;padding:6px 10px;border-radius:4px;font-weight:700;cursor:pointer}
-button:disabled{opacity:.4;cursor:not-allowed}
-#stage{position:fixed;inset:44px 0 28px 0}
+:root {
+  --bg: #0b0f1a;
+  --panel: #0e1730;
+  --line: #20336e;
+  --accent: #ff00aa;
+  --left: #ff8c1a;
+  --right: #1a9bff;
+  --text: #e6f0ff;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Verdana, Tahoma, Geneva, sans-serif;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, #0d1942, #13234f);
+  border-bottom: 2px solid #20336e;
+  padding: 8px 12px;
+}
+header .brand {
+  font-weight: 900;
+  color: #00ffd5;
+  text-shadow: 0 0 6px #00ffd588;
+}
+header .right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+button {
+  background: linear-gradient(#19305f, #0f2149);
+  border: 1px solid #3558b6;
+  color: #e8f3ff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+#stage {
+  position: fixed;
+  inset: 44px 0 28px 0;
+}
 /* canvas is centered; JS sets its px size to a 16:9 that fits Stage */
-#view{
-  position:absolute;
-  left:50%; top:50%;
-  transform:translate(-50%,-50%);
-  display:block;
-  width:auto; height:auto;          /* we’ll set explicit px via JS */
-  max-width:100%; max-height:100%;  /* safety */
-}
-#hud{position:absolute;left:10px;bottom:8px;display:flex;gap:8px}
-.chip{background:#0e1730cc;border:1px solid #2b3a78;border-radius:6px;padding:4px 6px;font-size:12px}
-/* footer{position:fixed;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#bcd;border-top:2px solid #20336e;background:#0d1733;display:flex;justify-content:space-between} */
-.hud-inline{
-  display:inline-flex;
-  gap:6px;
-  align-items:baseline;
-  font:12px/1 var(--mono, monospace, Verdana);
-  background:#0e1730cc;
-  border:1px solid #2b3a78;
-  border-radius:6px;
-  padding:4px 6px;
-}
-.hud-inline .tag{opacity:.75}
-footer{
+#view {
   position: absolute;
-  bottom: 8px; left: 8px; right: 8px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+  width: auto;
+  height: auto; /* we’ll set explicit px via JS */
+  max-width: 100%;
+  max-height: 100%; /* safety */
+}
+#hud {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  display: flex;
+  gap: 8px;
+}
+.chip {
+  background: #0e1730cc;
+  border: 1px solid #2b3a78;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+/* footer{position:fixed;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#bcd;border-top:2px solid #20336e;background:#0d1733;display:flex;justify-content:space-between} */
+.hud-inline {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  font: 12px/1 var(--mono, monospace, Verdana);
+  background: #0e1730cc;
+  border: 1px solid #2b3a78;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.hud-inline .tag {
+  opacity: 0.75;
+}
+footer {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
   display: grid;
   grid-template-columns: 1fr auto 1fr; /* left | center | right */
   align-items: center;
@@ -40,11 +105,16 @@ footer{
   color: #cfe1ff;
 }
 
-footer .made { justify-self: start; opacity: .85; }
+footer .made {
+  justify-self: start;
+  opacity: 0.85;
+}
 
-footer .hud-inline { justify-self: end; }
+footer .hud-inline {
+  justify-self: end;
+}
 
-.scoreboard{
+.scoreboard {
   justify-self: center;
   display: inline-flex;
   gap: 10px;
@@ -55,7 +125,16 @@ footer .hud-inline { justify-self: end; }
   padding: 4px 8px;
 }
 
-.scoreboard .tag{ font-weight: 700; opacity: .9; }
-.scoreboard .left{ color: var(--left, #58e6ff); }
-.scoreboard .right{ color: var(--right, #ff69d4); }
-.scoreboard .sep{ opacity: .55; }
+.scoreboard .tag {
+  font-weight: 700;
+  opacity: 0.9;
+}
+.scoreboard .left {
+  color: var(--left, #58e6ff);
+}
+.scoreboard .right {
+  color: var(--right, #ff69d4);
+}
+.scoreboard .sep {
+  opacity: 0.55;
+}

@@ -1,4 +1,5 @@
 import { Composite, Body } from 'matter-js';
+
 import { sim } from '../state';
 
 /**
@@ -19,8 +20,12 @@ export function applyGelForces() {
 
     for (const g of sim.gels) {
       const m = g.bounds;
-      if (b.position.x > m.min.x && b.position.x < m.max.x &&
-          b.position.y > m.min.y && b.position.y < m.max.y) {
+      if (
+        b.position.x > m.min.x &&
+        b.position.x < m.max.x &&
+        b.position.y > m.min.y &&
+        b.position.y < m.max.y
+      ) {
         const gp = (g as any).plugin || {};
         // Accept new (dampX/dampY) or legacy (kx/ky) options
         const dampX = gp.dampX ?? (gp.kx != null ? gp.kx * 3.0 : 2.0);

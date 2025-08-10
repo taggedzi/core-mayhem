@@ -1,71 +1,138 @@
+// main.ts
 import { startGame } from './app/game';
 import { updateHUD } from './render/hud';
 
-let stopGame: (() => void) | null = null;
+// ——— Types ———
+type StopFn = () => void;
+
+// ——— State ———
+let stopGame: StopFn | null = null;
 let restarting = false;
-let resizeTimer: number | null = null;
-
-function start() {
-  const canvas = document.getElementById('view') as HTMLCanvasElement;
-  // stop the previous run (if any)
-  if (stopGame) {
-    try { stopGame(); } catch { /* ignore */ }
-    stopGame = null;
-  }
-  stopGame = startGame(canvas);
-
-  // toggle buttons
-  (document.getElementById('btnStart') as HTMLButtonElement).disabled = true;
-  (document.getElementById('btnStop') as HTMLButtonElement).disabled = false;
-}
-
-function stop() {
-  if (stopGame) {
-    try { stopGame(); } catch { /* ignore */ }
-  }
-  stopGame = null;
-
-  updateHUD();              // ← ensure the label flips even if game.ts changes later
-  (document.getElementById('btnStart') as HTMLButtonElement).disabled = false;
-  (document.getElementById('btnStop') as HTMLButtonElement).disabled = true;
-}
-
-function scheduleRestart() {
-  // only restart if we are currently running
-  if (!stopGame) return;
-  if (restarting) return;
-  if (resizeTimer) window.clearTimeout(resizeTimer);
-  resizeTimer = window.setTimeout(() => {
-    restarting = true;
-    try { start(); } finally { restarting = false; }
-  }, 120);
-}
-
-// Buttons
-(document.getElementById('btnStart') as HTMLButtonElement).onclick = start;
-(document.getElementById('btnStop') as HTMLButtonElement).onclick = stop;
-
-// Window resize (debounced)
-window.addEventListener('resize', scheduleRestart, { passive: true });
-
-// Stage resize (letterboxing / flex changes)
-const stage = document.getElementById('stage') as HTMLElement;
-if (stage) {
-  const ro = new ResizeObserver(() => scheduleRestart());
-  ro.observe(stage);
-}
-
-// DPR / zoom changes also affect canvas pixels
 let lastDpr = window.devicePixelRatio;
-setInterval(() => {
-  const dpr = window.devicePixelRatio;
-  if (dpr !== lastDpr) { lastDpr = dpr; scheduleRestart(); }
-}, 300);
+let dprIntervalId: number | null = null;
 
-window.addEventListener('coreMayhem:restart', () => {
-  // mimic a manual Stop → Start so buttons/state stay consistent
-  if (stopGame) {
-    stop();
-    start();
+// Debounce helper with cancel()
+function debounce<F extends (...args: any[]) => void>(fn: F, wait: number) {
+  let t: number | null = null;
+  const debounced = (...args: Parameters<F>) => {
+    if (t !== null) window.clearTimeout(t);
+    t = window.setTimeout(() => fn(...args), wait);
+  };
+  (debounced as any).cancel = () => {
+    if (t !== null) {
+      window.clearTimeout(t);
+      t = null;
+    }
+  };
+  return debounced as F & { cancel: () => void };
+}
+
+function init() {
+  const canvas = document.getElementById('view') as HTMLCanvasElement | null;
+  const btnStart = document.getElementById('btnStart') as HTMLButtonElement | null;
+  const btnStop = document.getElementById('btnStop') as HTMLButtonElement | null;
+  const stage = document.getElementById('stage') as HTMLElement | null;
+
+  if (!canvas) {
+    console.error('[core-mayhem] Missing <canvas id="view">');
+    return;
   }
-});
+  if (!btnStart || !btnStop) {
+    console.error('[core-mayhem] Missing start/stop buttons');
+    return;
+  }
+
+  const scheduleRestart = debounce(() => {
+    // Only restart if currently running; ignore if mid-restart
+    if (!stopGame || restarting) return;
+    restarting = true;
+    try {
+      start(); // re-reads current DPR, size, etc.
+    } finally {
+      restarting = false;
+    }
+  }, 120);
+
+  function start() {
+    // Stop previous run (if any)
+    if (stopGame) {
+      try {
+        stopGame();
+      } catch {
+        /* ignore */
+      }
+      stopGame = null;
+    }
+
+    stopGame = startGame(canvas);
+
+    // Start DPR watcher when game is running
+    lastDpr = window.devicePixelRatio;
+    if (dprIntervalId !== null) window.clearInterval(dprIntervalId);
+    dprIntervalId = window.setInterval(() => {
+      const dpr = window.devicePixelRatio;
+      if (dpr !== lastDpr) {
+        lastDpr = dpr;
+        scheduleRestart();
+      }
+    }, 300);
+
+    // Toggle UI
+    btnStart.disabled = true;
+    btnStop.disabled = false;
+  }
+
+  function stop() {
+    if (stopGame) {
+      try {
+        stopGame();
+      } catch {
+        /* ignore */
+      }
+    }
+    stopGame = null;
+
+    // Stop DPR watcher to avoid unnecessary work while stopped
+    if (dprIntervalId !== null) {
+      window.clearInterval(dprIntervalId);
+      dprIntervalId = null;
+    }
+    // Cancel any queued restart so we don't "surprise start"
+    scheduleRestart.cancel();
+
+    updateHUD(); // keep HUD label in sync even if game.ts changes later
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+  }
+
+  // Button wiring
+  btnStart.onclick = start;
+  btnStop.onclick = stop;
+
+  // Window resize (debounced)
+  window.addEventListener('resize', scheduleRestart, { passive: true });
+
+  // Stage resize (letterboxing / flex changes)
+  if (stage) {
+    const ro = new ResizeObserver(() => scheduleRestart());
+    ro.observe(stage);
+  }
+
+  // External “soft” restart (keeps UI consistent)
+  window.addEventListener('coreMayhem:restart', () => {
+    if (stopGame) {
+      stop();
+      start();
+    }
+  });
+
+  // Optional: start automatically, or leave to the user
+  // start();
+}
+
+// Ensure DOM elements exist before wiring
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+  init();
+}

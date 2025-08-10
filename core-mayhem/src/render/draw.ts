@@ -1,8 +1,7 @@
-import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
-import { LASER_FX } from '../config';
 import { Composite } from 'matter-js';
-import { sim } from '../state';
-import { Side } from '../types';
+
+import { LASER_FX } from '../config';
+import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { WALL_T, BIN_T, BIN_INTAKE_H } from '../config';
 import { WEAPON_WINDUP_MS, SHIELD_RING_PX } from '../config';
 import {
@@ -12,21 +11,25 @@ import {
   SHIELD_RING_COLOR,
 } from '../config';
 import { GAMEOVER } from '../config';
+import { sim } from '../state';
+import { SIDE, type Side } from '../types';
 
 const SHOW_DAMPERS = true; // set false later to hide them entirely
-const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const css = (name: string) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-export function drawFrame(ctx:CanvasRenderingContext2D){
-  const W=sim.W,H=sim.H;
-  ctx.clearRect(0,0,W,H);
+export function drawFrame(ctx: CanvasRenderingContext2D) {
+  const W = sim.W,
+    H = sim.H;
+  ctx.clearRect(0, 0, W, H);
 
   // midline
-  ctx.setLineDash([6,6]);
-  ctx.strokeStyle="#20336e";
-  ctx.lineWidth=2;
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = '#20336e';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(W/2,0);
-  ctx.lineTo(W/2,H);
+  ctx.moveTo(W / 2, 0);
+  ctx.lineTo(W / 2, H);
   ctx.stroke();
   ctx.setLineDash([]);
 
@@ -35,8 +38,8 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
     for (const g of sim.gels) {
       const b = g.bounds;
       ctx.save();
-      ctx.setLineDash([2, 10]);        // thin dash
-      ctx.lineWidth = 0.6;             // thinner line
+      ctx.setLineDash([2, 10]); // thin dash
+      ctx.lineWidth = 0.6; // thinner line
       ctx.strokeStyle = 'rgba(0,255,213,0.12)'; // low opacity
       ctx.strokeRect(b.min.x, b.min.y, b.max.x - b.min.x, b.max.y - b.min.y);
       ctx.restore();
@@ -44,34 +47,34 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   }
 
   // pins (filled dots)
-  ctx.fillStyle='#2b3a78';
-  Composite.allBodies(sim.world).forEach(b=>{
-    const k=(b as any).plugin?.kind;
-    if(k==='pin'){
+  ctx.fillStyle = '#2b3a78';
+  Composite.allBodies(sim.world).forEach((b) => {
+    const k = (b as any).plugin?.kind;
+    if (k === 'pin') {
       ctx.beginPath();
-      ctx.arc(b.position.x,b.position.y,b.circleRadius,0,Math.PI*2);
+      ctx.arc(b.position.x, b.position.y, b.circleRadius, 0, Math.PI * 2);
       ctx.fill();
     }
   });
 
   // rotors (thin outlines)
-  ctx.strokeStyle='#2b3a78';
-  ctx.lineWidth=2;
-  Composite.allBodies(sim.world).forEach(b=>{
-    const k=(b as any).plugin?.kind;
-    if(k==='rotor'){
-      const v=b.vertices;
+  ctx.strokeStyle = '#2b3a78';
+  ctx.lineWidth = 2;
+  Composite.allBodies(sim.world).forEach((b) => {
+    const k = (b as any).plugin?.kind;
+    if (k === 'rotor') {
+      const v = b.vertices;
       ctx.beginPath();
-      ctx.moveTo(v[0].x,v[0].y);
-      for(let i=1;i<v.length;i++) ctx.lineTo(v[i].x,v[i].y);
+      ctx.moveTo(v[0].x, v[0].y);
+      for (let i = 1; i < v.length; i++) ctx.lineTo(v[i].x, v[i].y);
       ctx.closePath();
       ctx.stroke();
     }
   });
 
   // pipe walls as single vertical strokes
-  Composite.allBodies(sim.world).forEach(b=>{
-    const k=(b as any).plugin?.kind;
+  Composite.allBodies(sim.world).forEach((b) => {
+    const k = (b as any).plugin?.kind;
     if (k === 'pipeWall') {
       const m = b.bounds;
       const cx = (m.min.x + m.max.x) * 0.5; // centerline of skinny rectangle
@@ -88,12 +91,12 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   });
 
   // optional: intake visual (dashed box)
-  Composite.allBodies(sim.world).forEach(b=>{
-    const k=(b as any).plugin?.kind;
+  Composite.allBodies(sim.world).forEach((b) => {
+    const k = (b as any).plugin?.kind;
     if (k === 'intake') {
       const m = b.bounds;
       ctx.save();
-      ctx.setLineDash([4,4]);
+      ctx.setLineDash([4, 4]);
       ctx.strokeStyle = '#44ffd5';
       ctx.strokeRect(m.min.x, m.min.y, m.max.x - m.min.x, m.max.y - m.min.y);
       ctx.restore();
@@ -101,19 +104,19 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   });
 
   // flippers (as strokes)
-  sim.flippers.forEach(f=>{
+  sim.flippers.forEach((f) => {
     ctx.save();
     ctx.strokeStyle = '#9fb8ff';
     ctx.lineWidth = 6; // separate control; set to WALL_T if you want global match
     ctx.beginPath();
-    ctx.moveTo(f.bounds.min.x,f.position.y);
-    ctx.lineTo(f.bounds.max.x,f.position.y);
+    ctx.moveTo(f.bounds.min.x, f.position.y);
+    ctx.lineTo(f.bounds.max.x, f.position.y);
     ctx.stroke();
     ctx.restore();
   });
 
   // lane walls as single vertical strokes
-  Composite.allBodies(sim.world).forEach(b=>{
+  Composite.allBodies(sim.world).forEach((b) => {
     const k = (b as any).plugin?.kind;
     if (k === 'laneWall') {
       const m = b.bounds;
@@ -133,12 +136,12 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   });
 
   // paddles
-  ctx.strokeStyle='#2b3a78';
-  ctx.lineWidth=8;
-  sim.paddles.forEach(p=>{
+  ctx.strokeStyle = '#2b3a78';
+  ctx.lineWidth = 8;
+  sim.paddles.forEach((p) => {
     ctx.beginPath();
-    ctx.moveTo(p.bounds.min.x,p.position.y);
-    ctx.lineTo(p.bounds.max.x,p.position.y);
+    ctx.moveTo(p.bounds.min.x, p.position.y);
+    ctx.lineTo(p.bounds.max.x, p.position.y);
     ctx.stroke();
   });
 
@@ -160,11 +163,12 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
 
   // Wind-up flashes on weapon mounts
   const t = performance.now();
-  sim.fxArm = sim.fxArm.filter(fx => fx.until > t);
-  sim.fxArm.forEach(fx => {
+  sim.fxArm = sim.fxArm.filter((fx) => fx.until > t);
+  sim.fxArm.forEach((fx) => {
     const left = (fx.until - t) / WEAPON_WINDUP_MS; // 1 → 0 over the windup window
     const pulse = 0.5 + 0.5 * Math.sin((1 - left) * Math.PI * 2.5);
-    const r0 = 10, r1 = 16;
+    const r0 = 10,
+      r1 = 16;
     const r = r0 + (1 - left) * (r1 - r0);
     ctx.save();
     ctx.globalAlpha = 0.35 + 0.45 * pulse;
@@ -177,22 +181,23 @@ export function drawFrame(ctx:CanvasRenderingContext2D){
   });
 
   // ammo & projectiles
-  Composite.allBodies(sim.world).forEach(b=>{
-    const plug=(b as any).plugin;
-    if(!plug) return;
-    if(plug.kind==='ammo'){
-      const col= colorForAmmo(plug.type);
+  Composite.allBodies(sim.world).forEach((b) => {
+    const plug = (b as any).plugin;
+    if (!plug) return;
+    if (plug.kind === 'ammo') {
+      const col = colorForAmmo(plug.type);
       ctx.beginPath();
-      ctx.arc(b.position.x,b.position.y,b.circleRadius||6,0,Math.PI*2);
-      ctx.fillStyle=col; ctx.fill();
+      ctx.arc(b.position.x, b.position.y, b.circleRadius || 6, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
     }
   });
-  
-  drawSideModsBadge(ctx, Side.LEFT);
-  drawSideModsBadge(ctx, Side.RIGHT);
+
+  drawSideModsBadge(ctx, SIDE.LEFT);
+  drawSideModsBadge(ctx, SIDE.RIGHT);
   renderProjectiles(ctx);
   renderProjectilesFancy(ctx);
-  drawLaserFX(ctx)
+  drawLaserFX(ctx);
   renderSweep(ctx);
   renderBeams(ctx);
   renderImpactFX(ctx);
@@ -205,20 +210,20 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
   const css = (name: string) =>
     getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-  const lineT =
-    parseFloat(css('--wall-t')) ||
-    Math.max(2, sim.W * 0.0025);
+  const lineT = parseFloat(css('--wall-t')) || Math.max(2, sim.W * 0.0025);
 
   const now = performance.now();
-  const mods = (sim as any).mods || { dmgUntil:0, dmgMul:1, disableUntil:0, disabledType:null };
+  const mods = (sim as any).mods || { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
 
   // helper: active state for buff/debuff
-  const buffActive   = now < (mods.dmgUntil || 0);
+  const buffActive = now < (mods.dmgUntil || 0);
   const debuffActive = now < (mods.disableUntil || 0);
 
   // deterministic order just for consistent z-draw; positions still come from bin.pos
-  const order = ['buff','cannon','laser','missile','debuff','mortar','shield','repair'];
-  const keys = order.filter(k => bins[k]).concat(Object.keys(bins).filter(k => !order.includes(k)));
+  const order = ['buff', 'cannon', 'laser', 'missile', 'debuff', 'mortar', 'shield', 'repair'];
+  const keys = order
+    .filter((k) => bins[k])
+    .concat(Object.keys(bins).filter((k) => !order.includes(k)));
 
   for (const key of keys) {
     const bin = (bins as any)[key];
@@ -228,44 +233,46 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
     const wall = bin.box || bin.body || bin.intake;
     if (!wall || !wall.bounds) continue;
 
-    const cx = (bin.pos?.x ?? wall.position.x);
-    const cy = (bin.pos?.y ?? wall.position.y);
-    const w  = wall.bounds.max.x - wall.bounds.min.x;
-    const h  = wall.bounds.max.y - wall.bounds.min.y;
+    const cx = bin.pos?.x ?? wall.position.x;
+    const cy = bin.pos?.y ?? wall.position.y;
+    const w = wall.bounds.max.x - wall.bounds.min.x;
+    const h = wall.bounds.max.y - wall.bounds.min.y;
 
     // style overrides per-bin (fallbacks preserved)
     const s = (bin as any).style || {};
-    const stroke   = s.stroke    ?? '#94a8ff';
-    const boxBg    = s.box       ?? 'rgba(14,23,48,0.35)';
-    const fillCol  = s.fill      ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#8fb0ff');
-    const gaugeCol = s.gauge     ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#ffffff');
-    const textCol  = s.text      ?? '#cfe1ff';
-    const lineW    = s.strokePx  ?? lineT;  // keep your scaling fallback
+    const stroke = s.stroke ?? '#94a8ff';
+    const boxBg = s.box ?? 'rgba(14,23,48,0.35)';
+    const fillCol =
+      s.fill ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#8fb0ff');
+    const gaugeCol =
+      s.gauge ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#ffffff');
+    const textCol = s.text ?? '#cfe1ff';
+    const lineW = s.strokePx ?? lineT; // keep your scaling fallback
 
     // ---- 1) Outline (thin wall) ----
     ctx.save();
     ctx.lineWidth = lineW;
     ctx.strokeStyle = stroke;
     ctx.beginPath();
-    ctx.rect(cx - w/2, cy - h/2, w, h);
+    ctx.rect(cx - w / 2, cy - h / 2, w, h);
     ctx.stroke();
 
     // ---- 2) Internal fill (bottom-up) ----
     if (typeof bin.fill === 'number' && typeof bin.cap === 'number' && bin.cap > 0) {
       const frac = Math.max(0, Math.min(1, bin.fill / bin.cap));
       const inset = Math.max(1, lineT * 0.65);
-      const innerW = w - inset*2;
-      const innerH = h - inset*2;
-      const fillH  = innerH * frac;
+      const innerW = w - inset * 2;
+      const innerH = h - inset * 2;
+      const fillH = innerH * frac;
 
       // background (empty tank)
       ctx.fillStyle = boxBg;
-      ctx.fillRect(cx - innerW/2, cy - innerH/2, innerW, innerH);
+      ctx.fillRect(cx - innerW / 2, cy - innerH / 2, innerW, innerH);
 
       // filled portion
       ctx.fillStyle = fillCol;
       ctx.globalAlpha = 0.85;
-      ctx.fillRect(cx - innerW/2, cy + innerH/2 - fillH, innerW, fillH);
+      ctx.fillRect(cx - innerW / 2, cy + innerH / 2 - fillH, innerW, fillH);
       ctx.globalAlpha = 1.0;
 
       // ---- 5) Labels under the box (auto-fit) ----
@@ -273,12 +280,12 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
       const ch = h; // box height
 
       const nameText = key.toUpperCase();
-      const cap = (bin.cap|0);
-      const fill = Math.min((bin.fill|0), cap);
+      const cap = bin.cap | 0;
+      const fill = Math.min(bin.fill | 0, cap);
       const statText = `${fill}/${cap}`;
 
       // positions under the box — tweak offsets if you want tighter spacing
-      const labelY = cy + ch/2 + 12;
+      const labelY = cy + ch / 2 + 12;
       const statsY = labelY + 12;
 
       ctx.textAlign = 'center';
@@ -292,7 +299,7 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
       ctx.fillText(nameText, cx, labelY);
 
       // second line (fill/cap)
-      const statPx = fitFontPx(ctx, statText, 11, bw * 0.90);
+      const statPx = fitFontPx(ctx, statText, 11, bw * 0.9);
       ctx.font = `${statPx}px var(--mono, monospace)`;
       ctx.fillStyle = css('--fg-dim');
       ctx.fillStyle = textCol; // for the name/values you draw
@@ -302,8 +309,9 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
     // ---- 3) Intake strip (collector surface) ----
     if (bin.intake?.bounds) {
       const ib = bin.intake.bounds;
-      const ix1 = ib.min.x, ix2 = ib.max.x;
-      const iy  = (ib.min.y + ib.max.y) / 2;
+      const ix1 = ib.min.x,
+        ix2 = ib.max.x;
+      const iy = (ib.min.y + ib.max.y) / 2;
       ctx.lineWidth = Math.max(1, lineW * 0.8);
       ctx.strokeStyle = gaugeCol;
       ctx.beginPath();
@@ -321,34 +329,40 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
       ctx.strokeStyle = '#5CFF7A';
       ctx.lineWidth = lineT * 2.2;
       ctx.globalAlpha = pulse * 0.7;
-      ctx.strokeRect(cx - w/2, cy - h/2, w, h);
+      ctx.strokeRect(cx - w / 2, cy - h / 2, w, h);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#032e12cc';
-      ctx.fillRect(cx - w/2, cy - h/2 - 16, w, 14);
+      ctx.fillRect(cx - w / 2, cy - h / 2 - 16, w, 14);
       ctx.fillStyle = '#5CFF7A';
-      ctx.font = `${Math.max(10, sim.H*0.016)}px var(--mono, monospace)`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillText(`DMG x${(mods.dmgMul || 1).toFixed(1)}  ${tLeft}s`, cx, cy - h/2 - 14);
+      ctx.font = `${Math.max(10, sim.H * 0.016)}px var(--mono, monospace)`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`DMG x${(mods.dmgMul || 1).toFixed(1)}  ${tLeft}s`, cx, cy - h / 2 - 14);
       ctx.restore();
     }
 
     if (key === 'debuff' && debuffActive) {
       const tLeft = Math.ceil(((mods.disableUntil || 0) - now) / 1000);
-      const kind  = (mods.disabledType || '').toUpperCase();
+      const kind = (mods.disabledType || '').toUpperCase();
       const pulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(now * 0.012));
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.strokeStyle = '#FF6B6B';
       ctx.lineWidth = lineT * 2.2;
       ctx.globalAlpha = pulse * 0.7;
-      ctx.strokeRect(cx - w/2, cy - h/2, w, h);
+      ctx.strokeRect(cx - w / 2, cy - h / 2, w, h);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#3b0c0ccc';
-      ctx.fillRect(cx - w/2, cy - h/2 - 16, w, 14);
+      ctx.fillRect(cx - w / 2, cy - h / 2 - 16, w, 14);
       ctx.fillStyle = '#FFB1B1';
-      ctx.font = `${Math.max(10, sim.H*0.016)}px var(--mono, monospace)`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillText(kind ? `DISABLED ${kind}  ${tLeft}s` : `DISABLED  ${tLeft}s`, cx, cy - h/2 - 14);
+      ctx.font = `${Math.max(10, sim.H * 0.016)}px var(--mono, monospace)`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(
+        kind ? `DISABLED ${kind}  ${tLeft}s` : `DISABLED  ${tLeft}s`,
+        cx,
+        cy - h / 2 - 14,
+      );
       ctx.restore();
     }
 
@@ -356,8 +370,10 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
   }
 }
 
-function drawCore(ctx:CanvasRenderingContext2D, core:any){
-  const x=core.center.x,y=core.center.y,R=core.radius;
+function drawCore(ctx: CanvasRenderingContext2D, core: any) {
+  const x = core.center.x,
+    y = core.center.y,
+    R = core.radius;
 
   // --- Team rim only when shields are DOWN ---
   if ((core.shield || 0) <= 0) {
@@ -376,23 +392,38 @@ function drawCore(ctx:CanvasRenderingContext2D, core:any){
   // --- Shield ring at outer edge when shields are UP ---
   drawShieldRing(ctx, core);
 
-  const n=core.segHP.length, step=Math.PI*2/n;
-  for(let i=0;i<n;i++){
-    const hp=core.segHP[i];
-    const t=hp/core.segHPmax;
-    const a0=i*step+core.rot-0.04, a1=(i+1)*step+core.rot+0.04;
-    ctx.beginPath(); ctx.moveTo(x,y); ctx.arc(x,y,R*0.86,a0,a1); ctx.closePath();
-    ctx.fillStyle= i%2? '#0e1730':'#0b1227'; ctx.fill();
-    if(t>0){
-      ctx.save(); ctx.globalAlpha=.15 + .75*t;
-      ctx.fillStyle=getCSS(core.side<0?'--left':'--right');
-      ctx.beginPath(); ctx.moveTo(x,y); ctx.arc(x,y,R*0.86,a0,a1); ctx.closePath();
-      ctx.fill(); ctx.restore();
+  const n = core.segHP.length,
+    step = (Math.PI * 2) / n;
+  for (let i = 0; i < n; i++) {
+    const hp = core.segHP[i];
+    const t = hp / core.segHPmax;
+    const a0 = i * step + core.rot - 0.04,
+      a1 = (i + 1) * step + core.rot + 0.04;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.arc(x, y, R * 0.86, a0, a1);
+    ctx.closePath();
+    ctx.fillStyle = i % 2 ? '#0e1730' : '#0b1227';
+    ctx.fill();
+    if (t > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.15 + 0.75 * t;
+      ctx.fillStyle = getCSS(core.side < 0 ? '--left' : '--right');
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.arc(x, y, R * 0.86, a0, a1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
   }
-  ctx.beginPath(); ctx.arc(x,y,R*0.34,0,Math.PI*2);
-  ctx.fillStyle='#091125'; ctx.fill();
-  ctx.lineWidth=3; ctx.strokeStyle=getCSS(core.side<0?'--left':'--right'); ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, R * 0.34, 0, Math.PI * 2);
+  ctx.fillStyle = '#091125';
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = getCSS(core.side < 0 ? '--left' : '--right');
+  ctx.stroke();
 }
 
 function drawWeaponMounts(ctx: CanvasRenderingContext2D, wep: any, color: string) {
@@ -408,21 +439,27 @@ function drawWeaponMounts(ctx: CanvasRenderingContext2D, wep: any, color: string
     if (!pos) return;
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
-    ctx.fillStyle = '#0a1227'; ctx.fill();
-    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = color; ctx.fillText(label, pos.x - 3, pos.y + 3);
+    ctx.fillStyle = '#0a1227';
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillText(label, pos.x - 3, pos.y + 3);
   });
 }
 
-function colorForAmmo(t:string){
-  if(t==='heavy') return '#ffca1a';
-  if(t==='volatile') return '#ff3d3d';
-  if(t==='emp') return '#00ffd5';
-  if(t==='repair') return '#6bffb8';
-  if(t==='shield') return '#9fc5ff';
+function colorForAmmo(t: string) {
+  if (t === 'heavy') return '#ffca1a';
+  if (t === 'volatile') return '#ff3d3d';
+  if (t === 'emp') return '#00ffd5';
+  if (t === 'repair') return '#6bffb8';
+  if (t === 'shield') return '#9fc5ff';
   return '#b6ff00';
 }
-function getCSS(name:string){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function getCSS(name: string) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 
 // ---- helpers: projectile rendering + impact FX ----
 function renderProjectiles(ctx: CanvasRenderingContext2D) {
@@ -469,7 +506,8 @@ function renderProjectiles(ctx: CanvasRenderingContext2D) {
         ctx.fill();
         break;
       }
-      default: { // cannon
+      default: {
+        // cannon
         ctx.beginPath();
         ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
         ctx.fillStyle = '#ffe15a';
@@ -487,7 +525,7 @@ function renderImpactFX(ctx: CanvasRenderingContext2D) {
   (sim as any).fxImp ||= [];
   const now = performance.now();
   // keep only active FX
-  sim.fxImp = sim.fxImp.filter(f => now - f.t0 < f.ms);
+  sim.fxImp = sim.fxImp.filter((f) => now - f.t0 < f.ms);
 
   for (const f of sim.fxImp) {
     const age = now - f.t0;
@@ -496,8 +534,8 @@ function renderImpactFX(ctx: CanvasRenderingContext2D) {
     if (f.kind === 'burst') {
       // ---- SHOCKWAVE RING ----
       const baseR = 8;
-      const maxR  = 48;                 // how big the wave gets; tweak if you like
-      const r     = baseR + (maxR - baseR) * t;
+      const maxR = 48; // how big the wave gets; tweak if you like
+      const r = baseR + (maxR - baseR) * t;
 
       ctx.save();
 
@@ -523,7 +561,6 @@ function renderImpactFX(ctx: CanvasRenderingContext2D) {
       ctx.stroke();
 
       ctx.restore();
-
     } else if (f.kind === 'burn') {
       // ---- LASER BURN ---- (colored rim + dark scorch)
       const r = 10 + 8 * t;
@@ -551,7 +588,6 @@ function renderImpactFX(ctx: CanvasRenderingContext2D) {
       ctx.globalCompositeOperation = prev;
 
       ctx.restore();
-
     } else {
       // fallback tiny pop if any legacy FX slips through
       const r = 6 + 20 * t;
@@ -567,17 +603,16 @@ function renderImpactFX(ctx: CanvasRenderingContext2D) {
   }
 }
 
-
 function renderBeams(ctx: CanvasRenderingContext2D) {
   (sim as any).fxBeam ||= [];
   const now = performance.now();
   // keep active beams only
-  sim.fxBeam = sim.fxBeam.filter(b => now - b.t0 < b.ms);
+  sim.fxBeam = sim.fxBeam.filter((b) => now - b.t0 < b.ms);
 
   for (const b of sim.fxBeam) {
-    const t = (now - b.t0) / b.ms;            // 0..1
-    const alpha = 0.65 * (1 - t) + 0.15;      // fades
-    const w = 3 + 2 * Math.sin(t * Math.PI);  // pulses a bit
+    const t = (now - b.t0) / b.ms; // 0..1
+    const alpha = 0.65 * (1 - t) + 0.15; // fades
+    const w = 3 + 2 * Math.sin(t * Math.PI); // pulses a bit
     const color = b.side < 0 ? css('--left') : css('--right');
 
     ctx.save();
@@ -596,13 +631,13 @@ function renderSweep(ctx: CanvasRenderingContext2D) {
   (sim as any).fxSweep ||= [];
   const now = performance.now();
   // keep ones still within their ms window
-  sim.fxSweep = sim.fxSweep.filter(s => now - s.t0 < s.ms);
+  sim.fxSweep = sim.fxSweep.filter((s) => now - s.t0 < s.ms);
 
   for (const s of sim.fxSweep) {
-    const t = (now - s.t0) / s.ms;        // 0..1
+    const t = (now - s.t0) / s.ms; // 0..1
     const color = s.side < 0 ? css('--left') : css('--right');
-    const a = s.a0 + t * (s.a1 - s.a0);   // pointer angle along the arc
-    const r = 20;                         // radius of the sweep arc
+    const a = s.a0 + t * (s.a1 - s.a0); // pointer angle along the arc
+    const r = 20; // radius of the sweep arc
 
     ctx.save();
     ctx.globalAlpha = 0.55;
@@ -670,11 +705,7 @@ function coreRadius(c: any) {
   return c?.outerR ?? c?.R ?? c?.radius ?? c?.ringR ?? Math.max(36, sim.H * 0.09);
 }
 
-function drawShieldRing(
-  ctx: CanvasRenderingContext2D,
-  core: any,
-  colorOverride?: string
-) {
+function drawShieldRing(ctx: CanvasRenderingContext2D, core: any, colorOverride?: string) {
   // Use ablative shield pool
   const hp = Math.max(0, core?.shieldHP || 0);
   const hpMax = Math.max(1, core?.shieldHPmax || 1);
@@ -687,18 +718,21 @@ function drawShieldRing(
   // Pick color (override → team CSS → fallback)
   const teamCssName = core.side < 0 ? '--left' : '--right';
   const teamFromCss =
-    (typeof getCSS === 'function' ? getCSS(teamCssName)?.trim() :
-     (typeof css === 'function' ? css(teamCssName)?.trim() : '')) || '';
+    (typeof getCSS === 'function'
+      ? getCSS(teamCssName)?.trim()
+      : typeof css === 'function'
+        ? css(teamCssName)?.trim()
+        : '') || '';
   const color = colorOverride || teamFromCss || SHIELD_RING_COLOR;
 
   // Alpha rises with fraction; soft glow
   ctx.save();
   ctx.lineWidth = w;
   ctx.strokeStyle = color;
-  ctx.globalAlpha = 0.30 + 0.65 * frac;
+  ctx.globalAlpha = 0.3 + 0.65 * frac;
 
   ctx.shadowColor = color;
-  ctx.shadowBlur  = SHIELD_RING_GLOW;
+  ctx.shadowBlur = SHIELD_RING_GLOW;
 
   ctx.beginPath();
   ctx.arc(core.center.x, core.center.y, R + w * 0.5, 0, Math.PI * 2);
@@ -711,18 +745,18 @@ function drawGameOverBanner(ctx: CanvasRenderingContext2D) {
   if (!(sim as any).gameOver) return;
 
   const winner = (sim as any).winner as Side | 0;
-  const msg = winner === 0 ? 'STALEMATE' : (winner === -1 ? 'LEFT WINS' : 'RIGHT WINS');
+  const msg = winner === 0 ? 'STALEMATE' : winner === -1 ? 'LEFT WINS' : 'RIGHT WINS';
 
   const now = performance.now();
-  const t0  = (sim as any).winnerAt || now;
+  const t0 = (sim as any).winnerAt || now;
   const remainMs = Math.max(0, GAMEOVER.bannerMs - (now - t0));
   const remainSec = Math.ceil(remainMs / 1000);
 
   // banner box
   const bw = Math.min(sim.W * 0.8, 720);
   const bh = Math.min(sim.H * 0.22, 180);
-  const x  = (sim.W - bw) / 2;
-  const y  = (sim.H - bh) / 2;
+  const x = (sim.W - bw) / 2;
+  const y = (sim.H - bh) / 2;
 
   ctx.save();
   // backdrop
@@ -794,11 +828,12 @@ function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any) {
       ctx.rotate(ang);
       const r = 9;
       ctx.beginPath();
-      ctx.moveTo(r, 0);                 // nose
-      ctx.lineTo(-r * 0.6,  r * 0.55);  // tail fin
+      ctx.moveTo(r, 0); // nose
+      ctx.lineTo(-r * 0.6, r * 0.55); // tail fin
       ctx.lineTo(-r * 0.6, -r * 0.55);
       ctx.closePath();
-      ctx.fill(); ctx.stroke();
+      ctx.fill();
+      ctx.stroke();
 
       // engine flare
       ctx.beginPath();
@@ -813,7 +848,8 @@ function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any) {
     case 'mortar': {
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
-      ctx.fill(); ctx.stroke();
+      ctx.fill();
+      ctx.stroke();
       // white diagonal stripe
       ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 1.5;
@@ -834,14 +870,17 @@ function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any) {
       ctx.lineTo(-10, 0);
       ctx.lineTo(0, -6);
       ctx.closePath();
-      ctx.fill(); ctx.stroke();
+      ctx.fill();
+      ctx.stroke();
       ctx.restore();
       break;
     }
-    default: { // cannon (round but glowy)
+    default: {
+      // cannon (round but glowy)
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
-      ctx.fill(); ctx.stroke();
+      ctx.fill();
+      ctx.stroke();
       break;
     }
   }
@@ -861,7 +900,7 @@ export function renderProjectilesFancy(ctx: CanvasRenderingContext2D) {
 function drawLaserBeams(ctx: CanvasRenderingContext2D) {
   const arr = (sim as any).fxBeams || [];
   const now = performance.now();
-  (sim as any).fxBeams = arr.filter((b:any) => b.tEnd > now);
+  (sim as any).fxBeams = arr.filter((b: any) => b.tEnd > now);
   for (const b of arr) {
     const t = Math.max(0, (b.tEnd - now) / 180); // 0..1
     ctx.save();
@@ -878,53 +917,73 @@ function drawLaserBeams(ctx: CanvasRenderingContext2D) {
 }
 
 function teamColor(side: number) {
-  return side < 0 ? (css('--left') || '#58e6ff') : (css('--right') || '#ff69d4');
+  return side < 0 ? css('--left') || '#58e6ff' : css('--right') || '#ff69d4';
 }
 
 // Deterministic-ish jitter using time; no per-frame popping
-function jitterPolyline(x1:number,y1:number,x2:number,y2:number, segs:number, amp:number, t:number) {
-  const pts: {x:number;y:number;}[] = [];
-  for (let i=0;i<=segs;i++){
+function jitterPolyline(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  segs: number,
+  amp: number,
+  t: number,
+) {
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= segs; i++) {
     const u = i / segs;
-    const x = x1 + (x2 - x1)*u;
-    const y = y1 + (y2 - y1)*u;
+    const x = x1 + (x2 - x1) * u;
+    const y = y1 + (y2 - y1) * u;
     // phase moves slowly so it shimmers
-    const k  = u*7 + t*0.002;
-    const nx = Math.sin(11*k) * Math.cos(3.7*k);
-    const ny = Math.cos(9.2*k) * Math.sin(4.1*k);
-    pts.push({ x: x + nx*amp*(1 - Math.abs(0.5 - u)*1.8), y: y + ny*amp*(1 - Math.abs(0.5 - u)*1.8) });
+    const k = u * 7 + t * 0.002;
+    const nx = Math.sin(11 * k) * Math.cos(3.7 * k);
+    const ny = Math.cos(9.2 * k) * Math.sin(4.1 * k);
+    pts.push({
+      x: x + nx * amp * (1 - Math.abs(0.5 - u) * 1.8),
+      y: y + ny * amp * (1 - Math.abs(0.5 - u) * 1.8),
+    });
   }
   return pts;
 }
 
-function pathFromPoints(ctx:CanvasRenderingContext2D, pts:{x:number;y:number}[]){
+function pathFromPoints(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) {
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
 }
 
-function drawBurst(ctx:CanvasRenderingContext2D, x:number, y:number, color:string, life01:number, kind:'muzzle'|'impact'){
-  const r = LASER_FX.flashSize * (0.7 + 0.3*life01);
+function drawBurst(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  life01: number,
+  kind: 'muzzle' | 'impact',
+) {
+  const r = LASER_FX.flashSize * (0.7 + 0.3 * life01);
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  const g = ctx.createRadialGradient(x,y,0, x,y,r);
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, color);
   g.addColorStop(0.45, 'rgba(255,255,255,0.85)');
   g.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = g;
-  ctx.globalAlpha = 0.45 + 0.55*life01;
-  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 0.45 + 0.55 * life01;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
 
   // subtle rays
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.globalAlpha = 0.25 * life01;
   const rays = 6;
-  for (let i=0;i<rays;i++){
-    const a = (i/rays)*Math.PI*2 + life01*2.2;
+  for (let i = 0; i < rays; i++) {
+    const a = (i / rays) * Math.PI * 2 + life01 * 2.2;
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(a)*r*1.3, y + Math.sin(a)*r*1.3);
+    ctx.lineTo(x + Math.cos(a) * r * 1.3, y + Math.sin(a) * r * 1.3);
     ctx.stroke();
   }
   ctx.restore();
@@ -936,44 +995,54 @@ export function drawLaserFX(ctx: CanvasRenderingContext2D) {
   const now = performance.now();
 
   // prune expired
-  (sim as any).fxBeams  = beams.filter((b:any)=> b.tEnd > now);
-  (sim as any).fxBursts = bursts.filter((b:any)=> b.tEnd > now);
+  (sim as any).fxBeams = beams.filter((b: any) => b.tEnd > now);
+  (sim as any).fxBursts = bursts.filter((b: any) => b.tEnd > now);
 
   // beams
   for (const b of beams) {
     const life = 1 - Math.max(0, Math.min(1, (now - b.t0) / (b.tEnd - b.t0)));
-    const col  = teamColor(b.side ?? -1);
+    const col = teamColor(b.side ?? -1);
 
     // Outer glow (jittered)
-    const pts = jitterPolyline(b.x1,b.y1,b.x2,b.y2, LASER_FX.segments, LASER_FX.jitterAmp, now);
+    const pts = jitterPolyline(b.x1, b.y1, b.x2, b.y2, LASER_FX.segments, LASER_FX.jitterAmp, now);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.shadowColor = col;
-    ctx.shadowBlur  = 18;
+    ctx.shadowBlur = 18;
     ctx.strokeStyle = col;
-    ctx.globalAlpha = 0.35 + 0.65*life;
-    ctx.lineWidth   = LASER_FX.outerWidth * (0.85 + 0.15*life);
-    pathFromPoints(ctx, pts); ctx.stroke();
+    ctx.globalAlpha = 0.35 + 0.65 * life;
+    ctx.lineWidth = LASER_FX.outerWidth * (0.85 + 0.15 * life);
+    pathFromPoints(ctx, pts);
+    ctx.stroke();
 
     // Inner core (straight), animated dash
-    ctx.shadowBlur  = 0;
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = LASER_FX.coreColor;
     ctx.globalAlpha = 0.85 * life;
-    ctx.lineWidth   = LASER_FX.innerWidth;
-    ctx.setLineDash([LASER_FX.dash, LASER_FX.dash*0.6]);
-    ctx.lineDashOffset = -(now*0.2);
-    ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke();
+    ctx.lineWidth = LASER_FX.innerWidth;
+    ctx.setLineDash([LASER_FX.dash, LASER_FX.dash * 0.6]);
+    ctx.lineDashOffset = -(now * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(b.x1, b.y1);
+    ctx.lineTo(b.x2, b.y2);
+    ctx.stroke();
     ctx.restore();
   }
 
   // muzzle / impact flashes
-  for (const f of bursts){
+  for (const f of bursts) {
     const life01 = Math.max(0, Math.min(1, (f.tEnd - now) / LASER_FX.flashMs));
     drawBurst(ctx, f.x, f.y, teamColor(f.side ?? -1), life01, f.kind);
   }
 }
 
-function fitFontPx(ctx: CanvasRenderingContext2D, text: string, maxPx: number, maxW: number, minPx = 8): number {
+function fitFontPx(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxPx: number,
+  maxW: number,
+  minPx = 8,
+): number {
   let px = maxPx;
   while (px > minPx) {
     ctx.font = `${px}px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial`;
@@ -983,19 +1052,18 @@ function fitFontPx(ctx: CanvasRenderingContext2D, text: string, maxPx: number, m
   return Math.max(px, minPx);
 }
 
-
 function drawSideModsBadge(ctx: CanvasRenderingContext2D, side: Side) {
   const anySim = sim as any;
-  const m = side === Side.LEFT ? anySim.modsL : anySim.modsR;
+  const m = side === SIDE.LEFT ? anySim.modsL : anySim.modsR;
   if (!m) return;
   const now = performance.now();
 
   // position: near top header, inset per side
-  const x = side === Side.LEFT ? sim.W * 0.22 : sim.W * 0.78;
+  const x = side === SIDE.LEFT ? sim.W * 0.22 : sim.W * 0.78;
   const y = 26; // align with your header baseline
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `${Math.max(12, sim.H*0.018)}px var(--mono, monospace)`;
+  ctx.font = `${Math.max(12, sim.H * 0.018)}px var(--mono, monospace)`;
 
   // Buff badge
   if (now < m.dmgUntil) {
@@ -1003,9 +1071,10 @@ function drawSideModsBadge(ctx: CanvasRenderingContext2D, side: Side) {
     ctx.fillStyle = '#032e12';
     ctx.strokeStyle = '#5CFF7A';
     ctx.lineWidth = 2;
-    const w = 120, h = 22;
-    ctx.fillRect(x - w/2, y - h/2, w, h);
-    ctx.strokeRect(x - w/2, y - h/2, w, h);
+    const w = 120,
+      h = 22;
+    ctx.fillRect(x - w / 2, y - h / 2, w, h);
+    ctx.strokeRect(x - w / 2, y - h / 2, w, h);
     ctx.fillStyle = '#5CFF7A';
     ctx.fillText(`DMG x${m.dmgMul.toFixed(1)}  ${tLeft}s`, x, y);
   }
@@ -1017,9 +1086,10 @@ function drawSideModsBadge(ctx: CanvasRenderingContext2D, side: Side) {
     ctx.fillStyle = '#3b0c0c';
     ctx.strokeStyle = '#FF6B6B';
     ctx.lineWidth = 2;
-    const w = 140, h = 22;
-    ctx.fillRect(x - w/2, y2 - h/2, w, h);
-    ctx.strokeRect(x - w/2, y2 - h/2, w, h);
+    const w = 140,
+      h = 22;
+    ctx.fillRect(x - w / 2, y2 - h / 2, w, h);
+    ctx.strokeRect(x - w / 2, y2 - h / 2, w, h);
     ctx.fillStyle = '#FFB1B1';
     ctx.fillText(`DISABLED ${m.disabledType.toUpperCase()}  ${tLeft}s`, x, y2);
   }

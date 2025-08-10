@@ -1,11 +1,16 @@
 import { ARMOR, DEBUG_DAMAGE } from '../config';
 
-export type Vec2 = { x:number; y:number };
+export interface Vec2 { x: number; y: number }
 
-export function applyCoreDamage(core: any, hitPoint: Vec2, dmgIn: number, angleToSeg: (core:any, p:Vec2)=>{i0:number;i1:number;w0:number;w1:number}) {
+export function applyCoreDamage(
+  core: any,
+  hitPoint: Vec2,
+  dmgIn: number,
+  angleToSeg: (core: any, p: Vec2) => { i0: number; i1: number; w0: number; w1: number },
+) {
   if (!core) return;
 
-  let dmg = Math.max(0, dmgIn);
+  const dmg = Math.max(0, dmgIn);
   if (dmg <= 0) return;
 
   // If the caller already decided it's a center hit, take the straight path.
@@ -54,7 +59,7 @@ export function applyCoreDamage(core: any, hitPoint: Vec2, dmgIn: number, angleT
       segHP_before: [h0, h1],
       applied: [a0, a1],
       overflow,
-      centerHP: core.centerHP
+      centerHP: core.centerHP,
     });
   }
 }

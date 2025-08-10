@@ -1,0 +1,2 @@
+npm test
+pnpm exec lint-staged

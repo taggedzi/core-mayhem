@@ -1,9 +1,10 @@
 import { Bodies, Body, World } from 'matter-js';
-import type { Bins } from '../types';
-import { sim } from '../state';
-import { Side } from '../types';
-import { GLOBAL_MODS  } from '../config';
+
 import { BIN_INTAKE_H, BINS_LEFT, type BinSpec, type IntakeSide } from '../config';
+import { sim } from '../state';
+import { SIDE, type Side } from '../types';
+
+import type { Bins } from '../types';
 
 // function layoutBins(side: Side, bins: any, pinsMid: number, pinsWidth: number) {
 //   if (!bins) return;
@@ -37,8 +38,8 @@ import { BIN_INTAKE_H, BINS_LEFT, type BinSpec, type IntakeSide } from '../confi
 //   const botL = ['mortar','shield','repair','debuff'];
 //   const botR = ['debuff','repair','shield','mortar'];
 
-//   const topOrder = side === Side.LEFT ? topL : topR;
-//   const botOrder = side === Side.LEFT ? botL : botR;
+//   const topOrder = side === SIDE.LEFT ? topL : topR;
+//   const botOrder = side === SIDE.LEFT ? botL : botR;
 
 //   // Top row
 //   topOrder.forEach((key, i) => {
@@ -67,11 +68,11 @@ import { BIN_INTAKE_H, BINS_LEFT, type BinSpec, type IntakeSide } from '../confi
  */
 export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5) {
   if (!bins || !sim.pipes) return;
-  const pipe = side === Side.LEFT ? sim.pipes[0] : sim.pipes[1];
+  const pipe = side === SIDE.LEFT ? sim.pipes[0] : sim.pipes[1];
   const innerX = (pipe as any)?.innerX;
   if (typeof innerX !== 'number' || Number.isNaN(innerX)) return;
 
-  const isLeft = side === Side.LEFT;
+  const isLeft = side === SIDE.LEFT;
   const safeEdgeX = isLeft ? innerX + margin : innerX - margin;
 
   const shiftIfNeeded = (bin: any) => {
@@ -91,9 +92,9 @@ export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5) {
 
     if (nx !== cx && Number.isFinite(nx)) {
       // move everything tied to this bin
-      if (bin.box)    Body.setPosition(bin.box,    { x: nx, y: bin.box.position.y });
+      if (bin.box) Body.setPosition(bin.box, { x: nx, y: bin.box.position.y });
       if (bin.intake) Body.setPosition(bin.intake, { x: nx, y: bin.intake.position.y });
-      if (bin.pos)    bin.pos.x = nx;
+      if (bin.pos) bin.pos.x = nx;
     }
   };
 
@@ -129,7 +130,7 @@ export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5) {
 
 //   // Left wants: [buff, cannon, laser, missile, debuff]
 //   // Right mirrors it: [debuff, missile, laser, cannon, buff]
-//   const topOrder = (side === Side.LEFT)
+//   const topOrder = (side === SIDE.LEFT)
 //     ? ['buff','cannon','laser','missile','debuff']
 //     : ['debuff','missile','laser','cannon','buff'];
 
@@ -139,7 +140,7 @@ export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5) {
 
 //   // Left:  [mortar, shield, repair]
 //   // Right: [repair, shield, mortar] (mirror)
-//   const botOrder = (side === Side.LEFT)
+//   const botOrder = (side === SIDE.LEFT)
 //     ? ['mortar','shield','repair']
 //     : ['repair','shield','mortar'];
 
@@ -208,26 +209,32 @@ export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5) {
 function sidePanelX(side: Side, pinsMid: number, pinsWidth: number, xFrac: number): number {
   const x0 = pinsMid - pinsWidth / 2; // outer wall
   const x1 = pinsMid + pinsWidth / 2; // near midline
-  if (side === Side.LEFT) return x0 + xFrac * (x1 - x0);
-  const mirrored = 1 - xFrac;         // mirror on right
+  if (side === SIDE.LEFT) return x0 + xFrac * (x1 - x0);
+  const mirrored = 1 - xFrac; // mirror on right
   return x0 + mirrored * (x1 - x0);
 }
 
 function intakeOffset(intake: IntakeSide, w: number, h: number) {
   const ih = BIN_INTAKE_H;
   const iwTB = Math.max(12, w * 0.92);
-  const iwLR = Math.max(6,  h * 0.80);
+  const iwLR = Math.max(6, h * 0.8);
   switch (intake) {
-    case 'top':    return { dx:0, dy:-h/2 - ih/2 - 1, iw:iwTB, ih };
-    case 'bottom': return { dx:0, dy:+h/2 + ih/2 + 1, iw:iwTB, ih };
-    case 'left':   return { dx:-w/2 - iwLR/2 - 1, dy:0, iw:iwLR, ih };
-    case 'right':  return { dx:+w/2 + iwLR/2 + 1, dy:0, iw:iwLR, ih };
+    case 'top':
+      return { dx: 0, dy: -h / 2 - ih / 2 - 1, iw: iwTB, ih };
+    case 'bottom':
+      return { dx: 0, dy: +h / 2 + ih / 2 + 1, iw: iwTB, ih };
+    case 'left':
+      return { dx: -w / 2 - iwLR / 2 - 1, dy: 0, iw: iwLR, ih };
+    case 'right':
+      return { dx: +w / 2 + iwLR / 2 + 1, dy: 0, iw: iwLR, ih };
   }
 }
 
-function clamp(n:number, lo:number, hi:number){ return Math.max(lo, Math.min(hi, n)); }
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
+}
 
-function sizePxFromFrac(sizeFrac:[number,number], pinsWidth:number) {
+function sizePxFromFrac(sizeFrac: [number, number], pinsWidth: number) {
   // Width scales with channel width; height with canvas height
   const minW = Math.max(40, pinsWidth * 0.06);
   const maxW = Math.max(minW + 1, pinsWidth * 0.45);
@@ -235,7 +242,7 @@ function sizePxFromFrac(sizeFrac:[number,number], pinsWidth:number) {
   const maxH = Math.max(minH + 1, sim.H * 0.09);
 
   const w = clamp(sizeFrac[0] * pinsWidth, minW, maxW);
-  const h = clamp(sizeFrac[1] * sim.H,    minH, maxH);
+  const h = clamp(sizeFrac[1] * sim.H, minH, maxH);
   return { w, h };
 }
 
@@ -247,12 +254,16 @@ function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number)
   const x = sidePanelX(side, pinsMid, pinsWidth, xFrac);
   const y = yFrac * sim.H;
 
-  const box = Bodies.rectangle(x, y, w, h, { isStatic:true, isSensor:true, angle });
-  (box as any).plugin = { kind:'containerWall', side, label: spec.id };
+  const box = Bodies.rectangle(x, y, w, h, { isStatic: true, isSensor: true, angle });
+  (box as any).plugin = { kind: 'containerWall', side, label: spec.id };
 
   const o = intakeOffset(spec.intake, w, h);
-  const intake = Bodies.rectangle(x + o.dx, y + o.dy, o.iw, o.ih, { isStatic:true, isSensor:true, angle });
-  (intake as any).plugin = { kind:'container', accept: spec.accepts, side, label: spec.id };
+  const intake = Bodies.rectangle(x + o.dx, y + o.dy, o.iw, o.ih, {
+    isStatic: true,
+    isSensor: true,
+    angle,
+  });
+  (intake as any).plugin = { kind: 'container', accept: spec.accepts, side, label: spec.id };
 
   World.add(sim.world, [box, intake]);
 
@@ -265,12 +276,12 @@ function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number)
     fill: 0,
     accept: spec.accepts,
     style: spec.style || {},
-    intakeSide: spec.intake
+    intakeSide: spec.intake,
   };
 }
 
 export function makeBins(side: Side, pinsMid: number, pinsWidth: number) {
-  const specs = BINS_LEFT.filter(s => s.enabled !== false);
+  const specs = BINS_LEFT.filter((s) => s.enabled !== false);
   const out: any = {};
   for (const spec of specs) out[spec.id] = mkOneBin(side, spec, pinsMid, pinsWidth);
   return out;

@@ -1,23 +1,25 @@
 import { Bodies, World } from 'matter-js';
-import { sim } from '../state';
-import { Side } from '../types';
+
 import { CORE_HP, CORE_SEGMENTS, CORE_POS } from '../config';
 import { SHIELD } from '../config';
+import { sim } from '../state';
+import { SIDE, type Side } from '../types';
 
 /**
  * Create a core with configurable segment count + HP, and physics sensors
  * for the outer ring and center. Returns the core model used by draw & game.
  */
 export function makeCore(side: Side, teamColor: string) {
-  const W = sim.W, H = sim.H;
+  const W = sim.W,
+    H = sim.H;
 
   // --- geometry (position + size) ---
-  const sgn = (side === Side.LEFT ? -1 : 1);
+  const sgn = side === SIDE.LEFT ? -1 : 1;
 
   // pull cores closer to the midline using config
   const offX = CORE_POS.xOffsetFrac * W;
   let cx = W * 0.5 + sgn * offX;
-  let cy = H * CORE_POS.yFrac;
+  const cy = H * CORE_POS.yFrac;
 
   // clamp away from extreme edges (does not change relative midline offset)
   const margin = CORE_POS.edgeMarginPx;
@@ -27,7 +29,7 @@ export function makeCore(side: Side, teamColor: string) {
   const R = Math.min(H * 0.11, W * 0.09);
 
   // collision sensors (slightly inset ring; small center)
-  const ringR   = R * 0.82;
+  const ringR = R * 0.82;
   const centerR = R * 0.36;
 
   // --- dynamic segment count ---
@@ -46,10 +48,15 @@ export function makeCore(side: Side, teamColor: string) {
   const core: any = {
     side,
     center: { x: cx, y: cy },
-    R, radius: R, outerR: R, ringR, centerR,
-    ringBody, centerBody,
+    R,
+    radius: R,
+    outerR: R,
+    ringR,
+    centerR,
+    ringBody,
+    centerBody,
     rot: 0,
-    rotSpeed: 0.0025 * (side === Side.LEFT ? 1 : -1),
+    rotSpeed: 0.0025 * (side === SIDE.LEFT ? 1 : -1),
 
     segHPmax: CORE_HP.segments,
     centerHPmax: CORE_HP.center,
@@ -83,7 +90,7 @@ export function angleToSeg(core: any, p: { x: number; y: number }) {
   while (ang < 0) ang += TAU;
   while (ang >= TAU) ang -= TAU;
 
-  const n = core.segHP.length;         // dynamic segment count
+  const n = core.segHP.length; // dynamic segment count
   const seg = TAU / n;
   const f = ang / seg;
   const i0 = Math.floor(f) % n;
