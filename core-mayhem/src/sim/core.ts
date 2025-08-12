@@ -5,11 +5,19 @@ import { SHIELD } from '../config';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
+// Local assertion so makeCore can accept nullable input and fail fast.
+function assertWorld(w: World | null): asserts w is World {
+  if (!w) throw new Error('World not initialized');
+}
+
 /**
  * Create a core with configurable segment count + HP, and physics sensors
  * for the outer ring and center. Returns the core model used by draw & game.
  */
-export function makeCore(side: Side, teamColor: string) {
+export function makeCore(world: World, side: Side, teamColor: string) {
+  assertWorld(world);
+  const w = world; // now typed as World
+
   const W = sim.W,
     H = sim.H;
 
@@ -42,7 +50,7 @@ export function makeCore(side: Side, teamColor: string) {
   const centerBody = Bodies.circle(cx, cy, centerR, { isStatic: true, isSensor: true });
   (centerBody as any).plugin = { kind: 'coreCenter', side };
 
-  World.add(sim.world, [ringBody, centerBody]);
+  World.add(w, [ringBody, centerBody]);
 
   // --- core model (ABLATIVE SHIELD fields added) ---
   const core: any = {

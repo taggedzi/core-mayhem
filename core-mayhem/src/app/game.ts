@@ -1,4 +1,5 @@
 import { Events, World, Body, Query, Composite } from 'matter-js';
+import type { World as MatterWorld, Engine, IEventCollision } from 'matter-js';
 
 import { DEFAULTS } from '../config';
 import { COOLDOWN_MS, WEAPON_WINDUP_MS } from '../config';
@@ -52,6 +53,32 @@ interface SideMods {
   dmgMul: number;
   disableUntil: number;
   disabledType: WeaponKind | null;
+}
+
+type Vec2 = { x: number; y: number };
+type CoreMinimal = {
+  center: Vec2;
+  rot: number;
+  rotSpeed: number;
+  segHP: number[];
+  segHPmax: number;
+  centerHP: number;
+  centerHPmax: number;
+  shieldHP: number;
+  shieldHPmax: number;
+};
+
+function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
+  if (!w) throw new Error('World not initialized');
+}
+function assertEngine(e: Engine | null): asserts e is Engine {
+  if (!e) throw new Error('Engine not initialized');
+}
+function assertCore(c: any): asserts c is { center: Vec2 } {
+  if (!c || !c.center) throw new Error('Core not initialized');
+}
+function assertCoreFull(c: any): asserts c is CoreMinimal {
+  if (!c || !c.center || !Array.isArray(c.segHP)) throw new Error('Core not initialized');
 }
 
 function ensureMods() {
@@ -188,12 +215,12 @@ export function startGame(canvas: HTMLCanvasElement) {
     dampY: 3.2,
   });
 
-  sim.coreL = makeCore(SIDE.LEFT, css('--left'));
-  sim.coreR = makeCore(SIDE.RIGHT, css('--right'));
+  sim.coreL = makeCore(sim.world, SIDE.LEFT, css('--left'));
+  sim.coreR = makeCore(sim.world, SIDE.RIGHT, css('--right'));
 
   // Top gel + splitter + funnels
-  buildLanes(pinsL.mid, pinsL.width);
-  buildLanes(pinsR.mid, pinsR.width);
+  buildLanes(sim.world, pinsL.mid, pinsL.width);
+  buildLanes(sim.world, pinsR.mid, pinsR.width);
 
   // Shaker bars
   addPaddle(pinsL.mid - pinsL.width * 0.2, sim.H * 0.6, 28, 1.2, +1);
@@ -619,21 +646,3 @@ function isWeaponDisabled(kind: string): boolean {
   }
   return m.disabledType === kind;
 }
-
-// activators
-// function activateBuff() {
-//   const m = (sim as any).mods || ((sim as any).mods = {});
-//   const dur = Math.max(5000, Number(GLOBAL_MODS?.buffMs || 30000)); // fallback 30s, min 5s
-//   const until = Math.max(m.dmgUntil || 0, nowMs() + dur);
-//   m.dmgMul = Number(GLOBAL_MODS?.dmgMultiplier || 2.0);
-//   m.dmgUntil = until;
-// }
-
-// function activateDebuff() {
-//   const m = (sim as any).mods || ((sim as any).mods = {});
-//   const pool = (GLOBAL_MODS?.debuffable as readonly string[]) || ['cannon','laser','missile','mortar','artillery'];
-//   const dur  = Math.max(5000, Number(GLOBAL_MODS?.debuffMs || 30000)); // fallback 30s, min 5s
-//   const pick = pool[Math.floor(Math.random()*pool.length)];
-//   m.disabledType = pick;
-//   m.disableUntil = Math.max(m.disableUntil || 0, nowMs() + dur);
-// }

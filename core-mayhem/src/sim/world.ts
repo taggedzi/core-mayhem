@@ -1,11 +1,79 @@
-import { Engine, Runner, World, Bodies, Composite } from 'matter-js';
+// world.ts
+import {
+  Engine,
+  Runner,
+  World,
+  Bodies,
+  type Body as MatterBody,
+  type World as MatterWorld,
+  type IChamferableBodyDefinition,
+} from 'matter-js';
 
-import { sim } from '../state';
+import { sim, resetSimState } from '../state';
 
+// ---------- validators & safe constructors ----------
+function validateWorld(world: MatterWorld): void {
+  for (const b of world.bodies) {
+    if (!b.vertices || b.vertices.length < 3) {
+      console.error('Invalid body: too few vertices', describeBody(b));
+      debugger;
+      return;
+    }
+    for (const v of b.vertices) {
+      if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) {
+        console.error('Invalid vertex (NaN/∞):', describeBody(b), v);
+        debugger;
+        return;
+      }
+    }
+    if (!Number.isFinite(b.area) || b.area <= 0) {
+      console.error('Invalid area (<=0 or NaN):', describeBody(b));
+      debugger;
+      return;
+    }
+  }
+}
+
+function describeBody(b: MatterBody) {
+  return {
+    id: b.id,
+    label: b.label,
+    parts: b.parts?.length,
+    position: b.position,
+    bounds: b.bounds,
+    area: b.area,
+  };
+}
+
+function safeRect(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  opts?: IChamferableBodyDefinition & { label?: string },
+) {
+  if (![x, y, w, h].every(Number.isFinite)) {
+    throw new Error(`NaN rect param for ${opts?.label ?? 'rect'}`);
+  }
+  // avoid zero/negative dimensions
+  w = Math.max(1, Math.abs(w));
+  h = Math.max(1, Math.abs(h));
+  return Bodies.rectangle(x, y, w, h, opts);
+}
+
+// ---------- sizing ----------
 function fit16x9(canvas: HTMLCanvasElement) {
-  const stage = canvas.parentElement as HTMLElement;
-  const availW = stage.clientWidth;
-  const availH = stage.clientHeight;
+  const stage = canvas.parentElement as HTMLElement | null;
+  const rect = stage?.getBoundingClientRect();
+
+  // Prefer real layout box; fall back to window if stage not laid out yet
+  let availW = Math.floor(rect?.width ?? 0);
+  let availH = Math.floor(rect?.height ?? 0);
+  if (availW < 1 || availH < 1) {
+    availW = Math.floor(window.innerWidth || 1280);
+    availH = Math.floor(window.innerHeight || 720);
+  }
+
   const target = 16 / 9;
   let w = Math.floor(availW);
   let h = Math.floor(w / target);
@@ -13,45 +81,56 @@ function fit16x9(canvas: HTMLCanvasElement) {
     h = Math.floor(availH);
     w = Math.floor(h * target);
   }
-  // Set CSS size so clientWidth/Height report the 16:9 box
+
+  // clamp to ≥1px to avoid zero-sized bodies
+  w = Math.max(1, w);
+  h = Math.max(1, h);
+
   canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
   return { w, h };
 }
 
+// ---------- world init ----------
 export function initWorld(canvas: HTMLCanvasElement) {
-  // 1) pick a 16:9 rect that fits Stage and size the canvas element to it
+  resetSimState(sim);
+
+  // Size canvas first (with DPR), then create physics
   const { w: cssW, h: cssH } = fit16x9(canvas);
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  // 2) set backing store to CSS size * DPR
-  canvas.width = Math.floor(cssW * dpr);
-  canvas.height = Math.floor(cssH * dpr);
+  canvas.width = Math.max(1, Math.floor(cssW * dpr));
+  canvas.height = Math.max(1, Math.floor(cssH * dpr));
   const ctx = canvas.getContext('2d')!;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   sim.W = cssW;
   sim.H = cssH;
   sim.dpr = dpr;
-  sim.engine = Engine.create({ enableSleeping: false });
-  sim.world = sim.engine.world;
 
-  // (optional stability; small perf cost)
-  sim.engine.positionIterations = 8;
-  sim.engine.velocityIterations = 6;
+  // Create ONE engine, store it, then configure
+  const engine = Engine.create({ enableSleeping: false });
+  engine.positionIterations = 8;
+  engine.velocityIterations = 6;
+  engine.gravity.y = 0.9; // soft gravity — projectiles are driven manually
 
+  sim.engine = engine;
+  sim.world = engine.world;
+
+  // --- world bounds using safeRect (prevents 0-width/height) ---
+  const walls = [
+    safeRect(sim.W / 2, sim.H + 40, sim.W, 80, { isStatic: true, label: 'floor' }),
+    safeRect(-40, sim.H / 2, 80, sim.H, { isStatic: true, label: 'left-wall' }),
+    safeRect(sim.W + 40, sim.H / 2, 80, sim.H, { isStatic: true, label: 'right-wall' }),
+    safeRect(sim.W / 2, -40, sim.W, 80, { isStatic: true, label: 'ceiling' }),
+  ];
+  World.add(sim.world, walls);
+
+  // Validate BEFORE starting the runner so errors point to the bad body
+  validateWorld(sim.world);
+
+  // Start the runner exactly once, with the same engine
   sim.runner = Runner.create();
-  Runner.run(sim.runner, sim.engine);
-
-  // soft gravity — we’ll throw projectiles manually
-  sim.engine.gravity.y = 0.9;
-
-  // world bounds (use the 16:9 W/H)
-  World.add(sim.world, [
-    Bodies.rectangle(sim.W / 2, sim.H + 40, sim.W, 80, { isStatic: true }),
-    Bodies.rectangle(-40, sim.H / 2, 80, sim.H, { isStatic: true }),
-    Bodies.rectangle(sim.W + 40, sim.H / 2, 80, sim.H, { isStatic: true }),
-    Bodies.rectangle(sim.W / 2, -40, sim.W, 80, { isStatic: true }),
-  ]);
+  Runner.run(sim.runner, engine);
 }
 
 export function clearWorld() {
@@ -60,13 +139,13 @@ export function clearWorld() {
     World.clear(sim.engine.world, false);
     Engine.clear(sim.engine);
   }
-  // guard against undefined
+
+  // guard against undefined arrays
   (sim.gels ||= []).length = 0;
   (sim.paddles ||= []).length = 0;
   (sim.flippers ||= []).length = 0;
   (sim.rotors ||= []).length = 0;
   (sim.pipes ||= []).length = 0;
-  (sim.hoppers ||= []).length = 0;
 
   sim.ammoL = 0;
   sim.ammoR = 0;

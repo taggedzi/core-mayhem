@@ -1,6 +1,5 @@
 // state.ts
 import type { Engine, Runner, World, Body } from 'matter-js';
-import type { Hopper } from './sim/hopper';
 import type { Pipe } from './sim/obstacles';
 import type { Settings, Core, Bins } from './types';
 
@@ -87,7 +86,6 @@ export interface SimState {
   rotors: Body[];
   paddles: Body[];
   flippers: Body[];
-  hoppers: Hopper[];
   pipes: Pipe[];
   homing: Body[]; // missiles to steer each frame
 
@@ -130,7 +128,6 @@ export function createSimState(): SimState {
     rotors: [],
     paddles: [],
     flippers: [],
-    hoppers: [],
     pipes: [],
     homing: [],
 
@@ -158,7 +155,6 @@ export function resetSimState(s: SimState = sim): void {
   s.rotors.length = 0;
   s.paddles.length = 0;
   s.flippers.length = 0;
-  s.hoppers.length = 0;
   s.pipes.length = 0;
   s.homing.length = 0;
   s.fxSweep.length = 0;

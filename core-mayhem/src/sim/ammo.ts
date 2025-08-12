@@ -1,9 +1,16 @@
-import { Bodies, World, Body, Composite, Query } from 'matter-js';
+import { Bodies, World, Body, Composite, Query, Sleeping } from 'matter-js';
 
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { conveyorPush } from './obstacles';
+
+import type { World as MatterWorld } from 'matter-js';
+
+// Centralized fail-fast guard (keeps callers simple)
+function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
+  if (!w) throw new Error('World not initialized');
+}
 
 export function spawnAmmo(side: Side) {
   const { W, H } = sim;
@@ -22,14 +29,20 @@ export function spawnAmmo(side: Side) {
     sleepThreshold: Infinity, // <-- never sleep
   });
   (b as any).plugin = { kind: 'ammo', side, type: t, age: 0, idle: 0 };
-  World.add(sim.world, b);
+  {
+    const world = sim.world;
+    assertWorld(world);
+    World.add(world, b);
+  }
   Body.setVelocity(b, { x: side === SIDE.LEFT ? -1 : +1, y: -1 });
   side === SIDE.LEFT ? sim.ammoL++ : sim.ammoR++;
 }
 
 export function beforeUpdateAmmo() {
-  const dt = (sim.engine.timing.lastDelta || 16) / 1000;
-  const bodies = Composite.allBodies(sim.world);
+  const dt = (sim.engine?.timing?.lastDelta ?? 16) / 1000;
+  const world = sim.world;
+  assertWorld(world);
+  const bodies = Composite.allBodies(world);
 
   for (const b of bodies) {
     const plug = (b as any).plugin;
@@ -58,7 +71,7 @@ export function beforeUpdateAmmo() {
         b.position.y > sim.H + 20 ||
         plug.idle > 8
       ) {
-        World.remove(sim.world, b);
+        World.remove(world, b);
         plug.side === SIDE.LEFT ? sim.ammoL-- : sim.ammoR--;
       }
     }

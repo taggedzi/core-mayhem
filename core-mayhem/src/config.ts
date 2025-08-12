@@ -1,24 +1,32 @@
 import type { Settings } from './types';
+
 export const COLORS = {
   bg: '#0b0f1a',
   left: '#ff8c1a',
   right: '#1a9bff',
   accent: '#ff00aa',
 } as const;
+
 export const DEFAULTS: Settings = {
   seed: Date.now() | 0,
   chaos: 0.7,
   spawnRate: 26,
   targetAmmo: 100,
   timescale: 0.9,
-  pipeUpSpeed: 28, // px/sec the ammo tries to climb
-  pipeUpGain: 2.2, // how aggressively we steer toward that speed (1/s)
   loop: false,
 };
+
+// Pipe behavior (not part of Settings)
+export const PIPES = {
+  upSpeed: 28, // px/sec the ammo tries to climb
+  upGain: 2.2, // how aggressively we steer toward that speed (1/s)
+} as const;
+
 export const UI = {
   // Rendering sizes get recomputed on resize in world.ts
   pinRows: 9,
 };
+
 // Global “line” thickness for physical geometry (px)
 export const WALL_T = 6;
 export const WALL_PHYS_T = 24; // collider thickness (invisible)
@@ -68,11 +76,11 @@ export const HOMING_ENABLED = true;
 
 // Homing parameters (units are per-second for accel/turn; speeds match your current scale)
 export const HOMING = {
-  maxSpeed: 9, // ~px per frame at 60fps (your missiles launch ~8 now)
-  accelPerSec: 6, // how fast missiles ramp toward max speed
-  maxTurnRadPerSec: 3.2, // cap on nose swing rate (radians per second)
-  ttlMs: 7000, // self-destruct safety (no effect on damage; just cleanup)
-  fuseRadius: 0, // 0 = rely on normal collision; >0 = auto-detonate when this close
+  maxSpeed: 9,
+  accelPerSec: 6,
+  maxTurnRadPerSec: 3.2,
+  ttlMs: 7000,
+  fuseRadius: 0,
 } as const;
 
 // How fast shield value drains (per second). Set to 0 to disable decay.
@@ -84,16 +92,15 @@ export const SHIELD_RING_PX = 6;
 // Explosions (projectiles pop on any contact + nearby push)
 export const EXPLOSION = {
   enabled: true,
-  radius: 42, // px blast radius
-  force: 0.012, // impulse scale to nearby ammo/projectiles
-  graceMs: 80, // ignore collisions in the first 80ms after launch
-  maxPerSec: 40, // rate limit safety cap
-  ammoDestroyPct: 0.25, // 25% chance to delete ammo caught in the blast
+  radius: 42,
+  force: 0.012,
+  graceMs: 80,
+  maxPerSec: 40,
+  ammoDestroyPct: 0.25,
 } as const;
 
 // === Ammo / weapon economy knobs ===
 
-// How many AMMO units a container must collect to trigger its action
 export const CONTAINER_CAP = {
   cannon: 100,
   laser: 5,
@@ -103,72 +110,62 @@ export const CONTAINER_CAP = {
   shield: 125,
 } as const;
 
-// How much each weapon fires per trigger (or how long it runs)
 export const SHOTS_PER_FILL = {
-  cannon: 20, // number of cannon balls
-  missile: 8, // number of missiles
-  mortar: 1, // number of artillery shells
-  laserMs: 800, // milliseconds laser stays on
+  cannon: 20,
+  missile: 8,
+  mortar: 1,
+  laserMs: 800,
 } as const;
 
-// Damage tuning (integers unless noted)
 export const DAMAGE = {
-  cannon: 3, // dmg per cannon ball
-  missile: 27, // dmg per missile (on direct core hit)
-  mortar: 18, // dmg per shell
-  laserDps: 40, // damage per second while laser is on
+  cannon: 3,
+  missile: 27,
+  mortar: 18,
+  laserDps: 40,
 } as const;
 
-// Shield/repair effects when those bins trigger
 export const SHIELD_EFFECT = {
-  gain: 20, // set/raise shield to at least this value
+  gain: 20,
 } as const;
 
 export const REPAIR_EFFECT = {
-  segmentsToHeal: 3, // heal this many weakest rim segments
-  segHealAmount: 85, // HP added per healed segment
-  centerChance: 0.5, // chance to also heal center
-  centerAmount: 90, // HP to heal at center when it procs
+  segmentsToHeal: 3,
+  segHealAmount: 85,
+  centerChance: 0.5,
+  centerAmount: 90,
 } as const;
 
-// Visual thickness of the normal rim (when no shield)
-export const CORE_RIM_WIDTH_R = 0.06; // fraction of core radius
+export const CORE_RIM_WIDTH_R = 0.06;
 
-// Visual for the repurposed shield ring (drawn where the outer rim was)
-export const SHIELD_RING_WIDTH_R = 0.1; // fraction of core radius
-export const SHIELD_RING_GLOW = 12; // px of blur
-export const SHIELD_RING_COLOR = 'rgba(120, 200, 255, 0.95)'; // fallback if you don't tint by team
+export const SHIELD_RING_WIDTH_R = 0.1;
+export const SHIELD_RING_GLOW = 12;
+export const SHIELD_RING_COLOR = 'rgba(120, 200, 255, 0.95)';
 
-// Core health (starting + max per match)
 export const CORE_HP = {
-  segments: 100, // HP for each rim segment
-  center: 500, // HP for the core center
-  shieldMax: 50, // for visual normalization of shield ring (not gameplay)
+  segments: 100,
+  center: 500,
+  shieldMax: 50,
 } as const;
 
-// How many rim segments to draw/use (also controls how damage is distributed)
-export const CORE_SEGMENTS = 28; // set 8..48; 16–28 looks great
+export const CORE_SEGMENTS = 28;
 
-// Where cores sit on the board
 export const CORE_POS = {
-  xOffsetFrac: 0.16, // fraction of canvas width from midline toward each side (was ~0.22)
-  yFrac: 0.55, // fraction of canvas height down from top
-  edgeMarginPx: 40, // safety clamp from edges
+  xOffsetFrac: 0.16,
+  yFrac: 0.55,
+  edgeMarginPx: 40,
 };
 
-// How long to show the winner banner, and whether to auto-restart
 export const GAMEOVER = {
-  bannerMs: 10000, // 20 seconds
-  autoRestart: true, // turn off if you ever want manual restarts only
+  bannerMs: 10000,
+  autoRestart: true,
 } as const;
 
-// Mortar launched by angle + speed (per tick), with optional extra gravity
 export const MORTAR_ANGLE = {
-  angleDeg: 72, // launch angle above horizontal
-  angleJitterDeg: 6, // random ± jitter
-  speedPerTick: 22, // launch speed in *px per simulation tick*
-  speedJitter: 0.12, // random ± jitter (fraction)
-  extraGravity: 0.0, // per-tick^2 downward accel just for mortars (try 0.25–0.45 if arcs too flat)
+  angleDeg: 72,
+  angleJitterDeg: 6,
+  speedPerTick: 22,
+  speedJitter: 0.12,
+  extraGravity: 0.0,
 } as const;
 
 export const PROJECTILE_STYLE = {
@@ -176,55 +173,44 @@ export const PROJECTILE_STYLE = {
   missile: { fill: '#66CCFF', glow: '#33B5FF' },
   mortar: { fill: '#FF6B6B', glow: '#FF3B3B' },
   artillery: { fill: '#B4FF6A', glow: '#86FF2D' },
-  laser: { fill: '#FFFFFF', glow: '#88CCFF' }, // beam uses glow only
+  laser: { fill: '#FFFFFF', glow: '#88CCFF' },
 } as const;
 
-export const PROJECTILE_OUTLINE = '#0B0F1A'; // thin dark ink to separate from ammo
+export const PROJECTILE_OUTLINE = '#0B0F1A';
 
-// Fancy laser visuals
 export const LASER_FX = {
-  beamMs: 600, // how long the beam stays visible
-  innerWidth: 3, // bright inner core
-  outerWidth: 11, // soft outer glow
-  jitterAmp: 6, // max px offset for the lightning-like jitter
-  segments: 12, // how many jitter points along the line
-  dash: 18, // moving dash length on the core
-  flashMs: 140, // muzzle/impact flash life
-  flashSize: 22, // radius of muzzle/impact flashes
-  coreColor: '#FFFFFF', // inner core color
+  beamMs: 600,
+  innerWidth: 3,
+  outerWidth: 11,
+  jitterAmp: 6,
+  segments: 12,
+  dash: 18,
+  flashMs: 140,
+  flashSize: 22,
+  coreColor: '#FFFFFF',
 } as const;
 
-// Enable dev hotkeys outside Vite dev (optional)
 export const DEV_KEYS = {
   enabledInProd: false,
 } as const;
 
-// How rim armor interacts with the core
 export const ARMOR = {
-  // If true, any damage that isn't absorbed by surviving segments goes to the center.
   spillover: true,
-  // When both adjacent segments are already 0, multiply full incoming damage by this and apply to center.
-  // 1.0 = full passthrough, 0.5 = half, 0.0 = none.
   leakWhenBroken: 1.0,
-  // Keep or disable the old random “chip” behavior
   chipChance: 0.0,
 } as const;
 
-// Optional: quick debug prints to console for each hit
 export const DEBUG_DAMAGE = false;
 
-// End a match after this much wall-clock time.
-// Set enabled:false or ms:0 to disable.
 export const MATCH_LIMIT = {
   enabled: true,
-  ms: 30 * 60 * 1000, // 30 minutes
+  ms: 30 * 60 * 1000,
 } as const;
 
-// Buff/Debuff settings (per-side)
 export const MODS = {
-  buffDurationMs: 30000, // how long a buff lasts
-  buffMultiplier: 1.6, // damage multiplier when buffed
-  debuffDurationMs: 30000, // how long a debuff lasts
+  buffDurationMs: 30000,
+  buffMultiplier: 1.6,
+  debuffDurationMs: 30000,
   allowedDebuffs: ['cannon', 'laser', 'missile', 'mortar'] as const,
 } as const;
 
@@ -242,7 +228,7 @@ export type AmmoKind = 'basic' | 'heavy' | 'volatile' | 'emp' | 'shield' | 'repa
 export type IntakeSide = 'top' | 'bottom' | 'left' | 'right';
 
 export interface BinStyle {
-  strokePx?: number; // optional absolute px (omit to let our default scale)
+  strokePx?: number;
   stroke?: string;
   box?: string;
   fill?: string;
@@ -254,12 +240,12 @@ export interface BinSpec {
   id: BinId;
   accepts: AmmoKind[];
   cap: number;
-  pos: [number, number]; // FRACTIONS (left side panel): x 0..1 (outer wall→midline), y 0..1 (top→bottom)
-  sizeFrac: [number, number]; // FRACTIONS: [wFrac of channel width, hFrac of canvas height]
+  pos: [number, number];
+  sizeFrac: [number, number];
   intake: IntakeSide;
-  rotation?: number; // degrees
-  label?: string; // default: id
-  enabled?: boolean; // default: true
+  rotation?: number;
+  label?: string;
+  enabled?: boolean;
   style?: BinStyle;
 }
 
@@ -305,7 +291,6 @@ export const BINS_LEFT: readonly BinSpec[] = [
     label: 'Buff',
     style: { fill: '#5CFF7A' },
   },
-
   {
     id: 'mortar',
     accepts: ['basic', 'heavy'],
@@ -350,10 +335,10 @@ export const BINS_LEFT: readonly BinSpec[] = [
 
 // How shields behave (ablative pool)
 export const SHIELD = {
-  startHP: 200, // starting shield HP each round
-  maxHP: 200, // hard cap
-  onPickup: 60, // how much the Shield bin adds when it fires
-  projectileFactor: 1.0, // how strongly non-laser hits drain the shield
-  laserPenetration: 0.35, // fraction of laser damage that still reaches core while shield > 0
-  laserShieldFactor: 1.2, // lasers drain shield at this multiple (feel free to tune)
+  startHP: 200,
+  maxHP: 200,
+  onPickup: 60,
+  projectileFactor: 1.0,
+  laserPenetration: 0.35,
+  laserShieldFactor: 1.2,
 } as const;

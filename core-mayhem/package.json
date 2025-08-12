@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@types/matter-js": "^0.20.0",
     "eslint": "^9.33.0",
     "eslint-plugin-import": "^2.32.0",
     "husky": "^9.1.7",

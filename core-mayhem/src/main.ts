@@ -42,6 +42,11 @@ function init() {
     return;
   }
 
+  // Re-assert for TS so nested functions see them as HTMLCanvasElement / HTMLButtonElement
+  const safeCanvas = canvas!;
+  const safeBtnStart = btnStart!;
+  const safeBtnStop = btnStop!;
+
   const scheduleRestart = debounce(() => {
     // Only restart if currently running; ignore if mid-restart
     if (!stopGame || restarting) return;
@@ -64,7 +69,7 @@ function init() {
       stopGame = null;
     }
 
-    stopGame = startGame(canvas);
+    stopGame = startGame(safeCanvas);
 
     // Start DPR watcher when game is running
     lastDpr = window.devicePixelRatio;
@@ -78,8 +83,8 @@ function init() {
     }, 300);
 
     // Toggle UI
-    btnStart.disabled = true;
-    btnStop.disabled = false;
+    safeBtnStart.disabled = true;
+    safeBtnStop.disabled = false;
   }
 
   function stop() {
@@ -101,8 +106,8 @@ function init() {
     scheduleRestart.cancel();
 
     updateHUD(); // keep HUD label in sync even if game.ts changes later
-    btnStart.disabled = false;
-    btnStop.disabled = true;
+    safeBtnStart.disabled = false;
+    safeBtnStop.disabled = true;
   }
 
   // Button wiring

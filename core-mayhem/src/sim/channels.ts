@@ -5,7 +5,16 @@ import { WALL_T, WALL_PHYS_T } from '../config';
 import { sim } from '../state';
 
 // Info if you need it later
-export interface LanesInfo { lanes: number; gap: number; walls: Matter.Body[] }
+export interface LanesInfo {
+  lanes: number;
+  gap: number;
+  walls: Matter.Body[];
+}
+
+// Fail‑fast guard so callers don't need to remember to pre-check.
+function assertWorld(w: World | null): asserts w is World {
+  if (!w) throw new Error('World not initialized');
+}
 
 /**
  * Build vertical lanes that drop toward the pin field.
@@ -16,7 +25,11 @@ export interface LanesInfo { lanes: number; gap: number; walls: Matter.Body[] }
  * Additionally we add ONE tall inner guard wall (closest wall to midline)
  * that extends up toward the top to keep ammo from flooding the cores.
  */
-export function buildLanes(mid: number, width: number): LanesInfo {
+export function buildLanes(world: World, mid: number, width: number): LanesInfo {
+  // Centralized guard — callers don't have to remember to check.
+  assertWorld(world);
+  const w = world; // now typed as World
+
   const lanes = 4;
   const gap = width / lanes;
 
@@ -38,7 +51,7 @@ export function buildLanes(mid: number, width: number): LanesInfo {
     const R = Bodies.rectangle(rightX, cxY, WALL_T, h, { isStatic: true });
     (L as any).plugin = { kind: 'laneWall' };
     (R as any).plugin = { kind: 'laneWall' };
-    World.add(sim.world, [L, R]);
+    World.add(w, [L, R]);
     walls.push(L, R);
 
     // remember the wall from this lane that is closer to the screen center
@@ -54,7 +67,7 @@ export function buildLanes(mid: number, width: number): LanesInfo {
     });
     // Reuse sim.gels for damping regions so existing gel step handles it
     (slab as any).plugin = { kind: 'laneDamp', dampX: 2.0, dampY: 3.0 };
-    World.add(sim.world, slab);
+    World.add(w, slab);
     sim.gels.push(slab);
   }
 
@@ -67,7 +80,7 @@ export function buildLanes(mid: number, width: number): LanesInfo {
         isStatic: true,
       });
       (guard as any).plugin = { kind: 'laneWall' };
-      World.add(sim.world, guard);
+      World.add(w, guard);
       walls.push(guard);
     }
   }

@@ -2,7 +2,15 @@ import { Bodies, World, Constraint, Body } from 'matter-js';
 
 import { sim } from '../state';
 
-export interface PinField { mid: number; width: number }
+export interface PinField {
+  mid: number;
+  width: number;
+}
+
+// Fail‑fast guard so callers don't need to remember to pre-check.
+function assertWorld(w: World | null): asserts w is World {
+  if (!w) throw new Error('World not initialized');
+}
 
 export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number }): PinField {
   const { W, H } = sim;
@@ -30,6 +38,8 @@ export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number })
       // rotors
       const cols = Math.max(3, Math.floor(width / (sx * 1.4)));
       const rad = 12;
+      const world = sim.world; // capture for narrowing
+      assertWorld(world);
       for (let c = 0; c < cols; c++) {
         const x = mid - width / 2 + (c + 0.5) * (width / cols);
         const y = startY + r * sy;
@@ -39,7 +49,7 @@ export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number })
           frictionAir: 0.02,
         });
         (poly as any).plugin = { kind: 'rotor', spinDir: Math.random() < 0.5 ? -1 : 1 };
-        World.add(sim.world, [
+        World.add(world, [
           poly,
           Constraint.create({ pointA: { x, y }, bodyB: poly, length: 0, stiffness: 1 }),
         ]);
@@ -50,12 +60,14 @@ export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number })
       // pins
       const cols = Math.max(6, Math.floor(width / sx));
       const offset = r % 2 ? sx / 2 : 0;
+      const world = sim.world; // capture for narrowing
+      assertWorld(world);
       for (let c = 0; c < cols; c++) {
         const x = mid - width / 2 + c * sx + offset;
         const y = startY + r * sy;
         const p = Bodies.circle(x, y, 4, { isStatic: true, restitution: 0.9 });
         (p as any).plugin = { kind: 'pin' };
-        World.add(sim.world, p);
+        World.add(world, p);
       }
     }
   }

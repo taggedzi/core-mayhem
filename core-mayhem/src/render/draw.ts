@@ -1,4 +1,5 @@
 import { Composite } from 'matter-js';
+import type { World as MatterWorld } from 'matter-js';
 
 import { LASER_FX } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
@@ -18,10 +19,17 @@ const SHOW_DAMPERS = true; // set false later to hide them entirely
 const css = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+// Fail-fast + narrowing for world (so TS knows it's not null)
+function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
+  if (!w) throw new Error('World not initialized');
+}
+
 export function drawFrame(ctx: CanvasRenderingContext2D) {
   const W = sim.W,
     H = sim.H;
   ctx.clearRect(0, 0, W, H);
+  const world = sim.world; // capture to allow narrowing
+  assertWorld(world);
 
   // midline
   ctx.setLineDash([6, 6]);
@@ -48,11 +56,12 @@ export function drawFrame(ctx: CanvasRenderingContext2D) {
 
   // pins (filled dots)
   ctx.fillStyle = '#2b3a78';
-  Composite.allBodies(sim.world).forEach((b) => {
+  Composite.allBodies(world).forEach((b) => {
     const k = (b as any).plugin?.kind;
     if (k === 'pin') {
       ctx.beginPath();
-      ctx.arc(b.position.x, b.position.y, b.circleRadius, 0, Math.PI * 2);
+      const r = ((b as any).circleRadius ?? 4) as number; // default for safety
+      ctx.arc(b.position.x, b.position.y, r, 0, Math.PI * 2);
       ctx.fill();
     }
   });
@@ -60,20 +69,26 @@ export function drawFrame(ctx: CanvasRenderingContext2D) {
   // rotors (thin outlines)
   ctx.strokeStyle = '#2b3a78';
   ctx.lineWidth = 2;
-  Composite.allBodies(sim.world).forEach((b) => {
+  Composite.allBodies(world).forEach((b) => {
     const k = (b as any).plugin?.kind;
     if (k === 'rotor') {
-      const v = b.vertices;
-      ctx.beginPath();
-      ctx.moveTo(v[0].x, v[0].y);
-      for (let i = 1; i < v.length; i++) ctx.lineTo(v[i].x, v[i].y);
+      const v = b.vertices as { x: number; y: number }[] | undefined;
+      if (!v || v.length === 0) return;
+      const p0 = v[0];
+      if (!p0) return;
+      ctx.moveTo(p0.x, p0.y);
+      for (let i = 1; i < v.length; i++) {
+        const p = v[i];
+        if (!p) continue;
+        ctx.lineTo(p.x, p.y);
+      }
       ctx.closePath();
       ctx.stroke();
     }
   });
 
   // pipe walls as single vertical strokes
-  Composite.allBodies(sim.world).forEach((b) => {
+  Composite.allBodies(world).forEach((b) => {
     const k = (b as any).plugin?.kind;
     if (k === 'pipeWall') {
       const m = b.bounds;
@@ -91,7 +106,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D) {
   });
 
   // optional: intake visual (dashed box)
-  Composite.allBodies(sim.world).forEach((b) => {
+  Composite.allBodies(world).forEach((b) => {
     const k = (b as any).plugin?.kind;
     if (k === 'intake') {
       const m = b.bounds;
@@ -116,7 +131,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D) {
   });
 
   // lane walls as single vertical strokes
-  Composite.allBodies(sim.world).forEach((b) => {
+  Composite.allBodies(world).forEach((b) => {
     const k = (b as any).plugin?.kind;
     if (k === 'laneWall') {
       const m = b.bounds;
@@ -181,7 +196,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D) {
   });
 
   // ammo & projectiles
-  Composite.allBodies(sim.world).forEach((b) => {
+  Composite.allBodies(world).forEach((b) => {
     const plug = (b as any).plugin;
     if (!plug) return;
     if (plug.kind === 'ammo') {
@@ -463,7 +478,9 @@ function getCSS(name: string) {
 
 // ---- helpers: projectile rendering + impact FX ----
 function renderProjectiles(ctx: CanvasRenderingContext2D) {
-  const bodies = Composite.allBodies(sim.world);
+  const w = sim.world;
+  assertWorld(w);
+  const bodies = Composite.allBodies(w);
   for (const b of bodies) {
     const plug = (b as any).plugin;
     if (!plug || plug.kind !== 'projectile') continue;
@@ -891,7 +908,9 @@ function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any) {
 
 // Call this from drawFrame after background/obstacles:
 export function renderProjectilesFancy(ctx: CanvasRenderingContext2D) {
-  const bodies = Composite.allBodies(sim.world);
+  const w = sim.world;
+  assertWorld(w);
+  const bodies = Composite.allBodies(w);
   for (const b of bodies) {
     drawOneProjectile(ctx, b as any);
   }
@@ -948,9 +967,16 @@ function jitterPolyline(
 }
 
 function pathFromPoints(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) {
+  if (!pts || pts.length === 0) return;
+  const first = pts[0];
+  if (!first) return;
   ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.moveTo(first.x, first.y);
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i];
+    if (!p) continue;
+    ctx.lineTo(p.x, p.y);
+  }
 }
 
 function drawBurst(

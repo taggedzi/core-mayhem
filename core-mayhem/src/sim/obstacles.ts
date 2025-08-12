@@ -3,6 +3,8 @@ import { Bodies, Body, World, Composite } from 'matter-js';
 import { WALL_T } from '../config';
 import { sim } from '../state';
 
+import type { World as MatterWorld } from 'matter-js';
+
 export interface Pipe {
   x: number;
   innerX: number;
@@ -10,6 +12,11 @@ export interface Pipe {
   intake: Matter.Body;
   segs: Matter.Body[];
   side: -1 | 1;
+}
+
+// Fail-fast guard + narrowing helper (keeps callers simple)
+function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
+  if (!w) throw new Error('World not initialized');
 }
 
 export function makePipe(side: -1 | 1): Pipe {
@@ -29,7 +36,11 @@ export function makePipe(side: -1 | 1): Pipe {
   });
   (leftWall as any).plugin = { kind: 'pipeWall', side };
   (rightWall as any).plugin = { kind: 'pipeWall', side };
-  World.add(sim.world, [leftWall, rightWall]);
+  {
+    const w = sim.world;
+    assertWorld(w);
+    World.add(w, [leftWall, rightWall]);
+  }
 
   // intake
   const intake = Bodies.rectangle(
@@ -40,14 +51,22 @@ export function makePipe(side: -1 | 1): Pipe {
     { isStatic: true, isSensor: true },
   );
   (intake as any).plugin = { kind: 'intake', side, x };
-  World.add(sim.world, intake);
+  {
+    const w = sim.world;
+    assertWorld(w);
+    World.add(w, intake);
+  }
 
   // lift segments (sensors that apply a vertical pull)
   const segs: Matter.Body[] = [];
   for (let y = pipeBottom; y > pipeTop; y -= 28) {
     const seg = Bodies.rectangle(x, y, pipeW, 24, { isStatic: true, isSensor: true });
     (seg as any).plugin = { kind: 'lift', side, x, force: 0.006 };
-    World.add(sim.world, seg);
+    {
+      const w = sim.world;
+      assertWorld(w);
+      World.add(w, seg);
+    }
     segs.push(seg);
   }
 
@@ -59,7 +78,9 @@ export function makePipe(side: -1 | 1): Pipe {
 
 export function applyPipeForces(pipes: Pipe[]) {
   const { H } = sim;
-  const bodies = Composite.allBodies(sim.world);
+  const w = sim.world;
+  assertWorld(w);
+  const bodies = Composite.allBodies(w);
 
   for (const b of bodies) {
     const plug = (b as any).plugin;
@@ -93,11 +114,13 @@ export function applyPipeForces(pipes: Pipe[]) {
 
       // vertical lift inside pipe: smoothly servo vy toward target
       if (inVertical) {
-        const dt = Math.max(0.001, (sim.engine.timing.lastDelta || 16.6) / 1000);
+        const dt = Math.max(0.001, (sim.engine?.timing?.lastDelta ?? 16.6) / 1000);
         const vy = (b as any).velocity?.y ?? b.velocity.y;
         const vx = (b as any).velocity?.x ?? b.velocity.x;
-        const vT = -sim.settings.pipeUpSpeed; // negative = up
-        const gain = sim.settings.pipeUpGain; // 1/s, responsiveness
+        // Settings no longer define these; read if present at runtime, else defaults
+        const upSpeed = (sim as any)?.settings?.pipeUpSpeed ?? 28; // px/s
+        const gain = (sim as any)?.settings?.pipeUpGain ?? 3.2; // 1/s
+        const vT = -upSpeed; // negative = up
 
         // Exponential smoothing toward target vy
         const alpha = 1 - Math.exp(-gain * dt); // stable 0..1
@@ -129,7 +152,11 @@ export function gelRect(
     dampX: opts?.dampX ?? (opts?.kx != null ? opts.kx * 3.0 : 2.0),
     dampY: opts?.dampY ?? (opts?.ky != null ? opts.ky * 3.6 : 3.0),
   };
-  World.add(sim.world, b);
+  {
+    const wld = sim.world;
+    assertWorld(wld);
+    World.add(wld, b);
+  }
   sim.gels.push(b);
   return b;
 }
@@ -137,7 +164,11 @@ export function gelRect(
 export function addPaddle(x: number, y: number, amp: number, spd: number, dir: number) {
   const p = Bodies.rectangle(x, y, 80, 8, { isStatic: true, isSensor: true });
   (p as any).plugin = { kind: 'paddle', t: Math.random() * 6, amp, spd, dir };
-  World.add(sim.world, p);
+  {
+    const w = sim.world;
+    assertWorld(w);
+    World.add(w, p);
+  }
   sim.paddles.push(p);
   return p;
 }

@@ -1,4 +1,5 @@
 import { Composite, Body } from 'matter-js';
+import type { World } from 'matter-js';
 
 import { sim } from '../state';
 
@@ -10,10 +11,18 @@ import { sim } from '../state';
  *   dampY: per-second damping rate for vy   (default ~3.0)
  */
 export function applyGelForces() {
-  const dt = (sim.engine.timing.lastDelta || 16.6) / 1000;
+  // Use optional chaining to avoid null engine access
+  const dt = (sim.engine?.timing?.lastDelta ?? 16.6) / 1000;
   if (!sim.gels.length) return;
 
-  const bodies = Composite.allBodies(sim.world);
+  // Fail-fast world assertion + local capture so TS narrows correctly
+  function assertWorld(w: World | null): asserts w is World {
+    if (!w) throw new Error('World not initialized');
+  }
+  const world = sim.world;
+  assertWorld(world);
+
+  const bodies = Composite.allBodies(world);
   for (const b of bodies) {
     const plug = (b as any).plugin;
     if (!plug || plug.kind !== 'ammo') continue;

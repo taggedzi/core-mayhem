@@ -1,4 +1,5 @@
 import { Bodies, World, Body, Vector } from 'matter-js';
+import type { World as MatterWorld } from 'matter-js';
 
 import { currentDmgMul } from '../app/game';
 import { isDisabled, WeaponKind } from '../app/game';
@@ -33,6 +34,14 @@ interface CoreLike {
   centerHP?: number;
 }
 
+// --- local asserts (your chosen pattern: centralized, fail-fast) ---
+function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
+  if (!w) throw new Error('World not initialized');
+}
+function assertCore(c: any): asserts c is { center: Vec2 } {
+  if (!c || !c.center) throw new Error('Core not initialized');
+}
+
 // Queue versions that wait windupMs, then call the real fire functions
 export function queueFireCannon(
   from: Side,
@@ -61,7 +70,8 @@ export function queueFireLaser(
   if (isDisabled(from, 'laser')) return;
   setTimeout(() => {
     if ((sim as any).gameOver) return;
-    fireLaser(from, src, core, ms);
+    // fireLaser takes (side, src, target?) — duration is handled by LASER_FX
+    fireLaser(from, src, core);
   }, windupMs);
 }
 
@@ -74,7 +84,11 @@ export function queueFireMissiles(
 ) {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'missile')) return;
-  const target = from === SIDE.LEFT ? sim.coreR.center : sim.coreL.center;
+  {
+    const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
+    assertCore(targetCore);
+    var target = targetCore.center;
+  }
 
   // aim-to-target
   const baseAng = Math.atan2(target.y - src.y, target.x - src.x);
@@ -152,7 +166,11 @@ export function fireCannon(
         dmg: DAMAGE.cannon * mul,
         spawnT: performance.now(),
       };
-      World.add(sim.world, b);
+      {
+        const w = sim.world;
+        assertWorld(w);
+        World.add(w, b);
+      }
       const jitter = 3; // small spread
       Body.setVelocity(b, {
         x: dir.x * speed + (Math.random() - 0.5) * jitter,
@@ -246,7 +264,11 @@ export function fireMissiles(
 ) {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'missile')) return;
-  const target = from === SIDE.LEFT ? sim.coreR.center : sim.coreL.center;
+  {
+    const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
+    assertCore(targetCore);
+    var target = targetCore.center;
+  }
 
   // aim-to-target (works both sides)
   const baseAng = Math.atan2(target.y - src.y, target.x - src.x);
@@ -271,7 +293,11 @@ export function fireMissiles(
         dmg: DAMAGE.missile * mul,
         spawnT: performance.now(),
       };
-      World.add(sim.world, m);
+      {
+        const w = sim.world;
+        assertWorld(w);
+        World.add(w, m);
+      }
 
       const t = count === 1 ? 0 : i / (count - 1) - 0.5;
       const ang = center + t * spread + (Math.random() - 0.5) * jitter;
@@ -287,7 +313,11 @@ export function fireMissiles(
 export function fireMortar(from: Side, src: { x: number; y: number }, count = 1) {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'mortar')) return;
-  const target = from === SIDE.LEFT ? sim.coreR.center : sim.coreL.center;
+  {
+    const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
+    assertCore(targetCore);
+    var target = targetCore.center;
+  }
 
   for (let i = 0; i < count; i++) {
     setTimeout(() => {
@@ -304,7 +334,11 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
         spawnT: performance.now(),
         gExtra: MORTAR_ANGLE.extraGravity || 0,
       };
-      World.add(sim.world, shell);
+      {
+        const w = sim.world;
+        assertWorld(w);
+        World.add(w, shell);
+      }
 
       // Aim left->right or right->left based on target
       const dx = target.x - src.x;
@@ -351,13 +385,21 @@ export function tickHoming(dtMs: number) {
 
     // TTL cleanup
     if (HOMING.ttlMs > 0 && now - (plug.spawnT || now) > HOMING.ttlMs) {
-      World.remove(sim.world, m);
+      {
+        const w = sim.world;
+        assertWorld(w);
+        World.remove(w, m);
+      }
       sim.homing.splice(i, 1);
       continue;
     }
 
     // Target is the opposing core center
-    const target = plug.side === SIDE.LEFT ? sim.coreR.center : sim.coreL.center;
+    {
+      const tc = plug.side === SIDE.LEFT ? sim.coreR : sim.coreL;
+      assertCore(tc);
+      var target = tc.center;
+    }
     const toX = target.x - m.position.x;
     const toY = target.y - m.position.y;
     const toLen = Math.hypot(toX, toY) || 1;
@@ -387,7 +429,12 @@ export function tickHoming(dtMs: number) {
 
     // optional fuse (close detonation); set HOMING.fuseRadius > 0 to enable
     if (HOMING.fuseRadius > 0 && toLen < HOMING.fuseRadius) {
-      World.remove(sim.world, m);
+      {
+        const w = sim.world;
+        assertWorld(w);
+        World.remove(w, m);
+      }
+
       sim.homing.splice(i, 1);
       // (visual pop only; real damage still comes from collisions)
       (sim.fxImp ||= []).push({
@@ -451,7 +498,11 @@ export function makeWeapons(side: Side) {
   const mk = (x: number, y: number, label: string) => {
     const mount = Bodies.circle(x, y, 5, { isStatic: true, isSensor: true });
     (mount as any).plugin = { kind: 'weaponMount', side, label };
-    World.add(sim.world, mount);
+    {
+      const w = sim.world;
+      assertWorld(w);
+      World.add(w, mount);
+    }
     return { pos: { x, y }, mount };
   };
 
