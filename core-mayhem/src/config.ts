@@ -1,12 +1,5 @@
 import type { Settings } from './types';
 
-export const COLORS = {
-  bg: '#0b0f1a',
-  left: '#ff8c1a',
-  right: '#1a9bff',
-  accent: '#ff00aa',
-} as const;
-
 export const DEFAULTS: Settings = {
   seed: Date.now() | 0,
   chaos: 0.7,
@@ -16,27 +9,12 @@ export const DEFAULTS: Settings = {
   loop: false,
 };
 
-// Pipe behavior (not part of Settings)
-export const PIPES = {
-  upSpeed: 28, // px/sec the ammo tries to climb
-  upGain: 2.2, // how aggressively we steer toward that speed (1/s)
-} as const;
-
-export const UI = {
-  // Rendering sizes get recomputed on resize in world.ts
-  pinRows: 9,
-};
-
 // Global “line” thickness for physical geometry (px)
 export const WALL_T = 6;
 export const WALL_PHYS_T = 24; // collider thickness (invisible)
 
 export const BIN_T = 2; // thin border stroke for boxes
 export const BIN_INTAKE_H = 6; // height of the visible intake strip
-
-// Spread multipliers for bin placement (1 = previous layout)
-export const BIN_H_SPREAD = 1.35; // ~+20% horizontal
-export const BIN_V_SPREAD = 1.25; // ~+10% vertical
 
 // Global wind-up (arming) delay
 export const WEAPON_WINDUP_MS = 3000;
@@ -83,9 +61,6 @@ export const HOMING = {
   fuseRadius: 0,
 } as const;
 
-// How fast shield value drains (per second). Set to 0 to disable decay.
-export const SHIELD_DECAY_PER_SEC = 0.05;
-
 // Visual thickness of the shield ring in pixels (scales a bit with H too)
 export const SHIELD_RING_PX = 6;
 
@@ -97,17 +72,6 @@ export const EXPLOSION = {
   graceMs: 80,
   maxPerSec: 40,
   ammoDestroyPct: 0.25,
-} as const;
-
-// === Ammo / weapon economy knobs ===
-
-export const CONTAINER_CAP = {
-  cannon: 100,
-  laser: 5,
-  missile: 6,
-  mortar: 2,
-  repair: 250,
-  shield: 125,
 } as const;
 
 export const SHOTS_PER_FILL = {

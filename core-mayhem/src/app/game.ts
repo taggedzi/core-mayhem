@@ -10,13 +10,12 @@ import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { FX_MS } from '../config';
 import { EXPLOSION } from '../config';
-import { SHOTS_PER_FILL, SHIELD_EFFECT, REPAIR_EFFECT } from '../config';
+import { REPAIR_EFFECT } from '../config';
 import { GAMEOVER } from '../config';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 // --- DEV HOTKEYS: only in Vite dev or if forced via config ---
 import { DEV_KEYS } from '../config';
 import { applyCoreDamage } from '../sim/damage';
-import { ARMOR } from '../config';
 import { MATCH_LIMIT } from '../config';
 import { MODS } from '../config';
 import { SHIELD } from '../config';
@@ -38,11 +37,6 @@ import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
-
-console.log('cooldowns', COOLDOWN_MS);
-
-const nowMs = () => performance.now();
-const sideKey = (s: Side) => (s === SIDE.LEFT ? 'L' : 'R');
 
 let _explosionCount = 0,
   _explosionWindowT0 = 0;
@@ -95,10 +89,6 @@ function modsFor(side: Side): SideMods {
   return (side === SIDE.LEFT ? (sim as any).modsL : (sim as any).modsR) as SideMods;
 }
 
-function modsForOpposite(side: Side): SideMods {
-  return modsFor(side === SIDE.LEFT ? SIDE.RIGHT : SIDE.LEFT);
-}
-
 export function currentDmgMul(side: Side): number {
   const m = modsFor(side);
   return performance.now() < m.dmgUntil ? m.dmgMul : 1;
@@ -131,7 +121,7 @@ export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null) {
   m.disableUntil = performance.now() + MODS.debuffDurationMs;
 }
 
-function explodeAt(x: number, y: number, baseDmg: number, shooterSide: Side) {
+function explodeAt(x: number, y: number, shooterSide: Side) {
   if (!EXPLOSION.enabled) return;
 
   // rate limit
@@ -362,7 +352,7 @@ export function startGame(canvas: HTMLCanvasElement) {
         if (other?.plugin?.kind === 'weaponMount') return; // ignore mounts
         if (performance.now() - (pp.spawnT || 0) < EXPLOSION.graceMs) return; // grace
 
-        explodeAt(proj.position.x, proj.position.y, pp.dmg || 8, pp.side);
+        explodeAt(proj.position.x, proj.position.y, pp.side);
         {
           const w = sim.world;
           assertWorld(w);
@@ -417,7 +407,7 @@ export function startGame(canvas: HTMLCanvasElement) {
         kind: 'burst',
       });
 
-      explodeAt(proj.position.x, proj.position.y, dmg, proj.plugin.side);
+      explodeAt(proj.position.x, proj.position.y, proj.plugin.side);
       {
         const w = sim.world;
         assertWorld(w);
@@ -447,7 +437,7 @@ export function startGame(canvas: HTMLCanvasElement) {
       kind: ptype === 'laser' ? 'burn' : 'burst',
     });
 
-    explodeAt(proj.position.x, proj.position.y, dmg, proj.plugin.side);
+    explodeAt(proj.position.x, proj.position.y, proj.plugin.side);
     {
       const w = sim.world;
       assertWorld(w);

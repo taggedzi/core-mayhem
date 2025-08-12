@@ -2,7 +2,7 @@ import { Bodies, World, Body, Vector } from 'matter-js';
 import type { World as MatterWorld } from 'matter-js';
 
 import { currentDmgMul } from '../app/game';
-import { isDisabled, WeaponKind } from '../app/game';
+import { isDisabled } from '../app/game';
 import { LASER_FX } from '../config';
 import { DAMAGE } from '../config';
 import { WEAPON_WINDUP_MS } from '../config';
@@ -64,7 +64,6 @@ export function queueFireLaser(
   src: { x: number; y: number },
   core: { center: { x: number; y: number } },
   windupMs = WEAPON_WINDUP_MS,
-  ms = 600, // laser on-time
 ) {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'laser')) return;
@@ -357,9 +356,6 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
     }, i * 220);
   }
 }
-
-const getCSS = (name: string) =>
-  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 export function tickHoming(dtMs: number) {
   if (!HOMING_ENABLED) return;

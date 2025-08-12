@@ -3,8 +3,8 @@ import type { World as MatterWorld } from 'matter-js';
 
 import { LASER_FX } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
-import { WALL_T, BIN_T, BIN_INTAKE_H } from '../config';
-import { WEAPON_WINDUP_MS, SHIELD_RING_PX } from '../config';
+import { WALL_T } from '../config';
+import { WEAPON_WINDUP_MS } from '../config';
 import {
   CORE_RIM_WIDTH_R,
   SHIELD_RING_WIDTH_R,
@@ -916,25 +916,6 @@ export function renderProjectilesFancy(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function drawLaserBeams(ctx: CanvasRenderingContext2D) {
-  const arr = (sim as any).fxBeams || [];
-  const now = performance.now();
-  (sim as any).fxBeams = arr.filter((b: any) => b.tEnd > now);
-  for (const b of arr) {
-    const t = Math.max(0, (b.tEnd - now) / 180); // 0..1
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = b.color;
-    ctx.globalAlpha = 0.35 + 0.65 * t;
-    ctx.lineWidth = 6 * (0.6 + 0.4 * t);
-    ctx.beginPath();
-    ctx.moveTo(b.x1, b.y1);
-    ctx.lineTo(b.x2, b.y2);
-    ctx.stroke();
-    ctx.restore();
-  }
-}
-
 function teamColor(side: number) {
   return side < 0 ? css('--left') || '#58e6ff' : css('--right') || '#ff69d4';
 }
@@ -985,7 +966,6 @@ function drawBurst(
   y: number,
   color: string,
   life01: number,
-  kind: 'muzzle' | 'impact',
 ) {
   const r = LASER_FX.flashSize * (0.7 + 0.3 * life01);
   ctx.save();
@@ -1058,7 +1038,7 @@ export function drawLaserFX(ctx: CanvasRenderingContext2D) {
   // muzzle / impact flashes
   for (const f of bursts) {
     const life01 = Math.max(0, Math.min(1, (f.tEnd - now) / LASER_FX.flashMs));
-    drawBurst(ctx, f.x, f.y, teamColor(f.side ?? -1), life01, f.kind);
+    drawBurst(ctx, f.x, f.y, teamColor(f.side ?? -1), life01);
   }
 }
 

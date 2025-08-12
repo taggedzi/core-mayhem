@@ -1,4 +1,4 @@
-import { Bodies, World, Body, Composite, Query, Sleeping } from 'matter-js';
+import { Bodies, World, Body, Composite, Sleeping } from 'matter-js';
 
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';

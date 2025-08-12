@@ -4,8 +4,6 @@ import { BIN_INTAKE_H, BINS_LEFT, type BinSpec, type IntakeSide } from '../confi
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
-import type { Bins } from '../types';
-
 /**
  * Nudge all bins on a side so they stay at least `margin` px away from that side's
  * pipe inner wall (uses sim.pipes[0|1].innerX; no world scanning).
