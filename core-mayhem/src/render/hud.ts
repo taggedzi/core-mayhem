@@ -1,30 +1,27 @@
-import { sim } from '../state';
-
-const i = (x: number): number => Math.max(0, Math.round(x)); // display ints
+import { getHudData } from './hudModel';
 
 export function updateHUD(): void {
-  // HP as integers
-  const lCenter = i(sim.coreL?.centerHP ?? 0);
-  const rCenter = i(sim.coreR?.centerHP ?? 0);
-  const lSegSum = i((sim.coreL?.segHP ?? []).reduce((a, b) => a + Math.max(0, b), 0));
-  const rSegSum = i((sim.coreR?.segHP ?? []).reduce((a, b) => a + Math.max(0, b), 0));
+  const hud = getHudData();
 
-  document.getElementById('hpL')!.textContent = `${lCenter}|Σ${lSegSum}`;
-  document.getElementById('hpR')!.textContent = `${rCenter}|Σ${rSegSum}`;
+  const hpL = document.getElementById('hpL');
+  if (hpL) hpL.textContent = hud.leftHp;
 
-  // State derived every frame so it never gets stuck
-  let state = sim.started ? 'Running' : 'Idle';
-  if (sim.coreL && sim.coreR && (sim.coreL.centerHP <= 0 || sim.coreR.centerHP <= 0)) {
-    state = 'Game Over';
-  }
-  document.getElementById('state')!.textContent = state;
+  const hpR = document.getElementById('hpR');
+  if (hpR) hpR.textContent = hud.rightHp;
+
+  const stateEl = document.getElementById('state');
+  if (stateEl) stateEl.textContent = hud.state;
 }
 
-// still useful for one-off overrides if you add phases later
 export function setState(text: string): void {
-  document.getElementById('state')!.textContent = text;
+  const el = document.getElementById('state');
+  if (el) el.textContent = text;
 }
+
 export function setButtons(running: boolean): void {
-  (document.getElementById('btnStart') as HTMLButtonElement).disabled = running;
-  (document.getElementById('btnStop') as HTMLButtonElement).disabled = !running;
+  const btnStart = document.getElementById('btnStart') as HTMLButtonElement | null;
+  if (btnStart) btnStart.disabled = running;
+
+  const btnStop = document.getElementById('btnStop') as HTMLButtonElement | null;
+  if (btnStop) btnStop.disabled = !running;
 }

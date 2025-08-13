@@ -12,6 +12,7 @@ import { MODS } from '../config';
 import { SHIELD } from '../config';
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
+import { updateScoreboard } from '../render/score';
 import { spawnAmmo, beforeUpdateAmmo } from '../sim/ammo';
 import { buildLanes } from '../sim/channels';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
@@ -22,6 +23,7 @@ import { makePipe, applyPipeForces, addPaddle, tickPaddles, gelRect } from '../s
 import { makePins } from '../sim/pins';
 import { tickHoming } from '../sim/weapons';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
+
 // --- DEV HOTKEYS: only in Vite dev or if forced via config ---
 import {
   makeWeapons,
@@ -687,24 +689,4 @@ function maybeEndMatch(): void {
   const deadR = isDead(sim.coreR);
   if (!deadL && !deadR) return;
   declareWinner(deadL && deadR ? 0 : deadL ? SIDE.RIGHT : SIDE.LEFT);
-}
-
-function updateScoreboard(): void {
-  const el = document.getElementById('score');
-  if (!el) return;
-  const s = (sim as any).stats ?? { leftWins: 0, rightWins: 0, ties: 0 };
-  const lWins = s.leftWins | 0,
-    rWins = s.rightWins | 0,
-    ties = s.ties | 0;
-
-  // losses are the opponent's wins
-  const lLoss = rWins,
-    rLoss = lWins;
-
-  // Build inner HTML to keep colored tags
-  el.innerHTML = `
-    <span class="left tag">LEFT</span> ${lWins}–${lLoss}
-    ${ties ? `<span class="sep">|</span> T:${ties} <span class="sep">|</span>` : `<span class="sep">|</span>`}
-    <span class="right tag">RIGHT</span> ${rWins}–${rLoss}
-  `;
 }

@@ -1,0 +1,9 @@
+scripts
+node_modules
+.husky
+public
+.editorconfig
+.gitignore
+.prettierignore
+.prettierrc
+.treeignore

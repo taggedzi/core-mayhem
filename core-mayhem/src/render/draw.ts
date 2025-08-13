@@ -1,3 +1,11 @@
+// Adapter (pure → canvas). Disabled for now to avoid behavior change.
+
+// Feature flags
+const USE_ADAPTER = true; // keep the adapter hook enabled
+const USE_ADAPTER_CORES = true; // render cores via adapter instead of legacy code
+const USE_ADAPTER_FX = true;
+const USE_ADAPTER_AMMO = true;
+
 import { Composite } from 'matter-js';
 
 import { LASER_FX } from '../config';
@@ -13,6 +21,10 @@ import {
 import { GAMEOVER } from '../config';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
+
+import { colorForAmmo } from './colors';
+import { toDrawCommands } from './drawModel';
+import { renderScene } from './renderScene';
 
 import type { World as MatterWorld } from 'matter-js';
 
@@ -166,48 +178,52 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   drawBins(ctx, sim.binsR);
 
   // cores
-  drawCore(ctx, sim.coreL);
-  drawCore(ctx, sim.coreR);
-  drawShieldRing(ctx, sim.coreL, css('--left'));
-  drawShieldRing(ctx, sim.coreR, css('--right'));
-  drawCoreStats(ctx, sim.coreL, css('--left'));
-  drawCoreStats(ctx, sim.coreR, css('--right'));
+  if (!USE_ADAPTER_CORES) {
+    drawCore(ctx, sim.coreL);
+    drawCore(ctx, sim.coreR);
+    drawShieldRing(ctx, sim.coreL, css('--left'));
+    drawShieldRing(ctx, sim.coreR, css('--right'));
+  }
 
   // weapon mount icons
   drawWeaponMounts(ctx, (sim as any).wepL, getCSS('--left'));
   drawWeaponMounts(ctx, (sim as any).wepR, getCSS('--right'));
 
   // Wind-up flashes on weapon mounts
-  const t = performance.now();
-  sim.fxArm = sim.fxArm.filter((fx) => fx.until > t);
-  sim.fxArm.forEach((fx) => {
-    const left = (fx.until - t) / WEAPON_WINDUP_MS; // 1 → 0 over the windup window
-    const pulse = 0.5 + 0.5 * Math.sin((1 - left) * Math.PI * 2.5);
-    const r0 = 10,
-      r1 = 16;
-    const r = r0 + (1 - left) * (r1 - r0);
-    ctx.save();
-    ctx.globalAlpha = 0.35 + 0.45 * pulse;
-    ctx.strokeStyle = fx.color || getCSS('--accent');
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  });
+  if (!USE_ADAPTER_FX) {
+    const t = performance.now();
+    sim.fxArm = sim.fxArm.filter((fx) => fx.until > t);
+    sim.fxArm.forEach((fx) => {
+      const left = (fx.until - t) / WEAPON_WINDUP_MS; // 1 → 0 over the windup window
+      const pulse = 0.5 + 0.5 * Math.sin((1 - left) * Math.PI * 2.5);
+      const r0 = 10,
+        r1 = 16;
+      const r = r0 + (1 - left) * (r1 - r0);
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.45 * pulse;
+      ctx.strokeStyle = fx.color || getCSS('--accent');
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
 
   // ammo & projectiles
-  Composite.allBodies(world).forEach((b) => {
-    const plug = (b as any).plugin;
-    if (!plug) return;
-    if (plug.kind === 'ammo') {
-      const col = colorForAmmo(plug.type);
-      ctx.beginPath();
-      ctx.arc(b.position.x, b.position.y, b.circleRadius ?? 6, 0, Math.PI * 2);
-      ctx.fillStyle = col;
-      ctx.fill();
-    }
-  });
+  if (!USE_ADAPTER_AMMO) {
+    Composite.allBodies(world).forEach((b) => {
+      const plug = (b as any).plugin;
+      if (!plug) return;
+      if (plug.kind === 'ammo') {
+        const col = colorForAmmo(plug.type);
+        ctx.beginPath();
+        ctx.arc(b.position.x, b.position.y, b.circleRadius ?? 6, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+      }
+    });
+  }
 
   drawSideModsBadge(ctx, SIDE.LEFT);
   drawSideModsBadge(ctx, SIDE.RIGHT);
@@ -218,6 +234,13 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   renderBeams(ctx);
   renderImpactFX(ctx);
   drawGameOverBanner(ctx);
+
+  if (USE_ADAPTER) {
+    const scene = toDrawCommands();
+    renderScene(ctx, scene);
+  }
+  drawCoreStats(ctx, sim.coreL, css('--left'));
+  drawCoreStats(ctx, sim.coreR, css('--right'));
 }
 
 export function drawBins(ctx: CanvasRenderingContext2D, bins: any): void {
@@ -465,14 +488,6 @@ function drawWeaponMounts(ctx: CanvasRenderingContext2D, wep: any, color: string
   });
 }
 
-function colorForAmmo(t: string): string {
-  if (t === 'heavy') return '#ffca1a';
-  if (t === 'volatile') return '#ff3d3d';
-  if (t === 'emp') return '#00ffd5';
-  if (t === 'repair') return '#6bffb8';
-  if (t === 'shield') return '#9fc5ff';
-  return '#b6ff00';
-}
 function getCSS(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }

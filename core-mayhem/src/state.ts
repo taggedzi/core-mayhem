@@ -1,11 +1,8 @@
 // state.ts
 import type { Core } from './sim/core';
 import type { Pipe } from './sim/obstacles';
-import type { Settings, Bins } from './types';
+import type { Settings, Bins, Side } from './types';
 import type { Engine, Runner, World, Body } from 'matter-js';
-
-// ——— Shared small types ———
-export type Side = -1 | 1;
 
 export interface FxSweep {
   x: number;
