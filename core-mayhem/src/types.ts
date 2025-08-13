@@ -20,30 +20,6 @@ export interface Settings {
   loop: boolean;
 }
 
-export interface Core {
-  side: Side;
-  color: string;
-
-  radius: number;
-  center: Vec;
-
-  rot: number;
-  rotSpeed: number;
-
-  segHP: number[];
-  segHPmax: number;
-
-  centerHP: number;
-  centerHPmax: number;
-
-  centerBody: Body;
-  ringBody: Body;
-
-  shield: number;
-  shieldHP: number;
-  shieldHPmax: number;
-}
-
 export interface Bin {
   body: Body;
   accept: readonly AmmoType[]; // ✅ satisfies eslint array-type

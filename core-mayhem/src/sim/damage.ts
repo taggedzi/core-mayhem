@@ -1,13 +1,16 @@
-import { ARMOR, DEBUG_DAMAGE } from '../config';
+import { ARMOR } from '../config';
 
-export interface Vec2 { x: number; y: number }
+export interface Vec2 {
+  x: number;
+  y: number;
+}
 
 export function applyCoreDamage(
   core: any,
   hitPoint: Vec2,
   dmgIn: number,
   angleToSeg: (core: any, p: Vec2) => { i0: number; i1: number; w0: number; w1: number },
-) {
+): void {
   if (!core) return;
 
   const dmg = Math.max(0, dmgIn);
@@ -16,7 +19,6 @@ export function applyCoreDamage(
   // If the caller already decided it's a center hit, take the straight path.
   if ((hitPoint as any)._forceCenter) {
     core.centerHP = Math.max(0, core.centerHP - dmg);
-    if (DEBUG_DAMAGE) console.log('[DMG] center-only', { dmg, centerHP: core.centerHP });
     return;
   }
 
@@ -50,16 +52,5 @@ export function applyCoreDamage(
     core.centerHP = Math.max(0, core.centerHP - overflow);
   } else if ((ARMOR.chipChance ?? 0) > 0 && Math.random() < ARMOR.chipChance) {
     core.centerHP = Math.max(0, core.centerHP - 1);
-  }
-
-  if (DEBUG_DAMAGE) {
-    console.log('[DMG] rim-hit', {
-      dmg,
-      segs: [sp.i0, sp.i1],
-      segHP_before: [h0, h1],
-      applied: [a0, a1],
-      overflow,
-      centerHP: core.centerHP,
-    });
   }
 }

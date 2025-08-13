@@ -9,7 +9,7 @@ import { SIDE, type Side } from '../types';
  * pipe inner wall (uses sim.pipes[0|1].innerX; no world scanning).
  * Safe no-op if something isn’t ready.
  */
-export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5) {
+export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5): void {
   if (!bins || !sim.pipes) return;
   const pipe = side === SIDE.LEFT ? sim.pipes[0] : sim.pipes[1];
   const innerX = (pipe as any)?.innerX;
@@ -18,8 +18,8 @@ export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5) {
   const isLeft = side === SIDE.LEFT;
   const safeEdgeX = isLeft ? innerX + margin : innerX - margin;
 
-  const shiftIfNeeded = (bin: any) => {
-    const wall = bin?.box || bin?.body || bin?.intake;
+  const shiftIfNeeded = (bin: any): void => {
+    const wall = bin?.box ?? bin?.body ?? bin?.intake;
     if (!wall?.bounds) return;
 
     const bw = wall.bounds.max.x - wall.bounds.min.x;
@@ -52,7 +52,14 @@ function sidePanelX(side: Side, pinsMid: number, pinsWidth: number, xFrac: numbe
   return x0 + mirrored * (x1 - x0);
 }
 
-function intakeOffset(intake: IntakeSide, w: number, h: number) {
+export interface Offset {
+  dx: number;
+  dy: number;
+  iw: number;
+  ih: number;
+}
+
+function intakeOffset(intake: IntakeSide, w: number, h: number): Offset {
   const ih = BIN_INTAKE_H;
   const iwTB = Math.max(12, w * 0.92);
   const iwLR = Math.max(6, h * 0.8);
@@ -68,11 +75,16 @@ function intakeOffset(intake: IntakeSide, w: number, h: number) {
   }
 }
 
-function clamp(n: number, lo: number, hi: number) {
+function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-function sizePxFromFrac(sizeFrac: [number, number], pinsWidth: number) {
+export interface pxRatio {
+  w: number;
+  h: number;
+}
+
+function sizePxFromFrac(sizeFrac: [number, number], pinsWidth: number): pxRatio {
   // Width scales with channel width; height with canvas height
   const minW = Math.max(40, pinsWidth * 0.06);
   const maxW = Math.max(minW + 1, pinsWidth * 0.45);
@@ -89,10 +101,22 @@ function assertWorld(w: World | null): asserts w is World {
   if (!w) throw new Error('World not initialized');
 }
 
-function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number) {
+export interface BinModel {
+  key: BinSpec['id'];
+  pos: { x: number; y: number };
+  box: Body;
+  intake: Body;
+  cap: number;
+  fill: number;
+  accept: BinSpec['accepts'];
+  style: NonNullable<BinSpec['style']>; // defaults to {}
+  intakeSide: BinSpec['intake'];
+}
+
+function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number): BinModel {
   const [xFrac, yFrac] = spec.pos;
   const { w, h } = sizePxFromFrac(spec.sizeFrac, pinsWidth);
-  const angle = ((spec.rotation || 0) * Math.PI) / 180;
+  const angle = ((spec.rotation ?? 0) * Math.PI) / 180;
 
   const x = sidePanelX(side, pinsMid, pinsWidth, xFrac);
   const y = yFrac * sim.H;
@@ -120,12 +144,12 @@ function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number)
     cap: spec.cap,
     fill: 0,
     accept: spec.accepts,
-    style: spec.style || {},
+    style: spec.style ?? {},
     intakeSide: spec.intake,
   };
 }
 
-export function makeBins(side: Side, pinsMid: number, pinsWidth: number) {
+export function makeBins(side: Side, pinsMid: number, pinsWidth: number): any {
   const specs = BINS_LEFT.filter((s) => s.enabled !== false);
   const out: any = {};
   for (const spec of specs) out[spec.id] = mkOneBin(side, spec, pinsMid, pinsWidth);

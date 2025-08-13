@@ -12,7 +12,10 @@ let lastDpr = window.devicePixelRatio;
 let dprIntervalId: number | null = null;
 
 // Debounce helper with cancel()
-function debounce<F extends (...args: any[]) => void>(fn: F, wait: number) {
+function debounce<F extends (...args: any[]) => void>(
+  fn: F,
+  wait: number,
+): F & { cancel: () => void } {
   let t: number | null = null;
   const debounced = (...args: Parameters<F>) => {
     if (t !== null) window.clearTimeout(t);
@@ -27,7 +30,7 @@ function debounce<F extends (...args: any[]) => void>(fn: F, wait: number) {
   return debounced as F & { cancel: () => void };
 }
 
-function init() {
+function init(): void {
   const canvas = document.getElementById('view') as HTMLCanvasElement | null;
   const btnStart = document.getElementById('btnStart') as HTMLButtonElement | null;
   const btnStop = document.getElementById('btnStop') as HTMLButtonElement | null;
@@ -58,7 +61,7 @@ function init() {
     }
   }, 120);
 
-  function start() {
+  function start(): void {
     // Stop previous run (if any)
     if (stopGame) {
       try {
@@ -87,7 +90,7 @@ function init() {
     safeBtnStop.disabled = false;
   }
 
-  function stop() {
+  function stop(): void {
     if (stopGame) {
       try {
         stopGame();

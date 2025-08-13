@@ -10,11 +10,41 @@ function assertWorld(w: World | null): asserts w is World {
   if (!w) throw new Error('World not initialized');
 }
 
+// Define the shape your function returns
+export interface Core {
+  side: Side;
+  center: { x: number; y: number };
+  R: number; // visual radius
+  radius: number; // alias of R
+  outerR: number; // alias of R
+  ringR: number;
+  centerR: number;
+  ringBody: Body;
+  centerBody: Body;
+  rot: number;
+  rotSpeed: number;
+
+  segHPmax: number;
+  centerHPmax: number;
+  segHP: number[];
+  centerHP: number;
+
+  // legacy/compat fields
+  shield: number;
+  shieldMax: number;
+
+  // ablative shield pool
+  shieldHP: number;
+  shieldHPmax: number;
+
+  teamColor: string;
+}
+
 /**
  * Create a core with configurable segment count + HP, and physics sensors
  * for the outer ring and center. Returns the core model used by draw & game.
  */
-export function makeCore(world: World, side: Side, teamColor: string) {
+export function makeCore(world: World, side: Side, teamColor: string): Core {
   assertWorld(world);
   const w = world; // now typed as World
 
@@ -85,14 +115,21 @@ export function makeCore(world: World, side: Side, teamColor: string) {
   return core;
 }
 
+export interface Seg {
+  i0: number;
+  i1: number;
+  w0: number;
+  w1: number;
+}
+
 /**
  * Map a world point to the two nearest segment indices (for boundary hits)
  * and weights that split damage between them.
  */
-export function angleToSeg(core: any, p: { x: number; y: number }) {
+export function angleToSeg(core: any, p: { x: number; y: number }): Seg {
   const dx = p.x - core.center.x;
   const dy = p.y - core.center.y;
-  let ang = Math.atan2(dy, dx) - (core.rot || 0);
+  let ang = Math.atan2(dy, dx) - (core.rot ?? 0);
 
   const TAU = Math.PI * 2;
   while (ang < 0) ang += TAU;

@@ -1,8 +1,8 @@
 import { sim } from '../state';
 
-const i = (x: number) => Math.max(0, Math.round(x)); // display ints
+const i = (x: number): number => Math.max(0, Math.round(x)); // display ints
 
-export function updateHUD() {
+export function updateHUD(): void {
   // HP as integers
   const lCenter = i(sim.coreL?.centerHP ?? 0);
   const rCenter = i(sim.coreR?.centerHP ?? 0);
@@ -21,10 +21,10 @@ export function updateHUD() {
 }
 
 // still useful for one-off overrides if you add phases later
-export function setState(text: string) {
+export function setState(text: string): void {
   document.getElementById('state')!.textContent = text;
 }
-export function setButtons(running: boolean) {
+export function setButtons(running: boolean): void {
   (document.getElementById('btnStart') as HTMLButtonElement).disabled = running;
   (document.getElementById('btnStop') as HTMLButtonElement).disabled = !running;
 }

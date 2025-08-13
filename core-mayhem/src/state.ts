@@ -1,7 +1,8 @@
 // state.ts
-import type { Engine, Runner, World, Body } from 'matter-js';
+import type { Core } from './sim/core';
 import type { Pipe } from './sim/obstacles';
-import type { Settings, Core, Bins } from './types';
+import type { Settings, Bins } from './types';
+import type { Engine, Runner, World, Body } from 'matter-js';
 
 // ——— Shared small types ———
 export type Side = -1 | 1;

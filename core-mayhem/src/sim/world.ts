@@ -5,8 +5,10 @@ import {
   World,
   Bodies,
   type Body as MatterBody,
+  type Bounds,
   type World as MatterWorld,
   type IChamferableBodyDefinition,
+  type Vector,
 } from 'matter-js';
 
 import { sim, resetSimState } from '../state';
@@ -34,7 +36,16 @@ function validateWorld(world: MatterWorld): void {
   }
 }
 
-function describeBody(b: MatterBody) {
+interface BodySummary {
+  id: number;
+  label: string;
+  parts: number;
+  position: Vector;
+  bounds: Bounds;
+  area: number;
+}
+
+function describeBody(b: MatterBody): BodySummary {
   return {
     id: b.id,
     label: b.label,
@@ -51,7 +62,7 @@ function safeRect(
   w: number,
   h: number,
   opts?: IChamferableBodyDefinition & { label?: string },
-) {
+): MatterBody {
   if (![x, y, w, h].every(Number.isFinite)) {
     throw new Error(`NaN rect param for ${opts?.label ?? 'rect'}`);
   }
@@ -62,7 +73,7 @@ function safeRect(
 }
 
 // ---------- sizing ----------
-function fit16x9(canvas: HTMLCanvasElement) {
+function fit16x9(canvas: HTMLCanvasElement): { w: number; h: number } {
   const stage = canvas.parentElement as HTMLElement | null;
   const rect = stage?.getBoundingClientRect();
 
@@ -92,7 +103,7 @@ function fit16x9(canvas: HTMLCanvasElement) {
 }
 
 // ---------- world init ----------
-export function initWorld(canvas: HTMLCanvasElement) {
+export function initWorld(canvas: HTMLCanvasElement): void {
   resetSimState(sim);
 
   // Size canvas first (with DPR), then create physics
@@ -133,7 +144,7 @@ export function initWorld(canvas: HTMLCanvasElement) {
   Runner.run(sim.runner, engine);
 }
 
-export function clearWorld() {
+export function clearWorld(): void {
   if (sim.runner) Runner.stop(sim.runner);
   if (sim.engine) {
     World.clear(sim.engine.world, false);

@@ -1,5 +1,4 @@
 import { Bodies, World, Body, Vector } from 'matter-js';
-import type { World as MatterWorld } from 'matter-js';
 
 import { currentDmgMul } from '../app/game';
 import { isDisabled } from '../app/game';
@@ -21,8 +20,11 @@ import { SIDE, type Side } from '../types';
 
 import { applyCoreDamage } from './damage';
 
+import type { Vec } from '../types';
+import type { World as MatterWorld } from 'matter-js';
+
 const DEG = Math.PI / 180;
-const rad = (d: number) => d * DEG;
+const rad = (d: number): number => d * DEG;
 interface Vec2 {
   x: number;
   y: number;
@@ -49,7 +51,7 @@ export function queueFireCannon(
   target: { x: number; y: number },
   burst = 18,
   windupMs = WEAPON_WINDUP_MS,
-) {
+): void {
   if ((sim as any).gameOver) return;
   // example in queueFireCannon or fireCannon
   if (isDisabled(from, 'cannon')) return;
@@ -64,7 +66,7 @@ export function queueFireLaser(
   src: { x: number; y: number },
   core: { center: { x: number; y: number } },
   windupMs = WEAPON_WINDUP_MS,
-) {
+): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'laser')) return;
   setTimeout(() => {
@@ -80,13 +82,14 @@ export function queueFireMissiles(
   count = 5,
   windupMs = WEAPON_WINDUP_MS,
   arcTiltDeg?: number, // optional per-shot override
-) {
+): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'missile')) return;
+  let target: Vec;
   {
     const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
     assertCore(targetCore);
-    var target = targetCore.center;
+    target = targetCore.center;
   }
 
   // aim-to-target
@@ -123,7 +126,7 @@ export function queueFireMortar(
   src: { x: number; y: number },
   count = 1,
   windupMs = WEAPON_WINDUP_MS,
-) {
+): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'mortar')) return;
   setTimeout(() => {
@@ -138,7 +141,7 @@ export function fireCannon(
   src: { x: number; y: number },
   target: { x: number; y: number },
   burst = 18,
-) {
+): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'cannon')) return;
   const dir = Vector.normalise({ x: target.x - src.x, y: target.y - src.y });
@@ -179,7 +182,7 @@ export function fireCannon(
 }
 
 // -- Laser (unchanged here; no physical projectile body) --
-export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
+export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(side, 'laser')) return;
 
@@ -223,7 +226,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
 
   // --- FX (kept as you had it) ---
   const now = performance.now();
-  (sim as any).fxBeams = (sim as any).fxBeams || [];
+  (sim as any).fxBeams = (sim as any).fxBeams ?? [];
   (sim as any).fxBeams.push({
     x1: src.x,
     y1: src.y,
@@ -234,7 +237,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2) {
     tEnd: now + LASER_FX.beamMs,
   });
 
-  (sim as any).fxBursts = (sim as any).fxBursts || [];
+  (sim as any).fxBursts = (sim as any).fxBursts ?? [];
   (sim as any).fxBursts.push({
     x: src.x,
     y: src.y,
@@ -260,13 +263,14 @@ export function fireMissiles(
   src: { x: number; y: number },
   count = 5,
   arcTiltDeg?: number,
-) {
+): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'missile')) return;
+  let target: Vec;
   {
     const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
     assertCore(targetCore);
-    var target = targetCore.center;
+    target = targetCore.center;
   }
 
   // aim-to-target (works both sides)
@@ -309,13 +313,14 @@ export function fireMissiles(
 }
 
 // -- Mortar --
-export function fireMortar(from: Side, src: { x: number; y: number }, count = 1) {
+export function fireMortar(from: Side, src: { x: number; y: number }, count = 1): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'mortar')) return;
+  let target: Vec;
   {
     const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
     assertCore(targetCore);
-    var target = targetCore.center;
+    target = targetCore.center;
   }
 
   for (let i = 0; i < count; i++) {
@@ -357,7 +362,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
   }
 }
 
-export function tickHoming(dtMs: number) {
+export function tickHoming(dtMs: number): void {
   if (!HOMING_ENABLED) return;
   const dt = Math.max(0.001, dtMs / 1000);
 
@@ -373,14 +378,14 @@ export function tickHoming(dtMs: number) {
       continue;
     }
 
-    const plug = (m as any).plugin || {};
+    const plug = (m as any).plugin ?? {};
     if (plug.ptype !== 'missile') {
       sim.homing.splice(i, 1);
       continue;
     }
 
     // TTL cleanup
-    if (HOMING.ttlMs > 0 && now - (plug.spawnT || now) > HOMING.ttlMs) {
+    if (HOMING.ttlMs > 0 && now - (plug.spawnT ?? now) > HOMING.ttlMs) {
       {
         const w = sim.world;
         assertWorld(w);
@@ -391,10 +396,11 @@ export function tickHoming(dtMs: number) {
     }
 
     // Target is the opposing core center
+    let target: Vec;
     {
       const tc = plug.side === SIDE.LEFT ? sim.coreR : sim.coreL;
       assertCore(tc);
-      var target = tc.center;
+      target = tc.center;
     }
     const toX = target.x - m.position.x;
     const toY = target.y - m.position.y;
@@ -402,7 +408,12 @@ export function tickHoming(dtMs: number) {
     const desiredAng = Math.atan2(toY, toX);
 
     // current velocity → angle & speed
-    const v = (m as any).velocity || m.velocity || { x: 0, y: 0 };
+    interface Vec {
+      x: number;
+      y: number;
+    }
+    type MaybeVelocity = { velocity?: Vec } | null | undefined;
+    const v: Vec = (m as MaybeVelocity)?.velocity ?? { x: 0, y: 0 };
     const speed = Math.hypot(v.x, v.y);
     const currAng = speed > 0.001 ? Math.atan2(v.y, v.x) : desiredAng;
 
@@ -462,7 +473,7 @@ function coreRadiusFor(side: Side): number {
   return typeof r === 'number' && r > 4 ? r : Math.max(30, sim.H * 0.09);
 }
 
-function clampX(x: number) {
+function clampX(x: number): number {
   return Math.min(sim.W - EDGE_MARGIN_PX, Math.max(EDGE_MARGIN_PX, x));
 }
 
@@ -470,7 +481,22 @@ function clampX(x: number) {
 const BOTTOM_Y_FRACTION = 0.88; // vertical row near bottom
 const ARTY_X_FROM_MID_R = 0.45; // horizontal offset from midline (in core radii)
 
-export function makeWeapons(side: Side) {
+export interface WeapType {
+  pos: {
+    x: number;
+    y: number;
+  };
+  mount: Body;
+}
+
+export interface WeaponsType {
+  cannon: WeapType;
+  laser: WeapType;
+  missile: WeapType;
+  mortar: WeapType;
+}
+
+export function makeWeapons(side: Side): WeaponsType {
   const mid = sim.W * 0.5;
   const r = coreRadiusFor(side); // you already have this helper in the file
 
@@ -491,7 +517,7 @@ export function makeWeapons(side: Side) {
   const yMortar = Math.min(sim.H - 36, sim.H * BOTTOM_Y_FRACTION);
   const xMortar = clampX(mid + sgn * (r * ARTY_X_FROM_MID_R));
 
-  const mk = (x: number, y: number, label: string) => {
+  const mk = (x: number, y: number, label: string): WeapType => {
     const mount = Bodies.circle(x, y, 5, { isStatic: true, isSensor: true });
     (mount as any).plugin = { kind: 'weaponMount', side, label };
     {

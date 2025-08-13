@@ -76,7 +76,7 @@ export function makePipe(side: -1 | 1): Pipe {
   return { x, innerX, pipeW, intake, segs, side };
 }
 
-export function applyPipeForces(pipes: Pipe[]) {
+export function applyPipeForces(pipes: Pipe[]): void {
   const { H } = sim;
   const w = sim.world;
   assertWorld(w);
@@ -144,7 +144,7 @@ export function gelRect(
   w: number,
   h: number,
   opts?: { dampX?: number; dampY?: number; kx?: number; ky?: number }, // legacy kx/ky still accepted
-) {
+): Body {
   const b = Bodies.rectangle(x, y, w, h, { isStatic: true, isSensor: true });
   (b as any).plugin = {
     kind: 'gel',
@@ -161,7 +161,7 @@ export function gelRect(
   return b;
 }
 
-export function addPaddle(x: number, y: number, amp: number, spd: number, dir: number) {
+export function addPaddle(x: number, y: number, amp: number, spd: number, dir: number): Body {
   const p = Bodies.rectangle(x, y, 80, 8, { isStatic: true, isSensor: true });
   (p as any).plugin = { kind: 'paddle', t: Math.random() * 6, amp, spd, dir };
   {
@@ -173,7 +173,7 @@ export function addPaddle(x: number, y: number, amp: number, spd: number, dir: n
   return p;
 }
 
-export function tickPaddles(dt: number) {
+export function tickPaddles(dt: number): void {
   for (const p of sim.paddles) {
     const plug = (p as any).plugin;
     plug.t += dt * plug.spd;
@@ -184,7 +184,7 @@ export function tickPaddles(dt: number) {
 }
 
 // Push ammo along the bottom toward the edge pipes (gentle outward + tiny lift)
-export function conveyorPush(body: Matter.Body) {
+export function conveyorPush(body: Matter.Body): void {
   // stronger outward nudge + a touch more lift to avoid dead-sticking
   const dir = body.position.x < sim.W / 2 ? -1 : 1;
   Body.applyForce(body, body.position, {

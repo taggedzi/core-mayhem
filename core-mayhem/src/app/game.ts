@@ -1,30 +1,28 @@
 import { Events, World, Body, Query, Composite } from 'matter-js';
 
-import type { World as MatterWorld, Engine, IEventCollision } from 'matter-js';
-
 import { DEFAULTS } from '../config';
 import { COOLDOWN_MS, WEAPON_WINDUP_MS } from '../config';
-import { tickHoming } from '../sim/weapons';
-import { applyGelForces } from '../sim/gel';
-import { drawFrame } from '../render/draw';
-import { updateHUD } from '../render/hud';
 import { FX_MS } from '../config';
 import { EXPLOSION } from '../config';
 import { REPAIR_EFFECT } from '../config';
 import { GAMEOVER } from '../config';
-import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
-// --- DEV HOTKEYS: only in Vite dev or if forced via config ---
 import { DEV_KEYS } from '../config';
-import { applyCoreDamage } from '../sim/damage';
 import { MATCH_LIMIT } from '../config';
 import { MODS } from '../config';
 import { SHIELD } from '../config';
+import { drawFrame } from '../render/draw';
+import { updateHUD } from '../render/hud';
 import { spawnAmmo, beforeUpdateAmmo } from '../sim/ammo';
 import { buildLanes } from '../sim/channels';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { makeCore, angleToSeg } from '../sim/core';
+import { applyCoreDamage } from '../sim/damage';
+import { applyGelForces } from '../sim/gel';
 import { makePipe, applyPipeForces, addPaddle, tickPaddles, gelRect } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
+import { tickHoming } from '../sim/weapons';
+import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
+// --- DEV HOTKEYS: only in Vite dev or if forced via config ---
 import {
   makeWeapons,
   queueFireCannon,
@@ -35,6 +33,8 @@ import {
 import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
+
+import type { World as MatterWorld, Engine, IEventCollision } from 'matter-js';
 
 const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
 
@@ -51,8 +51,11 @@ interface SideMods {
 }
 
 // --------- local runtime/type asserts (centralized, fail-fast) ----------
-type Vec2 = { x: number; y: number };
-type CoreMinimal = {
+interface Vec2 {
+  x: number;
+  y: number;
+}
+interface CoreMinimal {
   center: Vec2;
   rot: number;
   rotSpeed: number;
@@ -62,7 +65,7 @@ type CoreMinimal = {
   centerHPmax: number;
   shieldHP: number;
   shieldHPmax: number;
-};
+}
 function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
   if (!w) throw new Error('World not initialized');
 }
@@ -76,12 +79,10 @@ function assertCoreFull(c: any): asserts c is CoreMinimal {
   if (!c || !c.center || !Array.isArray(c.segHP)) throw new Error('Core not initialized');
 }
 
-function ensureMods() {
+function ensureMods(): void {
   const anySim = sim as any;
-  if (!anySim.modsL)
-    anySim.modsL = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null } as SideMods;
-  if (!anySim.modsR)
-    anySim.modsR = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null } as SideMods;
+  anySim.modsL ??= { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null } as SideMods;
+  anySim.modsR ??= { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null } as SideMods;
 }
 
 function modsFor(side: Side): SideMods {
@@ -99,13 +100,13 @@ export function isDisabled(side: Side, kind: WeaponKind): boolean {
   return performance.now() < m.disableUntil && m.disabledType === kind;
 }
 
-export function applyBuff(side: Side) {
+export function applyBuff(side: Side): void {
   const m = modsFor(side);
   m.dmgMul = MODS.buffMultiplier;
   m.dmgUntil = performance.now() + MODS.buffDurationMs;
 }
 
-export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null) {
+export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): void {
   const m = modsFor(targetSide);
   const pool = MODS.allowedDebuffs;
   let k: WeaponKind | null = kind;
@@ -121,7 +122,7 @@ export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null) {
   m.disableUntil = performance.now() + MODS.debuffDurationMs;
 }
 
-function explodeAt(x: number, y: number, shooterSide: Side) {
+function explodeAt(x: number, y: number, shooterSide: Side): void {
   if (!EXPLOSION.enabled) return;
 
   // rate limit
@@ -139,14 +140,15 @@ function explodeAt(x: number, y: number, shooterSide: Side) {
   // query nearby & push
   const r = EXPLOSION.radius;
   const aabb = { min: { x: x - r, y: y - r }, max: { x: x + r, y: y + r } };
+  let bodies = null;
   {
     const w = sim.world;
     assertWorld(w);
-    var bodies = Query.region(Composite.allBodies(w), aabb);
+    bodies = Query.region(Composite.allBodies(w), aabb);
   }
 
   for (const b of bodies) {
-    const plug = (b as any).plugin || {};
+    const plug = (b as any).plugin ?? {};
     // Push ammo & projectiles away
     if (plug.kind === 'ammo' || plug.kind === 'projectile') {
       const dx = b.position.x - x,
@@ -186,10 +188,10 @@ export function startGame(canvas: HTMLCanvasElement) {
   (sim as any).homing = []; // missiles to home
 
   // Only seed settings once; keep whatever was already configured between runs
-  if (!sim.settings) sim.settings = { ...DEFAULTS };
+  sim.settings ??= { ...DEFAULTS };
 
   sim.started = true;
-  (sim as any).stats = (sim as any).stats || { leftWins: 0, rightWins: 0, ties: 0 };
+  (sim as any).stats = (sim as any).stats ?? { leftWins: 0, rightWins: 0, ties: 0 };
   updateScoreboard(); // draw initial 0–0
 
   if ((sim as any).restartTO) {
@@ -260,7 +262,7 @@ export function startGame(canvas: HTMLCanvasElement) {
   (sim as any).wepR = wepR;
 
   if (devKeysOn) {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent): void => {
       if ((sim as any).gameOver) return;
 
       // helpers
@@ -322,8 +324,8 @@ export function startGame(canvas: HTMLCanvasElement) {
     for (const p of e.pairs) {
       const A = p.bodyA as any,
         B = p.bodyB as any;
-      const a = A.plugin || {},
-        b = B.plugin || {};
+      const a = A.plugin ?? {},
+        b = B.plugin ?? {};
 
       // deposits (unchanged)
       if (a.kind === 'ammo' && b.kind === 'container') {
@@ -346,11 +348,11 @@ export function startGame(canvas: HTMLCanvasElement) {
       }
 
       // explode-on-anything (except mounts) with grace period
-      const explodeIf = (proj: any, other: any) => {
-        const pp = proj?.plugin || {};
+      const explodeIf = (proj: any, other: any): void => {
+        const pp = proj?.plugin ?? {};
         if (pp.kind !== 'projectile') return;
         if (other?.plugin?.kind === 'weaponMount') return; // ignore mounts
-        if (performance.now() - (pp.spawnT || 0) < EXPLOSION.graceMs) return; // grace
+        if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return; // grace
 
         explodeAt(proj.position.x, proj.position.y, pp.side);
         {
@@ -366,7 +368,7 @@ export function startGame(canvas: HTMLCanvasElement) {
     }
   });
 
-  function deposit(ammo: any, container: any) {
+  function deposit(ammo: any, container: any): void {
     const accept = container.plugin.accept as string[];
     if (!accept.includes(ammo.plugin.type)) return;
     {
@@ -374,18 +376,22 @@ export function startGame(canvas: HTMLCanvasElement) {
       assertWorld(w);
       World.remove(w, ammo);
     }
-    ammo.plugin.side === SIDE.LEFT ? sim.ammoL-- : sim.ammoR--;
+    if (ammo.plugin.side === SIDE.LEFT) {
+      sim.ammoL--;
+    } else {
+      sim.ammoR--;
+    }
     const bins = (container.plugin.side === SIDE.LEFT ? sim.binsL : sim.binsR) as any;
     const key = container.plugin.label as string;
     if (bins[key]) bins[key].fill++;
   }
 
-  function hit(proj: any, coreBody: any) {
+  function hit(proj: any, coreBody: any): void {
     const side: Side = coreBody.plugin.side; // the side being hit
     const coreMaybe = side === SIDE.LEFT ? sim.coreL : sim.coreR;
     assertCoreFull(coreMaybe);
     const core = coreMaybe;
-    const dmg = proj?.plugin?.dmg || 8;
+    const dmg = proj?.plugin?.dmg ?? 8;
     const isCenter = coreBody.plugin.kind === 'coreCenter';
 
     // --- ABLATIVE SHIELD: if any shieldHP remains, it absorbs projectile damage ---
@@ -425,7 +431,7 @@ export function startGame(canvas: HTMLCanvasElement) {
     }
 
     // impact/burn FX + explode
-    const ptype = proj?.plugin?.ptype || 'cannon';
+    const ptype = proj?.plugin?.ptype ?? 'cannon';
     const shooterSide = proj?.plugin?.side;
     const color = shooterSide === SIDE.LEFT ? css('--left') : css('--right');
     (sim.fxImp ||= []).push({
@@ -455,7 +461,7 @@ export function startGame(canvas: HTMLCanvasElement) {
 
     // Time-limit: declare a tie if we run too long
     if (MATCH_LIMIT.enabled && MATCH_LIMIT.ms > 0 && !(sim as any).gameOver) {
-      const elapsed = performance.now() - ((sim as any).matchStart || 0);
+      const elapsed = performance.now() - ((sim as any).matchStart ?? 0);
       if (elapsed >= MATCH_LIMIT.ms) {
         // 0 means tie; this will show the banner and schedule auto-restart
         declareWinner(0);
@@ -491,7 +497,7 @@ export function startGame(canvas: HTMLCanvasElement) {
     }
 
     // bin triggers
-    const doSide = (side: Side, bins: any, wep: any) => {
+    const doSide = (side: Side, bins: any, wep: any): void => {
       const key = side === SIDE.LEFT ? 'L' : 'R';
       const color = side === SIDE.LEFT ? css('--left') : css('--right');
       const now = performance.now();
@@ -599,7 +605,7 @@ export function startGame(canvas: HTMLCanvasElement) {
   let raf = 0,
     frames = 0,
     fpsTimer = performance.now();
-  const loop = () => {
+  const loop = (): void => {
     drawFrame(ctx);
     updateHUD();
     const now = performance.now();
@@ -614,8 +620,6 @@ export function startGame(canvas: HTMLCanvasElement) {
   };
   raf = requestAnimationFrame(loop);
 
-  console.assert(typeof WEAPON_WINDUP_MS === 'number', 'WEAPON_WINDUP_MS missing');
-  console.assert(COOLDOWN_MS && typeof COOLDOWN_MS.cannon === 'number', 'COOLDOWN_MS missing');
   return function stop() {
     sim.started = false;
     cancelAnimationFrame(raf);
@@ -624,7 +628,7 @@ export function startGame(canvas: HTMLCanvasElement) {
   };
 }
 
-function repair(side: Side) {
+function repair(side: Side): void {
   const coreMaybe = side === SIDE.LEFT ? sim.coreL : sim.coreR;
   assertCoreFull(coreMaybe);
   const core = coreMaybe;
@@ -648,19 +652,19 @@ function repair(side: Side) {
   }
 }
 
-const css = (name: string) =>
+const css = (name: string): string =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-function isDead(core: any) {
+function isDead(core: any): boolean {
   return (core?.centerHP | 0) <= 0;
 }
 
-function declareWinner(winner: Side | 0) {
+function declareWinner(winner: Side | 0): void {
   (sim as any).winner = winner; // 0 = tie
   (sim as any).gameOver = true;
   (sim as any).winnerAt = performance.now();
 
-  const stats = (sim as any).stats || ((sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 });
+  const stats = (sim as any).stats ?? ((sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 });
   if (winner === -1) stats.leftWins++;
   else if (winner === 1) stats.rightWins++;
   else stats.ties++;
@@ -677,7 +681,7 @@ function declareWinner(winner: Side | 0) {
   }
 }
 
-function maybeEndMatch() {
+function maybeEndMatch(): void {
   if ((sim as any).gameOver) return;
   const deadL = isDead(sim.coreL);
   const deadR = isDead(sim.coreR);
@@ -685,10 +689,10 @@ function maybeEndMatch() {
   declareWinner(deadL && deadR ? 0 : deadL ? SIDE.RIGHT : SIDE.LEFT);
 }
 
-function updateScoreboard() {
+function updateScoreboard(): void {
   const el = document.getElementById('score');
   if (!el) return;
-  const s = (sim as any).stats || { leftWins: 0, rightWins: 0, ties: 0 };
+  const s = (sim as any).stats ?? { leftWins: 0, rightWins: 0, ties: 0 };
   const lWins = s.leftWins | 0,
     rWins = s.rightWins | 0,
     ties = s.ties | 0;

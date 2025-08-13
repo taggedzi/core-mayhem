@@ -54,8 +54,8 @@ export function beforeUpdateAmmo() {
       if (b.position.y > sim.H * 0.915) conveyorPush(b);
       // cleanup so supply refills
       const speed = Math.hypot(b.velocity.x || 0, b.velocity.y || 0);
-      plug.age = (plug.age || 0) + dt;
-      plug.idle = speed < 0.15 ? (plug.idle || 0) + dt : 0;
+      plug.age = (plug.age ?? 0) + dt;
+      plug.idle = speed < 0.15 ? (plug.idle ?? 0) + dt : 0;
 
       // micro anti-stall nudge for nearly-still ammo anywhere on the board
       if (speed < 0.02) {

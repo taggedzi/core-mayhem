@@ -1,5 +1,4 @@
 import { Composite } from 'matter-js';
-import type { World as MatterWorld } from 'matter-js';
 
 import { LASER_FX } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
@@ -15,8 +14,10 @@ import { GAMEOVER } from '../config';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
+import type { World as MatterWorld } from 'matter-js';
+
 const SHOW_DAMPERS = true; // set false later to hide them entirely
-const css = (name: string) =>
+const css = (name: string): string =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 // Fail-fast + narrowing for world (so TS knows it's not null)
@@ -24,7 +25,7 @@ function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
   if (!w) throw new Error('World not initialized');
 }
 
-export function drawFrame(ctx: CanvasRenderingContext2D) {
+export function drawFrame(ctx: CanvasRenderingContext2D): void {
   const W = sim.W,
     H = sim.H;
   ctx.clearRect(0, 0, W, H);
@@ -202,7 +203,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D) {
     if (plug.kind === 'ammo') {
       const col = colorForAmmo(plug.type);
       ctx.beginPath();
-      ctx.arc(b.position.x, b.position.y, b.circleRadius || 6, 0, Math.PI * 2);
+      ctx.arc(b.position.x, b.position.y, b.circleRadius ?? 6, 0, Math.PI * 2);
       ctx.fillStyle = col;
       ctx.fill();
     }
@@ -219,20 +220,20 @@ export function drawFrame(ctx: CanvasRenderingContext2D) {
   drawGameOverBanner(ctx);
 }
 
-export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
+export function drawBins(ctx: CanvasRenderingContext2D, bins: any): void {
   if (!bins) return;
 
-  const css = (name: string) =>
+  const css = (name: string): string =>
     getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
   const lineT = parseFloat(css('--wall-t')) || Math.max(2, sim.W * 0.0025);
 
   const now = performance.now();
-  const mods = (sim as any).mods || { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
+  const mods = (sim as any).mods ?? { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
 
   // helper: active state for buff/debuff
-  const buffActive = now < (mods.dmgUntil || 0);
-  const debuffActive = now < (mods.disableUntil || 0);
+  const buffActive = now < (mods.dmgUntil ?? 0);
+  const debuffActive = now < (mods.disableUntil ?? 0);
 
   // deterministic order just for consistent z-draw; positions still come from bin.pos
   const order = ['buff', 'cannon', 'laser', 'missile', 'debuff', 'mortar', 'shield', 'repair'];
@@ -245,7 +246,7 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
     if (!bin) continue;
 
     // prefer our thin-wall rectangle for geometry; fall back if needed
-    const wall = bin.box || bin.body || bin.intake;
+    const wall = bin.box ?? bin.body ?? bin.intake;
     if (!wall || !wall.bounds) continue;
 
     const cx = bin.pos?.x ?? wall.position.x;
@@ -254,7 +255,7 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
     const h = wall.bounds.max.y - wall.bounds.min.y;
 
     // style overrides per-bin (fallbacks preserved)
-    const s = (bin as any).style || {};
+    const s = (bin as any).style ?? {};
     const stroke = s.stroke ?? '#94a8ff';
     const boxBg = s.box ?? 'rgba(14,23,48,0.35)';
     const fillCol =
@@ -337,7 +338,7 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
 
     // ---- 4) Active FX for Buff / Debuff ----
     if (key === 'buff' && buffActive) {
-      const tLeft = Math.ceil(((mods.dmgUntil || 0) - now) / 1000);
+      const tLeft = Math.ceil(((mods.dmgUntil ?? 0) - now) / 1000);
       const pulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(now * 0.012));
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -352,13 +353,13 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
       ctx.font = `${Math.max(10, sim.H * 0.016)}px var(--mono, monospace)`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText(`DMG x${(mods.dmgMul || 1).toFixed(1)}  ${tLeft}s`, cx, cy - h / 2 - 14);
+      ctx.fillText(`DMG x${(mods.dmgMul ?? 1).toFixed(1)}  ${tLeft}s`, cx, cy - h / 2 - 14);
       ctx.restore();
     }
 
     if (key === 'debuff' && debuffActive) {
-      const tLeft = Math.ceil(((mods.disableUntil || 0) - now) / 1000);
-      const kind = (mods.disabledType || '').toUpperCase();
+      const tLeft = Math.ceil(((mods.disableUntil ?? 0) - now) / 1000);
+      const kind = (mods.disabledType ?? '').toUpperCase();
       const pulse = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(now * 0.012));
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -385,13 +386,13 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any) {
   }
 }
 
-function drawCore(ctx: CanvasRenderingContext2D, core: any) {
+function drawCore(ctx: CanvasRenderingContext2D, core: any): void {
   const x = core.center.x,
     y = core.center.y,
     R = core.radius;
 
   // --- Team rim only when shields are DOWN ---
-  if ((core.shield || 0) <= 0) {
+  if ((core.shield ?? 0) <= 0) {
     const R = coreRadius(core);
     const w = CORE_RIM_WIDTH_R * R;
     ctx.save();
@@ -441,7 +442,7 @@ function drawCore(ctx: CanvasRenderingContext2D, core: any) {
   ctx.stroke();
 }
 
-function drawWeaponMounts(ctx: CanvasRenderingContext2D, wep: any, color: string) {
+function drawWeaponMounts(ctx: CanvasRenderingContext2D, wep: any, color: string): void {
   if (!wep) return;
   const entries = [
     ['C', wep.cannon?.pos],
@@ -464,7 +465,7 @@ function drawWeaponMounts(ctx: CanvasRenderingContext2D, wep: any, color: string
   });
 }
 
-function colorForAmmo(t: string) {
+function colorForAmmo(t: string): string {
   if (t === 'heavy') return '#ffca1a';
   if (t === 'volatile') return '#ff3d3d';
   if (t === 'emp') return '#00ffd5';
@@ -472,12 +473,12 @@ function colorForAmmo(t: string) {
   if (t === 'shield') return '#9fc5ff';
   return '#b6ff00';
 }
-function getCSS(name: string) {
+function getCSS(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
 // ---- helpers: projectile rendering + impact FX ----
-function renderProjectiles(ctx: CanvasRenderingContext2D) {
+function renderProjectiles(ctx: CanvasRenderingContext2D): void {
   const w = sim.world;
   assertWorld(w);
   const bodies = Composite.allBodies(w);
@@ -486,7 +487,7 @@ function renderProjectiles(ctx: CanvasRenderingContext2D) {
     if (!plug || plug.kind !== 'projectile') continue;
 
     const p = b.position;
-    const v = (b as any).velocity || { x: 0, y: 0 };
+    const v = (b as any).velocity ?? { x: 0, y: 0 };
     const ang = Math.atan2(v.y, v.x);
 
     ctx.save();
@@ -538,8 +539,8 @@ function renderProjectiles(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function renderImpactFX(ctx: CanvasRenderingContext2D) {
-  (sim as any).fxImp ||= [];
+function renderImpactFX(ctx: CanvasRenderingContext2D): void {
+  (sim as any).fxImp ??= [];
   const now = performance.now();
   // keep only active FX
   sim.fxImp = sim.fxImp.filter((f) => now - f.t0 < f.ms);
@@ -620,8 +621,8 @@ function renderImpactFX(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function renderBeams(ctx: CanvasRenderingContext2D) {
-  (sim as any).fxBeam ||= [];
+function renderBeams(ctx: CanvasRenderingContext2D): void {
+  (sim as any).fxBeam ??= [];
   const now = performance.now();
   // keep active beams only
   sim.fxBeam = sim.fxBeam.filter((b) => now - b.t0 < b.ms);
@@ -644,8 +645,8 @@ function renderBeams(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function renderSweep(ctx: CanvasRenderingContext2D) {
-  (sim as any).fxSweep ||= [];
+function renderSweep(ctx: CanvasRenderingContext2D): void {
+  (sim as any).fxSweep ??= [];
   const now = performance.now();
   // keep ones still within their ms window
   sim.fxSweep = sim.fxSweep.filter((s) => now - s.t0 < s.ms);
@@ -676,7 +677,7 @@ function renderSweep(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function drawCoreStats(ctx: CanvasRenderingContext2D, core: any, color: string) {
+function drawCoreStats(ctx: CanvasRenderingContext2D, core: any, color: string): void {
   if (!core?.center) return;
   const { x, y } = core.center;
 
@@ -685,8 +686,8 @@ function drawCoreStats(ctx: CanvasRenderingContext2D, core: any, color: string) 
   const fs2 = Math.max(10, Math.min(14, sim.H * 0.018)); // Shield line
 
   // Integers for readability
-  const hp = Math.max(0, Math.round(core.centerHP || 0));
-  const sh = Math.max(0, Math.round(core.shieldHP || 0)); // <-- ablative shield pool
+  const hp = Math.max(0, Math.round(core.centerHP ?? 0));
+  const sh = Math.max(0, Math.round(core.shieldHP ?? 0)); // <-- ablative shield pool
 
   // faint disc backdrop for contrast
   ctx.save();
@@ -718,14 +719,14 @@ function drawCoreStats(ctx: CanvasRenderingContext2D, core: any, color: string) 
   ctx.fillText(shieldText, x, y + fs2 * 0.75);
 }
 
-function coreRadius(c: any) {
+function coreRadius(c: any): number {
   return c?.outerR ?? c?.R ?? c?.radius ?? c?.ringR ?? Math.max(36, sim.H * 0.09);
 }
 
-function drawShieldRing(ctx: CanvasRenderingContext2D, core: any, colorOverride?: string) {
+function drawShieldRing(ctx: CanvasRenderingContext2D, core: any, colorOverride?: string): void {
   // Use ablative shield pool
-  const hp = Math.max(0, core?.shieldHP || 0);
-  const hpMax = Math.max(1, core?.shieldHPmax || 1);
+  const hp = Math.max(0, core?.shieldHP ?? 0);
+  const hpMax = Math.max(1, core?.shieldHPmax ?? 1);
   const frac = Math.max(0, Math.min(1, hp / hpMax));
   if (frac <= 0 || !core?.center) return;
 
@@ -740,7 +741,7 @@ function drawShieldRing(ctx: CanvasRenderingContext2D, core: any, colorOverride?
       : typeof css === 'function'
         ? css(teamCssName)?.trim()
         : '') || '';
-  const color = colorOverride || teamFromCss || SHIELD_RING_COLOR;
+  const color = colorOverride ?? teamFromCss ?? SHIELD_RING_COLOR;
 
   // Alpha rises with fraction; soft glow
   ctx.save();
@@ -758,14 +759,14 @@ function drawShieldRing(ctx: CanvasRenderingContext2D, core: any, colorOverride?
   ctx.restore();
 }
 
-function drawGameOverBanner(ctx: CanvasRenderingContext2D) {
+function drawGameOverBanner(ctx: CanvasRenderingContext2D): void {
   if (!(sim as any).gameOver) return;
 
   const winner = (sim as any).winner as Side | 0;
   const msg = winner === 0 ? 'STALEMATE' : winner === -1 ? 'LEFT WINS' : 'RIGHT WINS';
 
   const now = performance.now();
-  const t0 = (sim as any).winnerAt || now;
+  const t0 = (sim as any).winnerAt ?? now;
   const remainMs = Math.max(0, GAMEOVER.bannerMs - (now - t0));
   const remainSec = Math.ceil(remainMs / 1000);
 
@@ -803,11 +804,11 @@ function drawGameOverBanner(ctx: CanvasRenderingContext2D) {
   ctx.restore();
 }
 
-function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any) {
+function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any): boolean {
   const p = b?.plugin;
   if (!p || p.kind !== 'projectile') return false;
 
-  const sty = (PROJECTILE_STYLE as any)[p.ptype] || PROJECTILE_STYLE.cannon;
+  const sty = (PROJECTILE_STYLE as any)[p.ptype] ?? PROJECTILE_STYLE.cannon;
   const pos = b.position;
   const vel = (b as any).velocity ?? b.velocity;
   const speed = Math.hypot(vel.x, vel.y);
@@ -907,7 +908,7 @@ function drawOneProjectile(ctx: CanvasRenderingContext2D, b: any) {
 }
 
 // Call this from drawFrame after background/obstacles:
-export function renderProjectilesFancy(ctx: CanvasRenderingContext2D) {
+export function renderProjectilesFancy(ctx: CanvasRenderingContext2D): void {
   const w = sim.world;
   assertWorld(w);
   const bodies = Composite.allBodies(w);
@@ -916,8 +917,13 @@ export function renderProjectilesFancy(ctx: CanvasRenderingContext2D) {
   }
 }
 
-function teamColor(side: number) {
+function teamColor(side: number): string {
   return side < 0 ? css('--left') || '#58e6ff' : css('--right') || '#ff69d4';
+}
+
+interface Point {
+  x: number;
+  y: number;
 }
 
 // Deterministic-ish jitter using time; no per-frame popping
@@ -929,7 +935,7 @@ function jitterPolyline(
   segs: number,
   amp: number,
   t: number,
-) {
+): Point[] {
   const pts: { x: number; y: number }[] = [];
   for (let i = 0; i <= segs; i++) {
     const u = i / segs;
@@ -947,7 +953,7 @@ function jitterPolyline(
   return pts;
 }
 
-function pathFromPoints(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) {
+function pathFromPoints(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]): void {
   if (!pts || pts.length === 0) return;
   const first = pts[0];
   if (!first) return;
@@ -966,7 +972,7 @@ function drawBurst(
   y: number,
   color: string,
   life01: number,
-) {
+): void {
   const r = LASER_FX.flashSize * (0.7 + 0.3 * life01);
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
@@ -995,9 +1001,9 @@ function drawBurst(
   ctx.restore();
 }
 
-export function drawLaserFX(ctx: CanvasRenderingContext2D) {
-  const beams = (sim as any).fxBeams || [];
-  const bursts = (sim as any).fxBursts || [];
+export function drawLaserFX(ctx: CanvasRenderingContext2D): void {
+  const beams = (sim as any).fxBeams ?? [];
+  const bursts = (sim as any).fxBursts ?? [];
   const now = performance.now();
 
   // prune expired
@@ -1058,7 +1064,7 @@ function fitFontPx(
   return Math.max(px, minPx);
 }
 
-function drawSideModsBadge(ctx: CanvasRenderingContext2D, side: Side) {
+function drawSideModsBadge(ctx: CanvasRenderingContext2D, side: Side): void {
   const anySim = sim as any;
   const m = side === SIDE.LEFT ? anySim.modsL : anySim.modsR;
   if (!m) return;
