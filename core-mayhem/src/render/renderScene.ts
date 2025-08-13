@@ -58,6 +58,18 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       ctx.restore();
       break;
     }
+    case 'poly': {
+      const pts = cmd.points;
+      if (!pts.length) break;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      if (cmd.close !== false) ctx.closePath();
+      ctx.lineWidth = cmd.lineWidth ?? 1;
+      ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
+      ctx.stroke();
+      break;
+    }
   }
 }
 

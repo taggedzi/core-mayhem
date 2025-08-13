@@ -2,6 +2,7 @@
 import { Composite } from 'matter-js';
 
 import { WEAPON_WINDUP_MS } from '../config';
+import { WALL_T } from '../config'; // used for wall thickness
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
@@ -39,6 +40,13 @@ export type DrawCommand =
       stroke?: string;
       lineWidth?: number;
       alpha?: number;
+    }
+  | {
+      kind: 'poly';
+      points: { x: number; y: number }[];
+      stroke?: string;
+      lineWidth?: number;
+      close?: boolean;
     };
 
 export interface Scene {
@@ -152,5 +160,77 @@ export function toDrawCommands(): Scene {
       }
     }
   }
+  {
+    const w = sim.world;
+    if (!w) return { width: W, height: H, commands: cmds };
+
+    const bodies = Composite.allBodies(w);
+
+    for (const b of bodies) {
+      const plug = (b as any).plugin;
+      if (!plug) continue;
+
+      // PINS — filled dots
+      if (plug.kind === 'pin') {
+        const r = ((b as any).circleRadius ?? 4) as number;
+        cmds.push({
+          kind: 'circle',
+          x: b.position.x,
+          y: b.position.y,
+          r,
+          fill: '#2b3a78',
+        });
+        continue;
+      }
+
+      // ROTORS — thin outline polygons
+      if (plug.kind === 'rotor') {
+        const v = (b as any).vertices as { x: number; y: number }[] | undefined;
+        if (v && v.length >= 2) {
+          cmds.push({
+            kind: 'poly',
+            points: v,
+            stroke: '#2b3a78',
+            lineWidth: 2,
+            close: true,
+          });
+        }
+        continue;
+      }
+
+      // PIPE WALLS — single vertical stroke at rectangle centerline
+      if (plug.kind === 'pipeWall') {
+        const m = b.bounds;
+        const cx = (m.min.x + m.max.x) * 0.5;
+        cmds.push({
+          kind: 'line',
+          x1: cx,
+          y1: m.min.y,
+          x2: cx,
+          y2: m.max.y,
+          stroke: '#3558b6',
+          lineWidth: WALL_T,
+        });
+        continue;
+      }
+
+      // LANE WALLS — single vertical stroke in theme color
+      if (plug.kind === 'laneWall') {
+        const m = b.bounds;
+        const cx = (m.min.x + m.max.x) * 0.5;
+        cmds.push({
+          kind: 'line',
+          x1: cx,
+          y1: m.min.y,
+          x2: cx,
+          y2: m.max.y,
+          stroke: 'var(--line)', // renderer resolves CSS var
+          lineWidth: WALL_T,
+        });
+        continue;
+      }
+    }
+  }
+
   return { width: W, height: H, commands: cmds };
 }

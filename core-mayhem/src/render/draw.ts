@@ -5,6 +5,9 @@ const USE_ADAPTER = true; // keep the adapter hook enabled
 const USE_ADAPTER_CORES = true; // render cores via adapter instead of legacy code
 const USE_ADAPTER_FX = true;
 const USE_ADAPTER_AMMO = true;
+const USE_ADAPTER_PINS = true;
+const USE_ADAPTER_ROTORS = true;
+const USE_ADAPTER_WALLS = true;
 
 import { Composite } from 'matter-js';
 
@@ -68,55 +71,61 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   }
 
   // pins (filled dots)
-  ctx.fillStyle = '#2b3a78';
-  Composite.allBodies(world).forEach((b) => {
-    const k = (b as any).plugin?.kind;
-    if (k === 'pin') {
-      ctx.beginPath();
-      const r = ((b as any).circleRadius ?? 4) as number; // default for safety
-      ctx.arc(b.position.x, b.position.y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  });
+  if (!USE_ADAPTER_PINS) {
+    ctx.fillStyle = '#2b3a78';
+    Composite.allBodies(world).forEach((b) => {
+      const k = (b as any).plugin?.kind;
+      if (k === 'pin') {
+        ctx.beginPath();
+        const r = ((b as any).circleRadius ?? 4) as number;
+        ctx.arc(b.position.x, b.position.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+  }
 
   // rotors (thin outlines)
-  ctx.strokeStyle = '#2b3a78';
-  ctx.lineWidth = 2;
-  Composite.allBodies(world).forEach((b) => {
-    const k = (b as any).plugin?.kind;
-    if (k === 'rotor') {
-      const v = b.vertices as { x: number; y: number }[] | undefined;
-      if (!v || v.length === 0) return;
-      const p0 = v[0];
-      if (!p0) return;
-      ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < v.length; i++) {
-        const p = v[i];
-        if (!p) continue;
-        ctx.lineTo(p.x, p.y);
+  if (!USE_ADAPTER_ROTORS) {
+    ctx.strokeStyle = '#2b3a78';
+    ctx.lineWidth = 2;
+    Composite.allBodies(world).forEach((b) => {
+      const k = (b as any).plugin?.kind;
+      if (k === 'rotor') {
+        const v = b.vertices as { x: number; y: number }[] | undefined;
+        if (!v || v.length === 0) return;
+        const p0 = v[0];
+        if (!p0) return;
+        ctx.moveTo(p0.x, p0.y);
+        for (let i = 1; i < v.length; i++) {
+          const p = v[i];
+          if (!p) continue;
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.stroke();
       }
-      ctx.closePath();
-      ctx.stroke();
-    }
-  });
+    });
+  }
 
   // pipe walls as single vertical strokes
-  Composite.allBodies(world).forEach((b) => {
-    const k = (b as any).plugin?.kind;
-    if (k === 'pipeWall') {
-      const m = b.bounds;
-      const cx = (m.min.x + m.max.x) * 0.5; // centerline of skinny rectangle
-      ctx.save();
-      ctx.lineWidth = WALL_T;
-      ctx.lineCap = 'butt';
-      ctx.strokeStyle = '#3558b6';
-      ctx.beginPath();
-      ctx.moveTo(cx, m.min.y);
-      ctx.lineTo(cx, m.max.y);
-      ctx.stroke();
-      ctx.restore();
-    }
-  });
+  if (!USE_ADAPTER_WALLS) {
+    Composite.allBodies(world).forEach((b) => {
+      const k = (b as any).plugin?.kind;
+      if (k === 'pipeWall') {
+        const m = b.bounds;
+        const cx = (m.min.x + m.max.x) * 0.5;
+        ctx.save();
+        ctx.lineWidth = WALL_T;
+        ctx.lineCap = 'butt';
+        ctx.strokeStyle = '#3558b6';
+        ctx.beginPath();
+        ctx.moveTo(cx, m.min.y);
+        ctx.lineTo(cx, m.max.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+  }
 
   // optional: intake visual (dashed box)
   Composite.allBodies(world).forEach((b) => {
@@ -144,24 +153,26 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   });
 
   // lane walls as single vertical strokes
-  Composite.allBodies(world).forEach((b) => {
-    const k = (b as any).plugin?.kind;
-    if (k === 'laneWall') {
-      const m = b.bounds;
-      const cx = (m.min.x + m.max.x) * 0.5;
-      const c = getCSS('--line') || '#88aaff';
-      ctx.save();
-      ctx.lineWidth = WALL_T;
-      ctx.lineCap = 'butt';
-      ctx.strokeStyle = c;
-      ctx.beginPath();
-      ctx.moveTo(cx, m.min.y);
-      ctx.lineTo(cx, m.max.y);
-      ctx.stroke();
-      ctx.restore();
-    }
-    // NOTE: we intentionally do NOT draw laneDamp here; it's already shown faint above.
-  });
+  if (!USE_ADAPTER_WALLS) {
+    Composite.allBodies(world).forEach((b) => {
+      const k = (b as any).plugin?.kind;
+      if (k === 'laneWall') {
+        const m = b.bounds;
+        const cx = (m.min.x + m.max.x) * 0.5;
+        const c = getCSS('--line') || '#88aaff';
+        ctx.save();
+        ctx.lineWidth = WALL_T;
+        ctx.lineCap = 'butt';
+        ctx.strokeStyle = c;
+        ctx.beginPath();
+        ctx.moveTo(cx, m.min.y);
+        ctx.lineTo(cx, m.max.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // NOTE: we intentionally do NOT draw laneDamp here; it's already shown faint above.
+    });
+  }
 
   // paddles
   ctx.strokeStyle = '#2b3a78';
