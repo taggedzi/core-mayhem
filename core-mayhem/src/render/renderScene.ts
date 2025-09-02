@@ -157,6 +157,37 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       ctx.restore();
       break;
     }
+    case 'vignette': {
+      ctx.save();
+      try {
+        const r0 = (cmd as any).r0 as number;
+        const r1 = (cmd as any).r1 as number;
+        const alpha = ((cmd as any).alpha as number) ?? 0.5;
+        const color = (cmd as any).color ?? 'rgba(0,0,0,1)';
+        const g = (typeof (ctx as any).createRadialGradient === 'function')
+          ? ctx.createRadialGradient(cmd.cx, cmd.cy, Math.max(0, r0), cmd.cx, cmd.cy, Math.max(r0 + 1, r1))
+          : null;
+        if (g && typeof (g as any).addColorStop === 'function') {
+          g.addColorStop(0, 'rgba(0,0,0,0)');
+          const outer = cssVar(ctx, color);
+          ctx.globalAlpha = alpha;
+          (g as any).addColorStop(1, outer);
+          ctx.fillStyle = g as any;
+          ctx.fillRect(0, 0, (ctx.canvas as HTMLCanvasElement).width, (ctx.canvas as HTMLCanvasElement).height);
+        } else {
+          // Fallback: uniform translucent overlay
+          ctx.globalAlpha = (((cmd as any).alpha as number) ?? 0.25) * 0.35;
+          ctx.fillStyle = 'black';
+          ctx.fillRect(0, 0, (ctx.canvas as HTMLCanvasElement).width, (ctx.canvas as HTMLCanvasElement).height);
+        }
+      } catch {
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, (ctx.canvas as HTMLCanvasElement).width, (ctx.canvas as HTMLCanvasElement).height);
+      }
+      ctx.restore();
+      break;
+    }
     case 'gradLine': {
       ctx.save();
       if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;

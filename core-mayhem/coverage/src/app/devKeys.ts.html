@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">18.6% </span>
+                <span class="strong">14.81% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>8/43</span>
+                <span class='fraction'>8/54</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">18.6% </span>
+                <span class="strong">14.81% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>8/43</span>
+                <span class='fraction'>8/54</span>
             </div>
         
             
@@ -119,7 +119,22 @@
 <a name='L54'></a><a href='#L54'>54</a>
 <a name='L55'></a><a href='#L55'>55</a>
 <a name='L56'></a><a href='#L56'>56</a>
-<a name='L57'></a><a href='#L57'>57</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -158,6 +173,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -180,6 +208,7 @@ import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons'
 import type { WeaponsType } from '../sim/weapons';
 import { sim } from '../state';
 import { SIDE } from '../types';
+import { MESMER } from '../config';
 &nbsp;
 const devKeysOn = import.meta.env?.DEV === <span class="branch-0 cbranch-no" title="branch not covered" >true || DEV_KEYS.enabledInProd;</span>
 &nbsp;
@@ -225,6 +254,19 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () =&gt;
 <span class="cstat-no" title="statement not covered" >      case 'O':</span>
 <span class="cstat-no" title="statement not covered" >        fireMortar(R, wepR.mortar.pos, 3);</span>
 <span class="cstat-no" title="statement not covered" >        break;</span>
+&nbsp;
+      // Visuals: cycle mesmer mode Off → Low → Always
+<span class="cstat-no" title="statement not covered" >      case 'v':</span>
+<span class="cstat-no" title="statement not covered" >      case 'V': {</span>
+<span class="cstat-no" title="statement not covered" >        const order: Array&lt;'off' | 'low' | 'always'&gt; = ['off', 'low', 'always'];</span>
+<span class="cstat-no" title="statement not covered" >        const cur = (sim as any).mesmerMode ?? (MESMER as any).mode ?? 'always';</span>
+<span class="cstat-no" title="statement not covered" >        const idx = order.indexOf(cur as any);</span>
+<span class="cstat-no" title="statement not covered" >        const next = order[(idx + 1) % order.length];</span>
+<span class="cstat-no" title="statement not covered" >        (sim as any).mesmerMode = next;</span>
+<span class="cstat-no" title="statement not covered" >        const el = document.getElementById('state');</span>
+<span class="cstat-no" title="statement not covered" >        if (el) el.textContent = `Mesmer: ${next}`;</span>
+<span class="cstat-no" title="statement not covered" >        break;</span>
+<span class="cstat-no" title="statement not covered" >      }</span>
 <span class="cstat-no" title="statement not covered" >    }</span>
 <span class="cstat-no" title="statement not covered" >  };</span>
 &nbsp;
@@ -238,7 +280,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () =&gt;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-02T21:44:39.685Z
+                at 2025-09-02T22:14:59.423Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

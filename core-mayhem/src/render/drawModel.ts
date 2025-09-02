@@ -116,6 +116,15 @@ export type DrawCommand =
       alpha?: number;
     }
   | {
+      kind: 'vignette';
+      cx: number;
+      cy: number;
+      r0: number; // inner radius (transparent)
+      r1: number; // outer radius (full alpha)
+      color?: string; // base color (default black)
+      alpha?: number; // max alpha at r1
+    }
+  | {
       kind: 'gradLine';
       x1: number;
       y1: number;
@@ -160,6 +169,36 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Mesmer background (subtle, additive)
   if ((MESMER as any).enabled) {
+    const mode = ((sim as any).mesmerMode as 'off' | 'low' | 'always' | undefined) ?? ((MESMER as any).mode ?? 'always');
+    // Determine desired visibility based on mode + activity
+    let target = 1; // default: fully visible
+    // Activity metric (used for low-mode gating and arc fading)
+    let quiet = 1; // 1 = calm, 0 = very busy
+    {
+      const wld = sim.world;
+      let proj = 0;
+      if (wld) {
+        const bodies = Composite.allBodies(wld);
+        for (const b of bodies) if ((b as any).plugin?.kind === 'projectile') proj++;
+      }
+      const beams = (sim as any).fxBeam?.length ?? 0;
+      const imps = (sim as any).fxImp?.length ?? 0;
+      // Normalize roughly: >14 projectiles, or multiple beams/impacts => busy
+      const activity = Math.min(1, proj / 14 + (beams / 3) * 0.5 + (imps / 7) * 0.5);
+      quiet = Math.max(0, 1 - activity);
+    }
+    if (mode === 'off') target = 0;
+    else if (mode === 'low') target = quiet;
+    // Smoothly ease visibility
+    const lastT = ((sim as any).mesmerLastT as number) || now;
+    const dt = Math.max(0, now - lastT);
+    const tau = (MESMER as any).fadeMs ?? 1200; // ms time constant for fade (slower = smoother)
+    const a = 1 - Math.exp(-dt / Math.max(1, tau)); // 0..1
+    const prev = ((sim as any).mesmerFade as number) ?? 0;
+    const fade = prev + (target - prev) * a;
+    (sim as any).mesmerFade = fade;
+    (sim as any).mesmerLastT = now;
+    if (fade > 0.01) {
     const m = (sim as any).mesmer ?? ((sim as any).mesmer = {});
     // Regenerate stars if missing or canvas size changed
     if (!m.stars || m._w !== W || m._h !== H) {
@@ -184,12 +223,15 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       m._h = H;
     }
     // draw stars (twinkle)
-    const J = MESMER.stars.jitter;
-    const baseA = MESMER.stars.alpha;
-    for (const s of m.stars as any[]) {
-      const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
-      const a = baseA * tw;
-      cmds.push({ kind: 'circle', x: s.x, y: s.y, r: s.r, fill: s.col, alpha: a, composite: 'lighter', shadowBlur: 8, shadowColor: s.col });
+    if ((MESMER as any).stars?.enabled !== false) {
+      const J = MESMER.stars.jitter;
+      const baseA = MESMER.stars.alpha;
+      for (const s of m.stars as any[]) {
+        const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
+        const aS = baseA * tw * fade;
+        if (aS > 0.002)
+          cmds.push({ kind: 'circle', x: s.x, y: s.y, r: s.r, fill: s.col, alpha: aS, composite: 'lighter', shadowBlur: 8, shadowColor: s.col });
+      }
     }
 
     // flowing arcs around cores
@@ -216,7 +258,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           a1,
           stroke: color,
           lineWidth: MESMER.arcs.width * w,
-          alpha: MESMER.arcs.alpha,
+          // Arcs fade with both global fade and current quietness (less visible when busy)
+          alpha: MESMER.arcs.alpha * fade * quiet,
           composite: 'lighter',
           shadowBlur: MESMER.arcs.blur,
           shadowColor: color,
@@ -224,10 +267,13 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       }
     };
 
-    const cL = (sim.coreL as any)?.center;
-    const cR = (sim.coreR as any)?.center;
-    if (cL) addArcs(cL.x, cL.y, 'var(--left)');
-    if (cR) addArcs(cR.x, cR.y, 'var(--right)');
+    if ((MESMER as any).arcs?.enabled !== false) {
+      const cL = (sim.coreL as any)?.center;
+      const cR = (sim.coreR as any)?.center;
+      if (cL) addArcs(cL.x, cL.y, 'var(--left)');
+      if (cR) addArcs(cR.x, cR.y, 'var(--right)');
+    }
+    } // end fade guard
   }
 
   // Midline (dashed)
@@ -894,6 +940,21 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         }
       }
     }
+  }
+
+  // Vignette overlay last to subtly focus the center
+  if ((MESMER as any)?.vignette?.enabled) {
+    const inner = Math.min(W, H) * 0.5 * ((MESMER as any).vignette.innerFrac ?? 0.55);
+    const outer = Math.hypot(W, H) * 0.5 * ((MESMER as any).vignette.outerFrac ?? 1.0);
+    cmds.push({
+      kind: 'vignette',
+      cx: W / 2,
+      cy: H / 2,
+      r0: inner,
+      r1: outer,
+      color: (MESMER as any).vignette.color ?? 'rgba(0,0,0,1)',
+      alpha: (MESMER as any).vignette.alpha ?? 0.5,
+    });
   }
 
   return { width: W, height: H, commands: cmds, tx, ty };

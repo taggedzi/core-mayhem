@@ -3,6 +3,7 @@ import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons'
 import type { WeaponsType } from '../sim/weapons';
 import { sim } from '../state';
 import { SIDE } from '../types';
+import { MESMER } from '../config';
 
 const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
 
@@ -48,6 +49,19 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       case 'O':
         fireMortar(R, wepR.mortar.pos, 3);
         break;
+
+      // Visuals: cycle mesmer mode Off → Low → Always
+      case 'v':
+      case 'V': {
+        const order: Array<'off' | 'low' | 'always'> = ['off', 'low', 'always'];
+        const cur = (sim as any).mesmerMode ?? (MESMER as any).mode ?? 'always';
+        const idx = order.indexOf(cur as any);
+        const next = order[(idx + 1) % order.length];
+        (sim as any).mesmerMode = next;
+        const el = document.getElementById('state');
+        if (el) el.textContent = `Mesmer: ${next}`;
+        break;
+      }
     }
   };
 

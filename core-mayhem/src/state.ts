@@ -148,6 +148,11 @@ export interface SimState {
   gameOver?: boolean;
   winner?: Side | 0 | null;
   winnerAt?: number;
+
+  // Visual runtime toggles
+  mesmerMode?: 'off' | 'low' | 'always';
+  mesmerFade?: number; // 0..1 smoothed visibility for mesmer layer
+  mesmerLastT?: number; // last timestamp used for fade smoothing
 }
 
 // ——— Factory + singleton ———
@@ -203,6 +208,10 @@ export function createSimState(): SimState {
     gameOver: false,
     winner: null,
     winnerAt: 0,
+
+    mesmerMode: undefined,
+    mesmerFade: 0,
+    mesmerLastT: 0,
   };
 }
 

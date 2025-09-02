@@ -233,22 +233,33 @@ export const GELS_LEFT: readonly GelSpec[] = [
 // Subtle ambient visuals to keep attention without distracting from gameplay
 export const MESMER = {
   enabled: true,
+  mode: 'always' as 'off' | 'low' | 'always', // show mesmer regardless of activity
+  fadeMs: 1400, // smoothing time constant for fade in/out
   stars: {
+    enabled: true,
     count: 70,
     color: '#1a9bff',
     altColor: '#ff00aa',
-    alpha: 0.18, // base alpha; twinkle varies this 40–100%
+    alpha: 0.20, // tiny bump in visibility
     jitter: 0.002, // twinkle speed factor
-    sizeMin: 0.8,
-    sizeMax: 1.8,
+    sizeMin: 1.1,
+    sizeMax: 2.2,
   },
   arcs: {
-    countPerSide: 3,
+    enabled: true,
+    countPerSide: 2,
     baseRFrac: 0.18, // of min(W,H)
     gapRFrac: 0.055,
-    width: 18,
-    alpha: 0.12,
-    blur: 22,
+    width: 10,
+    alpha: 0.06,
+    blur: 20,
+  },
+  vignette: {
+    enabled: true,
+    innerFrac: 0.55, // radius where effect starts (transparent)
+    outerFrac: 1.0, // radius where it reaches full alpha
+    alpha: 0.35, // strength at outer radius
+    color: 'rgba(0,0,0,1)',
   },
 } as const;
 
