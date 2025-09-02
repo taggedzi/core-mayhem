@@ -547,6 +547,78 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     }
   }
 
+  // Paddles (as simple horizontal strokes)
+  {
+    const list = (sim as any).paddles as { bounds: { min: { x: number }; max: { x: number } }; position: { y: number } }[] | undefined;
+    if (list?.length) {
+      for (const p of list) {
+        cmds.push({ kind: 'line', x1: p.bounds.min.x, y1: p.position.y, x2: p.bounds.max.x, y2: p.position.y, stroke: '#2b3a78', lineWidth: 8 });
+      }
+    }
+  }
+
+  // Bins (containers) — outline, background, fill gauge, intake strip, labels
+  {
+    const renderBinSet = (bins: any | null): void => {
+      if (!bins) return;
+      for (const key of Object.keys(bins)) {
+        const bin: any = (bins as any)[key];
+        if (!bin) continue;
+        const wall: any = bin.box ?? bin.body ?? bin.intake;
+        const b = wall?.bounds;
+        if (!b) continue;
+        const cx = bin.pos?.x ?? wall.position?.x ?? (b.min.x + b.max.x) * 0.5;
+        const cy = bin.pos?.y ?? wall.position?.y ?? (b.min.y + b.max.y) * 0.5;
+        const w = b.max.x - b.min.x;
+        const h = b.max.y - b.min.y;
+
+        const s = (bin.style ?? {}) as { stroke?: string; box?: string; fill?: string; gauge?: string; text?: string; strokePx?: number };
+        const stroke = s.stroke ?? '#94a8ff';
+        const boxBg = s.box ?? 'rgba(14,23,48,0.35)';
+        const fillCol = s.fill ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#8fb0ff');
+        const gaugeCol = s.gauge ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#ffffff');
+        const textCol = s.text ?? '#cfe1ff';
+
+        // Outline
+        cmds.push({ kind: 'poly', points: [
+          { x: cx - w / 2, y: cy - h / 2 },
+          { x: cx + w / 2, y: cy - h / 2 },
+          { x: cx + w / 2, y: cy + h / 2 },
+          { x: cx - w / 2, y: cy + h / 2 },
+        ], stroke, lineWidth: Math.max(2, (sim.W || 800) * 0.0025), close: true });
+
+        // Internal background + fill
+        const inset = Math.max(1, (sim.W || 800) * 0.0025 * 0.65);
+        const innerW = w - inset * 2;
+        const innerH = h - inset * 2;
+        cmds.push({ kind: 'rect', x: cx - innerW / 2, y: cy - innerH / 2, w: innerW, h: innerH, fill: boxBg });
+        if (typeof bin.fill === 'number' && typeof bin.cap === 'number' && bin.cap > 0) {
+          const frac = Math.max(0, Math.min(1, (bin.fill as number) / (bin.cap as number)));
+          const fillH = innerH * frac;
+          cmds.push({ kind: 'rect', x: cx - innerW / 2, y: cy + innerH / 2 - fillH, w: innerW, h: fillH, fill: fillCol, alpha: 0.85 });
+        }
+
+        // Intake strip
+        if (bin.intake?.bounds) {
+          const ib = bin.intake.bounds;
+          const iy = (ib.min.y + ib.max.y) * 0.5;
+          cmds.push({ kind: 'line', x1: ib.min.x, y1: iy, x2: ib.max.x, y2: iy, stroke: gaugeCol, lineWidth: Math.max(1, (sim.W || 800) * 0.002) });
+        }
+
+        // Labels
+        const nameText = String(key).toUpperCase();
+        const cap = bin.cap | 0;
+        const fill = Math.min(bin.fill | 0, cap);
+        const stats = `${fill}/${cap}`;
+        const family = "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif";
+        cmds.push({ kind: 'text', x: cx, y: cy + h / 2 + 12, text: nameText, font: `12px ${family}`, fill: textCol, align: 'center', baseline: 'alphabetic' });
+        cmds.push({ kind: 'text', x: cx, y: cy + h / 2 + 24, text: stats, font: `11px ${family}`, fill: textCol, align: 'center', baseline: 'alphabetic' });
+      }
+    };
+    renderBinSet((sim as any).binsL);
+    renderBinSet((sim as any).binsR);
+  }
+
   // Overlays — side badges (buff/debuff)
   {
     const nowMs = now;

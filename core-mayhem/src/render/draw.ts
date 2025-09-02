@@ -89,19 +89,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
 
   // lane walls are rendered via the adapter scene
 
-  // paddles
-  ctx.strokeStyle = '#2b3a78';
-  ctx.lineWidth = 8;
-  sim.paddles.forEach((p) => {
-    ctx.beginPath();
-    ctx.moveTo(p.bounds.min.x, p.position.y);
-    ctx.lineTo(p.bounds.max.x, p.position.y);
-    ctx.stroke();
-  });
-
-  // bins
-  drawBins(ctx, sim.binsL);
-  drawBins(ctx, sim.binsR);
+  // paddles and bins are rendered via the adapter scene
 
   // cores, mounts, fx, ammo are rendered via the adapter scene
 
@@ -277,6 +265,9 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any): void {
   }
 }
 
+/*
+// Legacy canvas rendering helpers (now migrated to drawModel). Keeping here commented
+// to show previous implementation, but excluded from build to avoid unused deps.
 function drawCore(ctx: CanvasRenderingContext2D, core: any): void {
   const x = core.center.x,
     y = core.center.y,
@@ -930,6 +921,7 @@ export function drawLaserFX(ctx: CanvasRenderingContext2D): void {
     drawBurst(ctx, f.x, f.y, teamColor(f.side ?? -1), life01);
   }
 }
+*/
 
 function fitFontPx(
   ctx: CanvasRenderingContext2D,
