@@ -125,6 +125,8 @@ export interface Scene {
   width: number;
   height: number;
   commands: DrawCommand[];
+  tx?: number; // optional camera translation X (e.g., screen shake)
+  ty?: number; // optional camera translation Y
 }
 
 /** Pure: read minimal parts of sim and emit draw commands. No canvas/DOM here. */
@@ -132,6 +134,21 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   const W = sim.W ?? 800;
   const H = sim.H ?? 600;
   const cmds: DrawCommand[] = [];
+  // Optional screen shake (moved from draw.ts)
+  let tx = 0,
+    ty = 0;
+  {
+    const t0 = (sim as any).shakeT0 ?? 0;
+    const ms = (sim as any).shakeMs ?? 0;
+    const amp = (sim as any).shakeAmp ?? 0;
+    const age = now - t0;
+    if (age >= 0 && age < ms && amp > 0) {
+      const k = 1 - age / ms;
+      const a = now * 0.08;
+      tx = Math.sin(a * 1.7) * amp * k;
+      ty = Math.cos(a * 1.3) * amp * k;
+    }
+  }
 
   // Midline (dashed)
   cmds.push({
@@ -800,7 +817,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     }
   }
 
-  return { width: W, height: H, commands: cmds };
+  return { width: W, height: H, commands: cmds, tx, ty };
 }
 
 // Jittered polyline between two points for laser glow

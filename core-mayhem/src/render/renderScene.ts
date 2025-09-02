@@ -2,7 +2,14 @@
 import type { Scene, DrawCommand } from './drawModel';
 
 export function renderScene(ctx: CanvasRenderingContext2D, scene: Scene): void {
+  ctx.save();
+  if (typeof (scene as any).tx === 'number' || typeof (scene as any).ty === 'number') {
+    const tx = (scene as any).tx ?? 0;
+    const ty = (scene as any).ty ?? 0;
+    if (tx || ty) ctx.translate(tx, ty);
+  }
   for (const cmd of scene.commands) paint(ctx, cmd);
+  ctx.restore();
 }
 
 function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
