@@ -9,6 +9,7 @@ import { GAMEOVER } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
+import type { WeaponsType } from '../sim/weapons';
 
 export type DrawCommand =
   | {
@@ -722,14 +723,14 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Overlays — weapon mounts
   {
-    const mk = (wep: any, color: string): void => {
+    const mk = (wep: WeaponsType | null, color: string): void => {
       if (!wep) return;
-      const entries = [
+      const entries: ReadonlyArray<readonly [string, { x: number; y: number } | undefined]> = [
         ['C', wep.cannon?.pos],
         ['L', wep.laser?.pos],
         ['M', wep.missile?.pos],
         ['R', wep.mortar?.pos],
-      ] as const;
+      ];
       for (const [label, pos] of entries) {
         if (!pos) continue;
         cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 10, fill: '#0a1227' });
@@ -737,8 +738,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         cmds.push({ kind: 'text', x: pos.x, y: pos.y + 3, text: String(label), font: `10px Verdana`, fill: color, align: 'center', baseline: 'middle' });
       }
     };
-    mk((sim as any).wepL, 'var(--left)');
-    mk((sim as any).wepR, 'var(--right)');
+    mk(sim.wepL, 'var(--left)');
+    mk(sim.wepR, 'var(--right)');
   }
 
   // Game Over banner

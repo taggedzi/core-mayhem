@@ -2,6 +2,7 @@
 import type { Core } from './sim/core';
 import type { Pipe } from './sim/obstacles';
 import type { Settings, Bins, Side, SideMods } from './types';
+import type { WeaponsType } from './sim/weapons';
 import type { Engine, Runner, World, Body } from 'matter-js';
 
 export interface FxSweep {
@@ -86,9 +87,9 @@ export interface SimState {
   binsL: Bins | null;
   binsR: Bins | null;
 
-  // TODO: replace with real weapon types if/when available
-  wepL: unknown;
-  wepR: unknown;
+  // Weapon mounts/positions
+  wepL: WeaponsType | null;
+  wepR: WeaponsType | null;
 
   // Bodies/actors
   gels: Body[];
