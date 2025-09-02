@@ -30,7 +30,28 @@ export interface FxImpact {
   ms: number;
   color: string;
   kind: FxImpactKind;
-  power?: number; // used to scale ring size/intensity
+  power?: number | undefined; // used to scale ring size/intensity
+}
+
+// Modern laser FX (beam segments with explicit end time)
+export interface FxLaserBeam {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  side: Side;
+  t0: number;
+  tEnd: number;
+}
+
+// Muzzle/impact flash with lifetime
+export interface FxBurst {
+  x: number;
+  y: number;
+  t0: number;
+  tEnd: number;
+  side: Side;
+  kind: string;
 }
 
 export interface FxBeam {
@@ -104,6 +125,8 @@ export interface SimState {
   fxArm: FxArm[];
   fxImp: FxImpact[];
   fxBeam: FxBeam[];
+  fxBeams?: FxLaserBeam[]; // modern
+  fxBursts?: FxBurst[]; // modern
   fxSparks?: FxSpark[];
 
   // Resources / timers
@@ -120,6 +143,11 @@ export interface SimState {
   shakeT0?: number;
   shakeMs?: number;
   shakeAmp?: number;
+
+  // Match outcome
+  gameOver?: boolean;
+  winner?: Side | 0 | null;
+  winnerAt?: number;
 }
 
 // ——— Factory + singleton ———
@@ -155,6 +183,8 @@ export function createSimState(): SimState {
     fxArm: [],
     fxImp: [],
     fxBeam: [],
+    fxBeams: [],
+    fxBursts: [],
     fxSparks: [],
 
     ammoL: 0,
@@ -168,6 +198,11 @@ export function createSimState(): SimState {
     // Default modifiers
     modsL: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null },
     modsR: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null },
+
+    // Match outcome defaults
+    gameOver: false,
+    winner: null,
+    winnerAt: 0,
   };
 }
 
@@ -186,6 +221,8 @@ export function resetSimState(s: SimState = sim): void {
   s.fxArm.length = 0;
   s.fxImp.length = 0;
   s.fxBeam.length = 0;
+  if (s.fxBeams) s.fxBeams.length = 0;
+  if (s.fxBursts) s.fxBursts.length = 0;
   if (s.fxSparks) s.fxSparks.length = 0;
 
   s.ammoL = 0;
@@ -197,4 +234,9 @@ export function resetSimState(s: SimState = sim): void {
   // Reset modifiers to neutral state
   s.modsL = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
   s.modsR = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
+
+  // Reset match outcome
+  s.gameOver = false;
+  s.winner = null;
+  s.winnerAt = 0;
 }

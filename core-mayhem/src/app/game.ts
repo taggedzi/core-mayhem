@@ -1,29 +1,22 @@
-import { Events, World, Body, Query, Composite } from 'matter-js';
+import { Events } from 'matter-js';
 
 import { DEFAULTS } from '../config';
-import { COOLDOWN_MS, WEAPON_WINDUP_MS } from '../config';
 // FX and damage handling are now in dedicated modules
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { updateScoreboard } from '../render/score';
 import { buildLanes } from '../sim/channels';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
-import { makeCore, angleToSeg } from '../sim/core';
+import { makeCore } from '../sim/core';
 import { makePipe, gelRect, addPaddle } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
 
 // --- DEV HOTKEYS: only in Vite dev or if forced via config ---
-import {
-  makeWeapons,
-  queueFireCannon,
-  queueFireLaser,
-  queueFireMissiles,
-  queueFireMortar,
-} from '../sim/weapons';
+import { makeWeapons } from '../sim/weapons';
 import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
-import { SIDE, type Side } from '../types';
-import { applyBuff, applyDebuff } from './mods';
+import { SIDE } from '../types';
+// import { applyBuff, applyDebuff } from './mods';
 import { attachDevHotkeys } from './devKeys';
 import { registerCollisions } from './collisions';
 import { runPhysics } from './systems/physics';
@@ -35,33 +28,14 @@ import { runFXPrune } from './systems/fx';
 import type { World as MatterWorld, Engine } from 'matter-js';
 
 // --------- local runtime/type asserts (centralized, fail-fast) ----------
-interface Vec2 {
-  x: number;
-  y: number;
-}
-interface CoreMinimal {
-  center: Vec2;
-  rot: number;
-  rotSpeed: number;
-  segHP: number[];
-  segHPmax: number;
-  centerHP: number;
-  centerHPmax: number;
-  shieldHP: number;
-  shieldHPmax: number;
-}
+// local Vec2 interface removed (unused)
 function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
   if (!w) throw new Error('World not initialized');
 }
 function assertEngine(e: Engine | null): asserts e is Engine {
   if (!e) throw new Error('Engine not initialized');
 }
-function assertCore(c: any): asserts c is { center: Vec2 } {
-  if (!c || !c.center) throw new Error('Core not initialized');
-}
-function assertCoreFull(c: any): asserts c is CoreMinimal {
-  if (!c || !c.center || !Array.isArray(c.segHP)) throw new Error('Core not initialized');
-}
+// local asserts kept for potential future use were removed to satisfy TS unused rules
 
 // explodeAt moved to app/collisions.ts
 

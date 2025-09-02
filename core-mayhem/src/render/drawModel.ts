@@ -10,6 +10,8 @@ import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
 import type { WeaponsType } from '../sim/weapons';
+import type { FxArm, FxBeam, FxImpact, FxSweep, FxSpark, FxLaserBeam, FxBurst } from '../state';
+import type { Core } from '../sim/core';
 
 export type DrawCommand =
   | {
@@ -139,9 +141,9 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   let tx = 0,
     ty = 0;
   {
-    const t0 = (sim as any).shakeT0 ?? 0;
-    const ms = (sim as any).shakeMs ?? 0;
-    const amp = (sim as any).shakeAmp ?? 0;
+    const t0 = sim.shakeT0 ?? 0;
+    const ms = sim.shakeMs ?? 0;
+    const amp = sim.shakeAmp ?? 0;
     const age = now - t0;
     if (age >= 0 && age < ms && amp > 0) {
       const k = 1 - age / ms;
@@ -163,7 +165,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     lineDash: [6, 6],
   });
 
-  const addCore = (core: any, colorVar: string) => {
+  const addCore = (core: Core, colorVar: string) => {
     if (!core?.center) return;
 
     const cx = core.center.x,
@@ -218,13 +220,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   if (sim.coreL) addCore(sim.coreL, 'var(--left)');
   if (sim.coreR) addCore(sim.coreR, 'var(--right)');
   {
-    interface FxArmItem {
-      x: number;
-      y: number;
-      until: number;
-      color?: string;
-    }
-    const fxList = (sim as any).fxArm as FxArmItem[] | undefined;
+    const fxList = sim.fxArm as FxArm[] | undefined;
 
     if (fxList?.length) {
       for (const fx of fxList) {
@@ -314,7 +310,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         } else if (ptype === 'artillery') {
           const ang = Math.atan2(vel.y, vel.x);
           const ux = Math.cos(ang), uy = Math.sin(ang);
-          const nx = -uy, ny = ux;
+          const ny = ux; // perpendicular y-component (nx unused)
           const r = 10;
           const p1 = { x: pos.x + ux * r, y: pos.y + uy * r };
           const p2 = { x: pos.x, y: pos.y + ny * 6 };
@@ -402,9 +398,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Laser beams (modern fxBeams, from weapons)
   {
-    const list = (sim as any).fxBeams as
-      | { x1: number; y1: number; x2: number; y2: number; side: number; t0: number; tEnd: number }[]
-      | undefined;
+    const list = (sim.fxBeams ?? []) as FxLaserBeam[];
     if (list?.length) {
       for (const b of list) {
         if (now >= b.tEnd) continue; // prune expired
@@ -441,9 +435,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Muzzle/impact flashes (modern fxBursts)
   {
-    const bursts = (sim as any).fxBursts as
-      | { x: number; y: number; t0: number; tEnd: number; side: number; kind: string }[]
-      | undefined;
+    const bursts = (sim.fxBursts ?? []) as FxBurst[];
     if (bursts?.length) {
       for (const f of bursts) {
         if (now >= f.tEnd) continue; // prune expired
@@ -457,9 +449,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Beams (legacy fxBeam) — keep support for compatibility
   {
-    const list = (sim as any).fxBeam as
-      | { x0: number; y0: number; x1: number; y1: number; t0: number; ms: number; side: number }[]
-      | undefined;
+    const list = sim.fxBeam as FxBeam[];
     if (list?.length) {
       for (const b of list) {
         const age = now - b.t0;
@@ -475,9 +465,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Impact / burn FX (legacy fxImp) — compatibility
   {
-    const list = (sim as any).fxImp as
-      | { x: number; y: number; t0: number; ms: number; color: string; kind: 'burst' | 'burn' }[]
-      | undefined;
+    const list = sim.fxImp as FxImpact[];
     if (list?.length) {
       for (const f of list) {
         const age = now - f.t0;
@@ -510,9 +498,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Sweep indicator for missiles
   {
-    const list = (sim as any).fxSweep as
-      | { x: number; y: number; t0: number; ms: number; a0: number; a1: number; side: number }[]
-      | undefined;
+    const list = sim.fxSweep as FxSweep[];
     if (list?.length) {
       for (const s of list) {
         const age = now - s.t0;
@@ -531,9 +517,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Sparks (particles from impacts/explosions)
   {
-    const list = (sim as any).fxSparks as
-      | { x: number; y: number; vx: number; vy: number; t0: number; ms: number; color: string }[]
-      | undefined;
+    const list = (sim.fxSparks ?? []) as FxSpark[];
     if (list?.length) {
       const G = 0.0022; // px/ms^2
       for (const p of list) {
@@ -567,7 +551,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Paddles (as simple horizontal strokes)
   {
-    const list = (sim as any).paddles as { bounds: { min: { x: number }; max: { x: number } }; position: { y: number } }[] | undefined;
+    const list = sim.paddles;
     if (list?.length) {
       for (const p of list) {
         cmds.push({ kind: 'line', x1: p.bounds.min.x, y1: p.position.y, x2: p.bounds.max.x, y2: p.position.y, stroke: '#2b3a78', lineWidth: 8 });
@@ -577,20 +561,30 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Bins (containers) — outline, background, fill gauge, intake strip, labels
   {
-    const renderBinSet = (bins: any | null): void => {
+    type BinStyle = { stroke?: string; box?: string; fill?: string; gauge?: string; text?: string; strokePx?: number };
+    type Vec2 = { x: number; y: number };
+    type BodyLike = { bounds: { min: Vec2; max: Vec2 }; position?: Vec2 };
+    type RenderBin = import('../types').Bin & {
+      box?: BodyLike;
+      intake?: BodyLike;
+      pos?: Vec2;
+      style?: BinStyle;
+    };
+    const renderBinSet = (bins: import('../types').Bins | null): void => {
       if (!bins) return;
-      for (const key of Object.keys(bins)) {
-        const bin: any = (bins as any)[key];
-        if (!bin) continue;
-        const wall: any = bin.box ?? bin.body ?? bin.intake;
+      const keys: (keyof typeof bins)[] = ['cannon', 'laser', 'missile', 'mortar', 'shield', 'repair', 'buff', 'debuff'];
+      for (const key of keys) {
+        const raw = (bins as any)[key] as RenderBin | undefined;
+        if (!raw) continue;
+        const wall = (raw.box ?? raw.body ?? raw.intake) as BodyLike | undefined;
         const b = wall?.bounds;
         if (!b) continue;
-        const cx = bin.pos?.x ?? wall.position?.x ?? (b.min.x + b.max.x) * 0.5;
-        const cy = bin.pos?.y ?? wall.position?.y ?? (b.min.y + b.max.y) * 0.5;
+        const cx = raw.pos?.x ?? wall?.position?.x ?? (b.min.x + b.max.x) * 0.5;
+        const cy = raw.pos?.y ?? wall?.position?.y ?? (b.min.y + b.max.y) * 0.5;
         const w = b.max.x - b.min.x;
         const h = b.max.y - b.min.y;
 
-        const s = (bin.style ?? {}) as { stroke?: string; box?: string; fill?: string; gauge?: string; text?: string; strokePx?: number };
+        const s: BinStyle = raw.style ?? {};
         const stroke = s.stroke ?? '#94a8ff';
         const boxBg = s.box ?? 'rgba(14,23,48,0.35)';
         const fillCol = s.fill ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#8fb0ff');
@@ -610,41 +604,41 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const innerW = w - inset * 2;
         const innerH = h - inset * 2;
         cmds.push({ kind: 'rect', x: cx - innerW / 2, y: cy - innerH / 2, w: innerW, h: innerH, fill: boxBg });
-        if (typeof bin.fill === 'number' && typeof bin.cap === 'number' && bin.cap > 0) {
-          const frac = Math.max(0, Math.min(1, (bin.fill as number) / (bin.cap as number)));
+        if (typeof raw.fill === 'number' && typeof raw.cap === 'number' && raw.cap > 0) {
+          const frac = Math.max(0, Math.min(1, raw.fill / raw.cap));
           const fillH = innerH * frac;
           cmds.push({ kind: 'rect', x: cx - innerW / 2, y: cy + innerH / 2 - fillH, w: innerW, h: fillH, fill: fillCol, alpha: 0.85 });
         }
 
         // Intake strip
-        if (bin.intake?.bounds) {
-          const ib = bin.intake.bounds;
+        if (raw.intake?.bounds) {
+          const ib = raw.intake.bounds;
           const iy = (ib.min.y + ib.max.y) * 0.5;
           cmds.push({ kind: 'line', x1: ib.min.x, y1: iy, x2: ib.max.x, y2: iy, stroke: gaugeCol, lineWidth: Math.max(1, (sim.W || 800) * 0.002) });
         }
 
         // Labels
         const nameText = String(key).toUpperCase();
-        const cap = bin.cap | 0;
-        const fill = Math.min(bin.fill | 0, cap);
+        const cap = raw.cap | 0;
+        const fill = Math.min(raw.fill | 0, cap);
         const stats = `${fill}/${cap}`;
         const family = "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif";
         cmds.push({ kind: 'text', x: cx, y: cy + h / 2 + 12, text: nameText, font: `12px ${family}`, fill: textCol, align: 'center', baseline: 'alphabetic' });
         cmds.push({ kind: 'text', x: cx, y: cy + h / 2 + 24, text: stats, font: `11px ${family}`, fill: textCol, align: 'center', baseline: 'alphabetic' });
       }
     };
-    renderBinSet((sim as any).binsL);
-    renderBinSet((sim as any).binsR);
+    renderBinSet(sim.binsL);
+    renderBinSet(sim.binsR);
   }
 
   // Overlays — side badges (buff/debuff)
   {
     const nowMs = now;
-    const fontPx = Math.max(12, (sim as any).H * 0.018);
+    const fontPx = Math.max(12, sim.H * 0.018);
     const mk = (side: number): void => {
-      const m = side < 0 ? (sim as any).modsL : (sim as any).modsR;
+      const m = side < 0 ? sim.modsL : sim.modsR;
       if (!m) return;
-      const x = side < 0 ? (sim as any).W * 0.22 : (sim as any).W * 0.78;
+      const x = side < 0 ? sim.W * 0.22 : sim.W * 0.78;
       const y = 26;
       // Buff badge
       if (nowMs < (m.dmgUntil ?? 0)) {
@@ -676,7 +670,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   // Overlays — core stats disc and text
   {
     // Compute the current core center radius so the stats fill that area
-    const centerRadius = (core: any): number => {
+    const centerRadius = (core: Core): number => {
       // Derive from the same geometry used above so the overlay matches visuals exactly
       const ringR = Number(core?.ringR ?? 0);
       if (ringR > 0) {
@@ -691,10 +685,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         return Math.max(6, segR0 - GAP_CORE_TO_SEG);
       }
       // Fallback if ringR missing
-      return Math.max(18, (sim as any).H * 0.03);
+      return Math.max(18, sim.H * 0.03);
     };
 
-    const drawStats = (core: any, color: string): void => {
+    const drawStats = (core: Core, color: string): void => {
       if (!core?.center) return;
       const x = core.center.x, y = core.center.y;
       // Fill nearly the entire inner core (leave a hairline margin)
@@ -717,8 +711,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       cmds.push({ kind: 'text', x, y: yHP, text: String(hp), font: `bold ${fs1}px ${family}`, fill: '#fff', align: 'center', baseline: 'middle', stroke: '#000', strokeWidth: sw1 });
       cmds.push({ kind: 'text', x, y: ySH, text: `S:${sh}`, font: `bold ${fs2}px ${family}`, fill: sh > 0 ? color : '#9aa3b2', align: 'center', baseline: 'middle', stroke: '#000', strokeWidth: sw2 });
     };
-    if ((sim as any).coreL) drawStats((sim as any).coreL, 'var(--left)');
-    if ((sim as any).coreR) drawStats((sim as any).coreR, 'var(--right)');
+    if (sim.coreL) drawStats(sim.coreL, 'var(--left)');
+    if (sim.coreR) drawStats(sim.coreR, 'var(--right)');
   }
 
   // Overlays — weapon mounts
@@ -743,10 +737,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   }
 
   // Game Over banner
-  if ((sim as any).gameOver) {
-    const winner = (sim as any).winner as -1 | 1 | 0;
+  if (sim.gameOver) {
+    const winner = (sim.winner as -1 | 1 | 0) ?? 0;
     const msg = winner === 0 ? 'STALEMATE' : winner === -1 ? 'LEFT WINS' : 'RIGHT WINS';
-    const t0 = (sim as any).winnerAt ?? now;
+    const t0 = sim.winnerAt ?? now;
     const remainMs = Math.max(0, GAMEOVER.bannerMs - (now - t0));
     const remainSec = Math.ceil(remainMs / 1000);
 
@@ -781,9 +775,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Beams (laser lines that fade)
   {
-    const list = (sim as any).fxBeam as
-      | { x0: number; y0: number; x1: number; y1: number; t0: number; ms: number; side: number }[]
-      | undefined;
+    const list = sim.fxBeam as FxBeam[];
     if (list?.length) {
       const now = performance.now();
       for (const b of list) {
@@ -798,9 +790,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Impact / burn FX (approximation using circles)
   {
-    const list = (sim as any).fxImp as
-      | { x: number; y: number; t0: number; ms: number; color: string; kind: 'burst' | 'burn' }[]
-      | undefined;
+    const list = sim.fxImp as FxImpact[];
     if (list?.length) {
       const now = performance.now();
       for (const f of list) {

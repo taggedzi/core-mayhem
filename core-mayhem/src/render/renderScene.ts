@@ -95,8 +95,12 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       if ((cmd as any).shadowBlur != null) ctx.shadowBlur = (cmd as any).shadowBlur as number;
       if ((cmd as any).shadowColor) ctx.shadowColor = cssVar(ctx, (cmd as any).shadowColor as string);
       ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      const p0 = pts[0]!;
+      ctx.moveTo(p0.x, p0.y);
+      for (let i = 1; i < pts.length; i++) {
+        const p = pts[i]!;
+        ctx.lineTo(p.x, p.y);
+      }
       if (cmd.close !== false) ctx.closePath();
       if ((cmd as any).fill) {
         ctx.fillStyle = cssVar(ctx, (cmd as any).fill as string);
@@ -130,8 +134,12 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       if ((cmd as any).shadowBlur != null) ctx.shadowBlur = (cmd as any).shadowBlur as number;
       if ((cmd as any).shadowColor) ctx.shadowColor = cssVar(ctx, (cmd as any).shadowColor as string);
       ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      const q0 = pts[0]!;
+      ctx.moveTo(q0.x, q0.y);
+      for (let i = 1; i < pts.length; i++) {
+        const p = pts[i]!;
+        ctx.lineTo(p.x, p.y);
+      }
       ctx.lineWidth = cmd.lineWidth ?? 1;
       ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
       ctx.stroke();
