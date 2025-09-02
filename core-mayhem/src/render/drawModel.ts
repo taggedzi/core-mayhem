@@ -49,6 +49,8 @@ export type DrawCommand =
       fill?: string;
       align?: CanvasTextAlign;
       baseline?: CanvasTextBaseline;
+      stroke?: string;
+      strokeWidth?: number;
     }
   | {
       kind: 'wedge';
@@ -543,6 +545,111 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         });
       }
     }
+  }
+
+  // Overlays — side badges (buff/debuff)
+  {
+    const nowMs = now;
+    const fontPx = Math.max(12, (sim as any).H * 0.018);
+    const mk = (side: number): void => {
+      const m = side < 0 ? (sim as any).modsL : (sim as any).modsR;
+      if (!m) return;
+      const x = side < 0 ? (sim as any).W * 0.22 : (sim as any).W * 0.78;
+      const y = 26;
+      // Buff badge
+      if (nowMs < (m.dmgUntil ?? 0)) {
+        const tLeft = Math.max(0, Math.ceil(((m.dmgUntil ?? 0) - nowMs) / 1000));
+        const w = 120, h = 22;
+        cmds.push({ kind: 'rect', x: x - w / 2, y: y - h / 2, w, h, fill: '#032e12', alpha: 1 });
+        cmds.push({ kind: 'line', x1: x - w / 2, y1: y - h / 2, x2: x + w / 2, y2: y - h / 2, stroke: '#5CFF7A', lineWidth: 2 });
+        cmds.push({ kind: 'line', x1: x + w / 2, y1: y - h / 2, x2: x + w / 2, y2: y + h / 2, stroke: '#5CFF7A', lineWidth: 2 });
+        cmds.push({ kind: 'line', x1: x + w / 2, y1: y + h / 2, x2: x - w / 2, y2: y + h / 2, stroke: '#5CFF7A', lineWidth: 2 });
+        cmds.push({ kind: 'line', x1: x - w / 2, y1: y + h / 2, x2: x - w / 2, y2: y - h / 2, stroke: '#5CFF7A', lineWidth: 2 });
+        cmds.push({ kind: 'text', x, y, text: `DMG x${(m.dmgMul ?? 1).toFixed(1)}  ${tLeft}s`, font: `${fontPx}px var(--mono, monospace)`, fill: '#5CFF7A', align: 'center', baseline: 'middle' });
+      }
+      // Debuff badge
+      if (nowMs < (m.disableUntil ?? 0) && m.disabledType) {
+        const tLeft = Math.max(0, Math.ceil(((m.disableUntil ?? 0) - nowMs) / 1000));
+        const w = 140, h = 22, y2 = y + 26;
+        cmds.push({ kind: 'rect', x: x - w / 2, y: y2 - h / 2, w, h, fill: '#3b0c0c', alpha: 1 });
+        cmds.push({ kind: 'line', x1: x - w / 2, y1: y2 - h / 2, x2: x + w / 2, y2: y2 - h / 2, stroke: '#FF6B6B', lineWidth: 2 });
+        cmds.push({ kind: 'line', x1: x + w / 2, y1: y2 - h / 2, x2: x + w / 2, y2: y2 + h / 2, stroke: '#FF6B6B', lineWidth: 2 });
+        cmds.push({ kind: 'line', x1: x + w / 2, y1: y2 + h / 2, x2: x - w / 2, y2: y2 + h / 2, stroke: '#FF6B6B', lineWidth: 2 });
+        cmds.push({ kind: 'line', x1: x - w / 2, y1: y2 + h / 2, x2: x - w / 2, y2: y2 - h / 2, stroke: '#FF6B6B', lineWidth: 2 });
+        cmds.push({ kind: 'text', x, y: y2, text: `DISABLED ${(m.disabledType as string).toUpperCase()}  ${tLeft}s`, font: `${fontPx}px var(--mono, monospace)`, fill: '#FFB1B1', align: 'center', baseline: 'middle' });
+      }
+    };
+    mk(-1);
+    mk(1);
+  }
+
+  // Overlays — core stats disc and text
+  {
+    // Compute the current core center radius so the stats fill that area
+    const centerRadius = (core: any): number => {
+      // Derive from the same geometry used above so the overlay matches visuals exactly
+      const ringR = Number(core?.ringR ?? 0);
+      if (ringR > 0) {
+        const SHIELD_THICK = 6;
+        const GAP_SEG_TO_SHIELD = 3;
+        const SEG_THICK = 24;
+        const GAP_CORE_TO_SEG = 4;
+        const shieldR1 = ringR;
+        const shieldR0 = Math.max(2, shieldR1 - SHIELD_THICK);
+        const segR1 = Math.max(2, shieldR0 - GAP_SEG_TO_SHIELD);
+        const segR0 = Math.max(2, segR1 - SEG_THICK);
+        return Math.max(6, segR0 - GAP_CORE_TO_SEG);
+      }
+      // Fallback if ringR missing
+      return Math.max(18, (sim as any).H * 0.03);
+    };
+
+    const drawStats = (core: any, color: string): void => {
+      if (!core?.center) return;
+      const x = core.center.x, y = core.center.y;
+      // Fill nearly the entire inner core (leave a hairline margin)
+      const r = Math.max(12, centerRadius(core) * 0.998);
+      cmds.push({ kind: 'circle', x, y, r, fill: '#000', alpha: 0.32 });
+      const hp = Math.max(0, Math.round(core.centerHP ?? 0));
+      const sh = Math.max(0, Math.round(core.shieldHP ?? 0));
+      // Two-line layout sized to nearly fill the center ring without crossing into segments
+      const fs1 = Math.max(24, Math.min(260, r * 0.95)); // HP ≈ 95% of inner radius
+      const fs2 = Math.max(18, Math.min(180, r * 0.65)); // Shield ≈ 65% of inner radius
+      const gap = r * 0.06; // modest gap between lines
+      // Distance between baselines (symmetric around center). Extents stay within circle when:
+      // (sep + fs1)/2 < r and (sep + fs2)/2 < r — satisfied by the chosen ratios.
+      const sep = 0.5 * fs1 + gap + 0.5 * fs2;
+      const yHP = y - sep * 0.5;
+      const ySH = y + sep * 0.5;
+      const sw1 = Math.max(2, Math.min(12, fs1 * 0.10));
+      const sw2 = Math.max(2, Math.min(10, fs2 * 0.10));
+      const family = "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif";
+      cmds.push({ kind: 'text', x, y: yHP, text: String(hp), font: `bold ${fs1}px ${family}`, fill: '#fff', align: 'center', baseline: 'middle', stroke: '#000', strokeWidth: sw1 });
+      cmds.push({ kind: 'text', x, y: ySH, text: `S:${sh}`, font: `bold ${fs2}px ${family}`, fill: sh > 0 ? color : '#9aa3b2', align: 'center', baseline: 'middle', stroke: '#000', strokeWidth: sw2 });
+    };
+    if ((sim as any).coreL) drawStats((sim as any).coreL, 'var(--left)');
+    if ((sim as any).coreR) drawStats((sim as any).coreR, 'var(--right)');
+  }
+
+  // Overlays — weapon mounts
+  {
+    const mk = (wep: any, color: string): void => {
+      if (!wep) return;
+      const entries = [
+        ['C', wep.cannon?.pos],
+        ['L', wep.laser?.pos],
+        ['M', wep.missile?.pos],
+        ['R', wep.mortar?.pos],
+      ] as const;
+      for (const [label, pos] of entries) {
+        if (!pos) continue;
+        cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 10, fill: '#0a1227' });
+        cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 10, stroke: color, lineWidth: 2 });
+        cmds.push({ kind: 'text', x: pos.x, y: pos.y + 3, text: String(label), font: `10px Verdana`, fill: color, align: 'center', baseline: 'middle' });
+      }
+    };
+    mk((sim as any).wepL, 'var(--left)');
+    mk((sim as any).wepR, 'var(--right)');
   }
 
   // Game Over banner

@@ -215,8 +215,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   }
 
   // weapon mount icons
-  drawWeaponMounts(ctx, (sim as any).wepL, getCSS('--left'));
-  drawWeaponMounts(ctx, (sim as any).wepR, getCSS('--right'));
+  if (!USE_ADAPTER) {
+    drawWeaponMounts(ctx, (sim as any).wepL, getCSS('--left'));
+    drawWeaponMounts(ctx, (sim as any).wepR, getCSS('--right'));
+  }
 
   // Wind-up flashes on weapon mounts
   if (!USE_ADAPTER_FX) {
@@ -254,8 +256,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
     });
   }
 
-  drawSideModsBadge(ctx, SIDE.LEFT);
-  drawSideModsBadge(ctx, SIDE.RIGHT);
+  if (!USE_ADAPTER) {
+    drawSideModsBadge(ctx, SIDE.LEFT);
+    drawSideModsBadge(ctx, SIDE.RIGHT);
+  }
   if (!USE_ADAPTER) {
     renderProjectiles(ctx);
     renderProjectilesFancy(ctx);
@@ -271,8 +275,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   // Always use adapter scene now
   const scene = toDrawCommands(performance.now());
   renderScene(ctx, scene);
-  drawCoreStats(ctx, sim.coreL, css('--left'));
-  drawCoreStats(ctx, sim.coreR, css('--right'));
+  if (!USE_ADAPTER) {
+    drawCoreStats(ctx, sim.coreL, css('--left'));
+    drawCoreStats(ctx, sim.coreR, css('--right'));
+  }
   ctx.restore();
 }
 

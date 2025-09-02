@@ -50,6 +50,11 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       if ((cmd as any).font) ctx.font = (cmd as any).font as string;
       if ((cmd as any).align) ctx.textAlign = (cmd as any).align as CanvasTextAlign;
       if ((cmd as any).baseline) ctx.textBaseline = (cmd as any).baseline as CanvasTextBaseline;
+      if ((cmd as any).stroke) {
+        ctx.lineWidth = (cmd as any).strokeWidth ?? 1;
+        ctx.strokeStyle = cssVar(ctx, (cmd as any).stroke as string);
+        ctx.strokeText(cmd.text, cmd.x, cmd.y);
+      }
       ctx.fillStyle = cssVar(ctx, (cmd as any).fill ?? '#000');
       ctx.fillText(cmd.text, cmd.x, cmd.y);
       break;
