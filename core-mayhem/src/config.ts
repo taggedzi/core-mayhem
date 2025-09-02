@@ -105,6 +105,24 @@ export const SHIELD_RING_WIDTH_R = 0.1;
 export const SHIELD_RING_GLOW = 12;
 export const SHIELD_RING_COLOR = 'rgba(120, 200, 255, 0.95)';
 
+// Shield visual effects (shimmer/lightning)
+export const SHIELD_VFX = {
+  shimmer: {
+    enabled: true,
+    count: 10, // short moving arcs around the ring
+    spanDeg: 22,
+    width: 2,
+    alpha: 0.35,
+    speed: 0.0016, // radians/ms drift
+  },
+  sparks: {
+    enabled: true,
+    count: 4, // base per-frame sparks near the ring
+    len: 12,
+    alpha: 0.6,
+  },
+} as const;
+
 export const CORE_HP = {
   segments: 100,
   center: 500,

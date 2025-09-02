@@ -101,15 +101,21 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   const coreMaybe = side === SIDE.LEFT ? sim.coreL : sim.coreR;
   assertCoreFull(coreMaybe);
   const core = coreMaybe;
-  const dmg = proj?.plugin?.dmg ?? 8;
+  let dmg = proj?.plugin?.dmg ?? 8;
   const isCenter = coreBody.plugin.kind === 'coreCenter';
 
   if (((core.shieldHP as number) | 0) > 0) {
-    core.shieldHP = Math.max(0, core.shieldHP - dmg);
+    // Allow excess to penetrate instead of being lost when the shot breaks the shield
+    const shieldBefore = core.shieldHP as number;
+    core.shieldHP = Math.max(0, shieldBefore - dmg);
+    const excess = Math.max(0, dmg - shieldBefore);
+
     const shooterSide = proj?.plugin?.side;
     const ptype = String(proj?.plugin?.ptype ?? 'cannon');
     const sty = (PROJECTILE_STYLE as any)[ptype];
     const color = sty?.glow ?? (shooterSide === SIDE.LEFT ? css('--left') : css('--right'));
+
+    // Always show an impact burst on the shield surface
     (sim.fxImp ||= []).push({
       x: proj.position.x,
       y: proj.position.y,
@@ -119,12 +125,19 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
       kind: 'burst',
       power: Number(dmg) || undefined,
     });
+
     const w = sim.world;
     assertWorld(w);
     explodeAt(proj.position.x, proj.position.y, proj.plugin.side, color, Number(dmg) || undefined);
-    World.remove(w, proj);
-    onPostHit?.();
-    return;
+
+    if (excess <= 0) {
+      // Shot fully absorbed by the shield
+      World.remove(w, proj);
+      onPostHit?.();
+      return;
+    }
+    // Fall through to apply remaining damage to the core below
+    dmg = excess;
   }
 
   if (isCenter) core.centerHP = Math.max(0, core.centerHP - dmg);

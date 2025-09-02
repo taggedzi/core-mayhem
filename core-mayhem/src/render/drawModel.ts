@@ -6,7 +6,7 @@ import { WALL_T } from '../config'; // used for wall thickness
 import { LASER_FX } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { GAMEOVER } from '../config';
-import { SHIELD_RING_COLOR, SHIELD_RING_GLOW } from '../config';
+import { SHIELD_RING_COLOR, SHIELD_RING_GLOW, SHIELD_VFX } from '../config';
 import { MESMER } from '../config';
 import { sim } from '../state';
 
@@ -347,6 +347,66 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         shadowBlur: Math.max(0, Math.round(SHIELD_RING_GLOW * (0.5 + 0.5 * ratio))),
         shadowColor: SHIELD_RING_COLOR,
       });
+
+      // Shimmer: a few short moving arcs along the ring
+      if ((SHIELD_VFX as any).shimmer?.enabled !== false) {
+        const N = SHIELD_VFX.shimmer.count;
+        const span = (Math.max(2, SHIELD_VFX.shimmer.spanDeg) * Math.PI) / 180;
+        const speed = SHIELD_VFX.shimmer.speed;
+        const aBase = (now * speed + (core.rot ?? 0)) % (Math.PI * 2);
+        for (let i = 0; i < N; i++) {
+          const aC = aBase + (i * Math.PI * 2) / N;
+          const a0 = aC - span * 0.5;
+          const a1 = aC + span * 0.5;
+          cmds.push({
+            kind: 'arc',
+            cx,
+            cy,
+            r: rMid,
+            a0,
+            a1,
+            stroke: SHIELD_RING_COLOR,
+            lineWidth: Math.max(1, SHIELD_VFX.shimmer.width),
+            alpha: (SHIELD_VFX.shimmer.alpha ?? 0.3) * (0.6 + 0.4 * ratio),
+            composite: 'lighter',
+            shadowBlur: 10,
+            shadowColor: SHIELD_RING_COLOR,
+          });
+        }
+      }
+
+      // Lightning-like sparks: short radial crackles that scale up as shield weakens
+      if ((SHIELD_VFX as any).sparks?.enabled !== false) {
+        const count = Math.max(0, Math.round((SHIELD_VFX.sparks.count ?? 3) * (0.25 + 0.85 * (1 - ratio))));
+        const len = Math.max(4, SHIELD_VFX.sparks.len ?? 10);
+        const baseAlpha = SHIELD_VFX.sparks.alpha ?? 0.5;
+        // simple deterministic pseudo-random from time + index
+        const rand = (s: number) => {
+          let t = Math.imul(s ^ 0x9e3779b9, 0x85ebca6b);
+          t ^= t >>> 13;
+          t = Math.imul(t, 0xc2b2ae35);
+          t ^= t >>> 16;
+          return (t >>> 0) / 4294967296;
+        };
+        for (let i = 0; i < count; i++) {
+          const seed = ((now * 33) | 0) + i * 9173 + (core.side < 0 ? 37 : 61);
+          const u = rand(seed);
+          const a = u * Math.PI * 2;
+          const ux = Math.cos(a), uy = Math.sin(a);
+          const tx = -uy, ty = ux; // tangent
+          const jitter = (rand(seed ^ 0xabcdef) - 0.5) * 0.6;
+          const p0x = cx + ux * rMid;
+          const p0y = cy + uy * rMid;
+          const p1x = p0x + ux * len;
+          const p1y = p0y + uy * len;
+          const p2x = p0x + ux * (len * 0.75) + tx * jitter * len;
+          const p2y = p0y + uy * (len * 0.75) + ty * jitter * len;
+          const alphaL = baseAlpha * (0.5 + 0.5 * (1 - ratio));
+          // two short gradient strokes to suggest a crackle
+          cmds.push({ kind: 'gradLine', x1: p0x, y1: p0y, x2: p1x, y2: p1y, from: SHIELD_RING_COLOR, to: 'rgba(0,0,0,0)', lineWidth: 2, alpha: alphaL, lineCap: 'round', composite: 'lighter' });
+          cmds.push({ kind: 'gradLine', x1: p0x, y1: p0y, x2: p2x, y2: p2y, from: SHIELD_RING_COLOR, to: 'rgba(0,0,0,0)', lineWidth: 2, alpha: alphaL * 0.9, lineCap: 'round', composite: 'lighter' });
+        }
+      }
     }
   };
 

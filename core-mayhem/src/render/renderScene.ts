@@ -193,10 +193,19 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
       if ((cmd as any).lineCap) ctx.lineCap = (cmd as any).lineCap as CanvasLineCap;
       if ((cmd as any).composite) ctx.globalCompositeOperation = (cmd as any).composite as GlobalCompositeOperation;
-      const g = ctx.createLinearGradient((cmd as any).x1, (cmd as any).y1, (cmd as any).x2, (cmd as any).y2);
-      g.addColorStop(0, cssVar(ctx, (cmd as any).from as string));
-      g.addColorStop(1, cssVar(ctx, (cmd as any).to as string));
-      ctx.strokeStyle = g as any;
+      const canGrad = typeof (ctx as any).createLinearGradient === 'function';
+      if (canGrad) {
+        const g = ctx.createLinearGradient((cmd as any).x1, (cmd as any).y1, (cmd as any).x2, (cmd as any).y2);
+        if (g && typeof (g as any).addColorStop === 'function') {
+          (g as any).addColorStop(0, cssVar(ctx, (cmd as any).from as string));
+          (g as any).addColorStop(1, cssVar(ctx, (cmd as any).to as string));
+          ctx.strokeStyle = g as any;
+        } else {
+          ctx.strokeStyle = cssVar(ctx, (cmd as any).from as string);
+        }
+      } else {
+        ctx.strokeStyle = cssVar(ctx, (cmd as any).from as string);
+      }
       ctx.lineWidth = (cmd as any).lineWidth ?? 1;
       ctx.beginPath();
       ctx.moveTo((cmd as any).x1, (cmd as any).y1);
