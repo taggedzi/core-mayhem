@@ -120,7 +120,7 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       ctx.beginPath();
       ctx.lineWidth = cmd.lineWidth ?? 1;
       ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
-      ctx.arc(cmd.cx, cmd.cy, cmd.r, cmd.a0, cmd.a1, false);
+      ctx.arc(cmd.cx, cmd.cy, cmd.r, cmd.a0, cmd.a1, !!(cmd as any).ccw);
       ctx.stroke();
       ctx.restore();
       break;

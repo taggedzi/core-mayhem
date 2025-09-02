@@ -22,6 +22,7 @@ import { applyCoreDamage } from './damage';
 
 import type { Vec } from '../types';
 import type { World as MatterWorld } from 'matter-js';
+import { WEAPONS_LEFT, type WeaponSpec } from '../config';
 
 const DEG = Math.PI / 180;
 const rad = (d: number): number => d * DEG;
@@ -104,13 +105,16 @@ export function queueFireMissiles(
   const spread = rad(MISSILE_SPREAD_DEG);
 
   // show sweep during wind-up using the same center & spread
+  // Keep sweep direction visually consistent (up -> down) on both sides
+  const sweepA0 = from === SIDE.RIGHT ? center + spread / 2 : center - spread / 2;
+  const sweepA1 = from === SIDE.RIGHT ? center - spread / 2 : center + spread / 2;
   (sim.fxSweep ||= []).push({
     x: src.x,
     y: src.y,
     t0: performance.now(),
     ms: windupMs,
-    a0: center - spread / 2,
-    a1: center + spread / 2,
+    a0: sweepA0,
+    a1: sweepA1,
     side: from,
   });
 
@@ -498,24 +502,26 @@ export interface WeaponsType {
 
 export function makeWeapons(side: Side): WeaponsType {
   const mid = sim.W * 0.5;
-  const r = coreRadiusFor(side); // you already have this helper in the file
-
-  // top row (your existing code)
-  const yCannon = Math.max(36, sim.H * TOP_Y_FRACTION);
-  const yLaser = yCannon + r * LASER_Y_OFFSET_R;
-  const yMissile = yCannon + r * MISSILE_Y_OFFSET_R;
-
+  const r = coreRadiusFor(side);
   const sgn = side === SIDE.LEFT ? -1 : +1;
-  const base = mid + sgn * (r * OFFSET_FROM_MID_R);
+
+  // Row geometry matches prior hard-coded layout
+  const topY = Math.max(36, sim.H * TOP_Y_FRACTION);
+  const yByRow = {
+    top: (order: number) => {
+      // Each weapon type has its own vertical stagger based on the previous implementation
+      // order affects X only; Y is determined by id-specific offset
+      return topY; // base; adjusted per weapon id below
+    },
+    bottom: (_order: number) => Math.min(sim.H - 36, sim.H * BOTTOM_Y_FRACTION),
+  } as const;
+
+  const baseXTop = mid + sgn * (r * OFFSET_FROM_MID_R);
   const step = r * SPACING_R;
+  const xTopByOrder = (order: number) => clampX(baseXTop + sgn * step * order);
 
-  const xCannon = clampX(base);
-  const xLaser = clampX(base + sgn * step);
-  const xMissile = clampX(base + sgn * step * 2);
-
-  // 🔸 bottom artillery
-  const yMortar = Math.min(sim.H - 36, sim.H * BOTTOM_Y_FRACTION);
-  const xMortar = clampX(mid + sgn * (r * ARTY_X_FROM_MID_R));
+  const baseXBottom = mid + sgn * (r * ARTY_X_FROM_MID_R);
+  const xBottomByOrder = (order: number) => clampX(baseXBottom + sgn * step * order);
 
   const mk = (x: number, y: number, label: string): WeapType => {
     const mount = Bodies.circle(x, y, 5, { isStatic: true, isSensor: true });
@@ -528,10 +534,33 @@ export function makeWeapons(side: Side): WeaponsType {
     return { pos: { x, y }, mount };
   };
 
-  const cannon = mk(xCannon, yCannon, 'cannon');
-  const laser = mk(xLaser, yLaser, 'laser');
-  const missile = mk(xMissile, yMissile, 'missile');
-  const mortar = mk(xMortar, yMortar, 'mortar'); // ⬅️ back again
+  // Build mounts from left-side spec, mirroring horizontally by sign
+  const specs = WEAPONS_LEFT.filter((s) => s.enabled !== false);
 
-  return { cannon, laser, missile, mortar };
+  // Using a small accumulator to hold results by id
+  const result: Partial<WeaponsType> = {};
+
+  for (const s of specs) {
+    let x = 0;
+    let y = 0;
+    if (s.row === 'top') {
+      // X by order
+      x = xTopByOrder(s.order);
+      // Y by id-specific stagger to match original visuals
+      if (s.id === 'cannon') y = topY;
+      else if (s.id === 'laser') y = topY + r * LASER_Y_OFFSET_R;
+      else if (s.id === 'missile') y = topY + r * MISSILE_Y_OFFSET_R;
+      else y = topY; // fallback
+    } else {
+      // bottom row (artillery)
+      x = xBottomByOrder(s.order);
+      y = yByRow.bottom(s.order);
+    }
+
+    const placed = mk(x, y, s.id);
+    (result as any)[s.id] = placed;
+  }
+
+  // Type-safe return (specs are expected to define all four ids)
+  return result as WeaponsType;
 }

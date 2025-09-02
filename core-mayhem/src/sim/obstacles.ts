@@ -1,6 +1,7 @@
 import { Bodies, Body, World, Composite } from 'matter-js';
 
 import { WALL_T } from '../config';
+import { PADDLES_LEFT, GELS_LEFT } from '../config';
 import { sim } from '../state';
 
 import type { World as MatterWorld } from 'matter-js';
@@ -191,4 +192,35 @@ export function conveyorPush(body: Matter.Body): void {
     x: dir * 0.0026 * body.mass,
     y: -0.0014 * body.mass,
   });
+}
+
+// --- Spec-driven, mirrored placements (modular like bins) ---
+
+function pinsFieldX(side: -1 | 1, pinsMid: number, pinsWidth: number, xFrac: number): number {
+  const x0 = pinsMid - pinsWidth / 2;
+  const x1 = pinsMid + pinsWidth / 2;
+  const xf = side < 0 ? xFrac : 1 - xFrac; // mirror horizontally on right
+  return x0 + xf * (x1 - x0);
+}
+
+export function placeObstaclesFromSpecs(side: -1 | 1, pinsMid: number, pinsWidth: number): void {
+  // Gels
+  for (const g of GELS_LEFT) {
+    if (g.enabled === false) continue;
+    const x = pinsFieldX(side, pinsMid, pinsWidth, g.pos[0]);
+    const y = g.pos[1] * sim.H;
+    const w = Math.max(4, pinsWidth * g.sizeFrac[0]);
+    const h = Math.max(4, sim.H * g.sizeFrac[1]);
+    gelRect(x, y, w, h, { dampX: g.dampX, dampY: g.dampY });
+  }
+
+  // Paddles
+  for (const p of PADDLES_LEFT) {
+    if (p.enabled === false) continue;
+    const x = pinsFieldX(side, pinsMid, pinsWidth, p.pos[0]);
+    const y = p.pos[1] * sim.H;
+    // Mirror initial direction for the right side so motion is symmetric
+    const dir = side < 0 ? p.dir : (p.dir * -1) as -1 | 1;
+    addPaddle(x, y, p.amp, p.spd, dir);
+  }
 }

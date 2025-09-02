@@ -35,13 +35,14 @@ export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number })
 
   for (let r = 0; r < rows; r++) {
     if ((r + 1) % 3 === 0) {
-      // rotors
+      // rotors (mirror x across the field midline for right side)
       const cols = Math.max(3, Math.floor(width / (sx * 1.4)));
       const rad = 12;
       const world = sim.world; // capture for narrowing
       assertWorld(world);
       for (let c = 0; c < cols; c++) {
-        const x = mid - width / 2 + (c + 0.5) * (width / cols);
+        const xL = mid - width / 2 + (c + 0.5) * (width / cols);
+        const x = side < 0 ? xL : 2 * mid - xL;
         const y = startY + r * sy;
         const poly = Bodies.polygon(x, y, r % 2 ? 3 : 4, rad, {
           friction: 0,
@@ -57,13 +58,14 @@ export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number })
         sim.rotors.push(poly);
       }
     } else {
-      // pins
+      // pins (compute left-pattern, then mirror around mid for right)
       const cols = Math.max(6, Math.floor(width / sx));
-      const offset = r % 2 ? sx / 2 : 0;
       const world = sim.world; // capture for narrowing
       assertWorld(world);
+      const offsetL = r % 2 ? sx / 2 : 0;
       for (let c = 0; c < cols; c++) {
-        const x = mid - width / 2 + c * sx + offset;
+        const xL = mid - width / 2 + c * sx + offsetL;
+        const x = side < 0 ? xL : 2 * mid - xL;
         const y = startY + r * sy;
         const p = Bodies.circle(x, y, 4, { isStatic: true, restitution: 0.9 });
         (p as any).plugin = { kind: 'pin' };

@@ -178,6 +178,58 @@ export const MODS = {
   allowedDebuffs: ['cannon', 'laser', 'missile', 'mortar'] as const,
 } as const;
 
+// ---- Modular placement specs (mirrored like bins) ----
+
+export type WeaponId = 'cannon' | 'laser' | 'missile' | 'mortar';
+
+// Weapon row placement using the existing computed layout rules.
+// - row 'top' uses the same top row as cannon/laser/missile spaced by core radius.
+// - row 'bottom' is the artillery row near the bottom.
+export interface WeaponSpec {
+  id: WeaponId;
+  row: 'top' | 'bottom';
+  order: number; // index along the row from nearest midline outward (0,1,2,...)
+  enabled?: boolean;
+}
+
+// Left-side only; right mirrors automatically
+export const WEAPONS_LEFT: readonly WeaponSpec[] = [
+  { id: 'cannon', row: 'top', order: 0 },
+  { id: 'laser', row: 'top', order: 1 },
+  { id: 'missile', row: 'top', order: 2 },
+  { id: 'mortar', row: 'bottom', order: 0 },
+] as const;
+
+// Paddles positioned inside the pins field using fractions of the pin-field width.
+// pos: [xFrac, yFrac] where xFrac=0 at left edge of pins field and 1 at right edge
+export interface PaddleSpec {
+  pos: [number, number];
+  amp: number;
+  spd: number;
+  dir: -1 | 1; // initial sweep direction for the left-side copy; right will mirror
+  enabled?: boolean;
+}
+
+// Left-side paddle definitions; right mirrors x automatically and flips dir
+export const PADDLES_LEFT: readonly PaddleSpec[] = [
+  { pos: [0.30, 0.60], amp: 28, spd: 1.2, dir: +1 },
+  { pos: [0.70, 0.60], amp: 28, spd: 1.2, dir: -1 },
+] as const;
+
+// Gel rectangles inside the pins field.
+export interface GelSpec {
+  pos: [number, number]; // center in fractions; x relative to pins field, y relative to canvas height
+  sizeFrac: [number, number]; // [width as fraction of pinsWidth, height as fraction of H]
+  dampX?: number;
+  dampY?: number;
+  enabled?: boolean;
+}
+
+// Left-side gel definitions; right mirrors x automatically
+export const GELS_LEFT: readonly GelSpec[] = [
+  { pos: [0.5, 0.14], sizeFrac: [0.96, 0.06], dampX: 2.2, dampY: 3.2 },
+] as const;
+
 export type BinId =
   | 'cannon'
   | 'laser'

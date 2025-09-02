@@ -87,6 +87,7 @@ export type DrawCommand =
       r: number;
       a0: number;
       a1: number;
+      ccw?: boolean;
       stroke?: string;
       lineWidth?: number;
       alpha?: number;
@@ -505,10 +506,21 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (age >= s.ms) continue; // prune expired
         const t = Math.max(0, Math.min(1, age / Math.max(1, s.ms)));
         const color = s.side < 0 ? 'var(--left)' : 'var(--right)';
-        const a = s.a0 + t * (s.a1 - s.a0);
+        // normalize to the minor arc between a0..a1 and remember direction
+        let a0 = s.a0, a1 = s.a1;
+        let d = a1 - a0;
+        while (d > Math.PI) {
+          a1 -= Math.PI * 2;
+          d = a1 - a0;
+        }
+        while (d < -Math.PI) {
+          a1 += Math.PI * 2;
+          d = a1 - a0;
+        }
+        const a = a0 + t * d;
         const r = 20;
         // arc segment
-        cmds.push({ kind: 'arc', cx: s.x, cy: s.y, r, a0: s.a0, a1: s.a1, stroke: color, lineWidth: 2, alpha: 0.55 });
+        cmds.push({ kind: 'arc', cx: s.x, cy: s.y, r, a0, a1, ccw: d < 0, stroke: color, lineWidth: 2, alpha: 0.55 });
         // pointer line
         cmds.push({ kind: 'line', x1: s.x, y1: s.y, x2: s.x + Math.cos(a) * (r + 6), y2: s.y + Math.sin(a) * (r + 6), stroke: color, lineWidth: 2, alpha: 0.55 });
       }

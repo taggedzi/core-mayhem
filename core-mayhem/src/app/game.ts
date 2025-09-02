@@ -8,7 +8,7 @@ import { updateScoreboard } from '../render/score';
 import { buildLanes } from '../sim/channels';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { makeCore } from '../sim/core';
-import { makePipe, gelRect, addPaddle } from '../sim/obstacles';
+import { makePipe, placeObstaclesFromSpecs } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
 
 // --- DEV HOTKEYS: only in Vite dev or if forced via config ---
@@ -84,14 +84,9 @@ export function startGame(canvas: HTMLCanvasElement) {
   nudgeBinsFromPipes(SIDE.LEFT, sim.binsL, 5);
   nudgeBinsFromPipes(SIDE.RIGHT, sim.binsR, 5);
 
-  gelRect(pinsL.mid, sim.H * 0.14, pinsL.width * 0.96, Math.max(36, sim.H * 0.06), {
-    dampX: 2.2,
-    dampY: 3.2,
-  });
-  gelRect(pinsR.mid, sim.H * 0.14, pinsR.width * 0.96, Math.max(36, sim.H * 0.06), {
-    dampX: 2.2,
-    dampY: 3.2,
-  });
+  // Spec-driven gels and paddles (mirrored like bins)
+  placeObstaclesFromSpecs(SIDE.LEFT, pinsL.mid, pinsL.width);
+  placeObstaclesFromSpecs(SIDE.RIGHT, pinsR.mid, pinsR.width);
 
   {
     const w = sim.world;
@@ -116,11 +111,7 @@ export function startGame(canvas: HTMLCanvasElement) {
     buildLanes(w, pinsR.mid, pinsR.width);
   }
 
-  // Shaker bars
-  addPaddle(pinsL.mid - pinsL.width * 0.2, sim.H * 0.6, 28, 1.2, +1);
-  addPaddle(pinsL.mid + pinsL.width * 0.2, sim.H * 0.6, 28, 1.2, -1);
-  addPaddle(pinsR.mid - pinsR.width * 0.2, sim.H * 0.6, 28, 1.2, +1);
-  addPaddle(pinsR.mid + pinsR.width * 0.2, sim.H * 0.6, 28, 1.2, -1);
+  // paddles now placed via specs above
 
   // Weapons (positions are computed; firing happens on bin fill)
   const wepL = makeWeapons(SIDE.LEFT);
