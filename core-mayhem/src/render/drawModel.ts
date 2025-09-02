@@ -26,6 +26,7 @@ export type DrawCommand =
       y2: number;
       stroke?: string;
       lineWidth?: number;
+      alpha?: number;
     }
   | { kind: 'text'; x: number; y: number; text: string }
   | {
@@ -228,6 +229,45 @@ export function toDrawCommands(): Scene {
           lineWidth: WALL_T,
         });
         continue;
+      }
+    }
+  }
+
+  // Beams (laser lines that fade)
+  {
+    const list = (sim as any).fxBeam as
+      | { x0: number; y0: number; x1: number; y1: number; t0: number; ms: number; side: number }[]
+      | undefined;
+    if (list?.length) {
+      const now = performance.now();
+      for (const b of list) {
+        const t = Math.max(0, Math.min(1, (now - b.t0) / b.ms));
+        const alpha = 0.65 * (1 - t) + 0.15;
+        const width = 3 + 2 * Math.sin(t * Math.PI);
+        const stroke = b.side < 0 ? 'var(--left)' : 'var(--right)';
+        cmds.push({ kind: 'line', x1: b.x0, y1: b.y0, x2: b.x1, y2: b.y1, stroke, lineWidth: width, alpha });
+      }
+    }
+  }
+
+  // Impact / burn FX (approximation using circles)
+  {
+    const list = (sim as any).fxImp as
+      | { x: number; y: number; t0: number; ms: number; color: string; kind: 'burst' | 'burn' }[]
+      | undefined;
+    if (list?.length) {
+      const now = performance.now();
+      for (const f of list) {
+        const t = Math.max(0, Math.min(1, (now - f.t0) / f.ms));
+        if (f.kind === 'burst') {
+          const baseR = 8;
+          const maxR = 48;
+          const r = baseR + (maxR - baseR) * t * 0.82;
+          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: Math.max(1, 6 - 5 * t), alpha: 0.9 * (1 - t) });
+        } else {
+          const r = 10 + 8 * t;
+          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: 2, alpha: 0.55 * (1 - t) });
+        }
       }
     }
   }

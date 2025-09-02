@@ -25,12 +25,15 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       break;
     }
     case 'line': {
+      ctx.save();
+      if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
       ctx.beginPath();
       ctx.lineWidth = cmd.lineWidth ?? 1;
       ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
       ctx.moveTo(cmd.x1, cmd.y1);
       ctx.lineTo(cmd.x2, cmd.y2);
       ctx.stroke();
+      ctx.restore();
       break;
     }
     case 'text': {

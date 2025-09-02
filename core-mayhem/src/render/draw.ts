@@ -242,8 +242,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   renderProjectilesFancy(ctx);
   drawLaserFX(ctx);
   renderSweep(ctx);
-  renderBeams(ctx);
-  renderImpactFX(ctx);
+  if (!USE_ADAPTER_FX) {
+    renderBeams(ctx);
+    renderImpactFX(ctx);
+  }
   drawGameOverBanner(ctx);
 
   if (USE_ADAPTER) {
