@@ -125,8 +125,8 @@ export function startGame(canvas: HTMLCanvasElement) {
   // Weapons (positions are computed; firing happens on bin fill)
   const wepL = makeWeapons(SIDE.LEFT);
   const wepR = makeWeapons(SIDE.RIGHT);
-  (sim as any).wepL = wepL;
-  (sim as any).wepR = wepR;
+  sim.wepL = wepL;
+  sim.wepR = wepR;
 
   // Dev hotkeys
   const detachHotkeys = attachDevHotkeys(wepL, wepR);

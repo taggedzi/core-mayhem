@@ -52,11 +52,11 @@ export function queueFireCannon(
   burst = 18,
   windupMs = WEAPON_WINDUP_MS,
 ): void {
-  if ((sim as any).gameOver) return;
+  if (sim.gameOver) return;
   // example in queueFireCannon or fireCannon
   if (isDisabled(from, 'cannon')) return;
   setTimeout(() => {
-    if ((sim as any).gameOver) return;
+    if (sim.gameOver) return;
     fireCannon(from, src, target, burst);
   }, windupMs);
 }
@@ -67,10 +67,10 @@ export function queueFireLaser(
   core: { center: { x: number; y: number } },
   windupMs = WEAPON_WINDUP_MS,
 ): void {
-  if ((sim as any).gameOver) return;
+  if (sim.gameOver) return;
   if (isDisabled(from, 'laser')) return;
   setTimeout(() => {
-    if ((sim as any).gameOver) return;
+    if (sim.gameOver) return;
     // fireLaser takes (side, src, target?) — duration is handled by LASER_FX
     fireLaser(from, src, core);
   }, windupMs);
@@ -83,7 +83,7 @@ export function queueFireMissiles(
   windupMs = WEAPON_WINDUP_MS,
   arcTiltDeg?: number, // optional per-shot override
 ): void {
-  if ((sim as any).gameOver) return;
+  if (sim.gameOver) return;
   if (isDisabled(from, 'missile')) return;
   let target: Vec;
   {
@@ -116,7 +116,7 @@ export function queueFireMissiles(
 
   // fire after wind-up; pass the same tilt so launch matches the indicator
   setTimeout(() => {
-    if ((sim as any).gameOver) return;
+    if (sim.gameOver) return;
     fireMissiles(from, src, count, arcTiltDeg);
   }, windupMs);
 }
@@ -127,7 +127,7 @@ export function queueFireMortar(
   count = 1,
   windupMs = WEAPON_WINDUP_MS,
 ): void {
-  if ((sim as any).gameOver) return;
+  if (sim.gameOver) return;
   if (isDisabled(from, 'mortar')) return;
   setTimeout(() => {
     if ((sim as any).gameOver) return;
@@ -142,7 +142,7 @@ export function fireCannon(
   target: { x: number; y: number },
   burst = 18,
 ): void {
-  if ((sim as any).gameOver) return;
+  if (sim.gameOver) return;
   if (isDisabled(from, 'cannon')) return;
   const dir = Vector.normalise({ x: target.x - src.x, y: target.y - src.y });
   const base =
@@ -226,8 +226,8 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
 
   // --- FX (kept as you had it) ---
   const now = performance.now();
-  (sim as any).fxBeams = (sim as any).fxBeams ?? [];
-  (sim as any).fxBeams.push({
+  sim.fxBeams = sim.fxBeams ?? [];
+  sim.fxBeams.push({
     x1: src.x,
     y1: src.y,
     x2: aim.x,
@@ -237,8 +237,8 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     tEnd: now + LASER_FX.beamMs,
   });
 
-  (sim as any).fxBursts = (sim as any).fxBursts ?? [];
-  (sim as any).fxBursts.push({
+  sim.fxBursts = sim.fxBursts ?? [];
+  sim.fxBursts.push({
     x: src.x,
     y: src.y,
     t0: now,
@@ -246,7 +246,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     side,
     kind: 'muzzle',
   });
-  (sim as any).fxBursts.push({
+  sim.fxBursts.push({
     x: aim.x,
     y: aim.y,
     t0: now,
