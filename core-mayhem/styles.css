@@ -1,5 +1,6 @@
 :root {
-  --bg: #0b0f1a;
+  /* Darker background so colors pop; slightly off‑black to avoid harsh #000 */
+  --bg: #05070a;
   --panel: #0e1730;
   --line: #20336e;
   --accent: #ff00aa;
