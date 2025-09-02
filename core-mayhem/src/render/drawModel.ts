@@ -3,6 +3,7 @@ import { Composite } from 'matter-js';
 
 import { WEAPON_WINDUP_MS } from '../config';
 import { WALL_T } from '../config'; // used for wall thickness
+import { LASER_FX } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
@@ -27,6 +28,8 @@ export type DrawCommand =
       stroke?: string;
       lineWidth?: number;
       alpha?: number;
+      lineDash?: number[];
+      lineDashOffset?: number;
     }
   | { kind: 'text'; x: number; y: number; text: string }
   | {
@@ -48,6 +51,27 @@ export type DrawCommand =
       stroke?: string;
       lineWidth?: number;
       close?: boolean;
+    }
+  | {
+      kind: 'arc';
+      cx: number;
+      cy: number;
+      r: number;
+      a0: number;
+      a1: number;
+      stroke?: string;
+      lineWidth?: number;
+      alpha?: number;
+    }
+  | {
+      kind: 'path';
+      points: { x: number; y: number }[];
+      stroke?: string;
+      lineWidth?: number;
+      alpha?: number;
+      composite?: GlobalCompositeOperation | 'lighter' | 'source-over';
+      shadowBlur?: number;
+      shadowColor?: string;
     };
 
 export interface Scene {
@@ -57,7 +81,7 @@ export interface Scene {
 }
 
 /** Pure: read minimal parts of sim and emit draw commands. No canvas/DOM here. */
-export function toDrawCommands(): Scene {
+export function toDrawCommands(now: number = performance.now()): Scene {
   const W = sim.W ?? 800;
   const H = sim.H ?? 600;
   const cmds: DrawCommand[] = [];
@@ -117,7 +141,6 @@ export function toDrawCommands(): Scene {
   if (sim.coreL) addCore(sim.coreL, 'var(--left)');
   if (sim.coreR) addCore(sim.coreR, 'var(--right)');
   {
-    const now = performance.now();
     interface FxArmItem {
       x: number;
       y: number;
@@ -233,6 +256,123 @@ export function toDrawCommands(): Scene {
     }
   }
 
+  // Laser beams (modern fxBeams, from weapons)
+  {
+    const list = (sim as any).fxBeams as
+      | { x1: number; y1: number; x2: number; y2: number; side: number; t0: number; tEnd: number }[]
+      | undefined;
+    if (list?.length) {
+      for (const b of list) {
+        if (now >= b.tEnd) continue; // prune expired
+        const life = 1 - Math.max(0, Math.min(1, (now - b.t0) / Math.max(1, b.tEnd - b.t0)));
+        const stroke = b.side < 0 ? 'var(--left)' : 'var(--right)';
+        // jittered outer glow path
+        const pts = jitterPolyline(b.x1, b.y1, b.x2, b.y2, LASER_FX.segments, LASER_FX.jitterAmp, now);
+        cmds.push({
+          kind: 'path',
+          points: pts,
+          stroke,
+          alpha: 0.35 + 0.65 * life,
+          lineWidth: LASER_FX.outerWidth * (0.85 + 0.15 * life),
+          composite: 'lighter',
+          shadowBlur: 18,
+          shadowColor: stroke,
+        });
+        // inner dashed core
+        cmds.push({
+          kind: 'line',
+          x1: b.x1,
+          y1: b.y1,
+          x2: b.x2,
+          y2: b.y2,
+          stroke: '#FFFFFF',
+          lineWidth: LASER_FX.innerWidth,
+          alpha: 0.85 * life,
+          lineDash: [LASER_FX.dash, LASER_FX.dash * 0.6],
+          lineDashOffset: -(now * 0.2),
+        });
+      }
+    }
+  }
+
+  // Muzzle/impact flashes (modern fxBursts)
+  {
+    const bursts = (sim as any).fxBursts as
+      | { x: number; y: number; t0: number; tEnd: number; side: number; kind: string }[]
+      | undefined;
+    if (bursts?.length) {
+      for (const f of bursts) {
+        if (now >= f.tEnd) continue; // prune expired
+        const life01 = Math.max(0, Math.min(1, (f.tEnd - now) / LASER_FX.flashMs));
+        const color = f.side < 0 ? 'var(--left)' : 'var(--right)';
+        const r = 12 * (0.7 + 0.3 * life01);
+        cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: color, lineWidth: 2, alpha: 0.45 + 0.55 * life01 });
+      }
+    }
+  }
+
+  // Beams (legacy fxBeam) — keep support for compatibility
+  {
+    const list = (sim as any).fxBeam as
+      | { x0: number; y0: number; x1: number; y1: number; t0: number; ms: number; side: number }[]
+      | undefined;
+    if (list?.length) {
+      for (const b of list) {
+        const age = now - b.t0;
+        if (age >= b.ms) continue; // prune expired
+        const t = Math.max(0, Math.min(1, age / Math.max(1, b.ms)));
+        const alpha = 0.65 * (1 - t) + 0.15;
+        const width = 3 + 2 * Math.sin(t * Math.PI);
+        const stroke = b.side < 0 ? 'var(--left)' : 'var(--right)';
+        cmds.push({ kind: 'line', x1: b.x0, y1: b.y0, x2: b.x1, y2: b.y1, stroke, lineWidth: width, alpha });
+      }
+    }
+  }
+
+  // Impact / burn FX (legacy fxImp) — compatibility
+  {
+    const list = (sim as any).fxImp as
+      | { x: number; y: number; t0: number; ms: number; color: string; kind: 'burst' | 'burn' }[]
+      | undefined;
+    if (list?.length) {
+      for (const f of list) {
+        const age = now - f.t0;
+        if (age >= f.ms) continue; // prune expired
+        const t = Math.max(0, Math.min(1, age / Math.max(1, f.ms)));
+        if (f.kind === 'burst') {
+          const baseR = 8;
+          const maxR = 48;
+          const r = baseR + (maxR - baseR) * t * 0.82;
+          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: Math.max(1, 6 - 5 * t), alpha: 0.9 * (1 - t) });
+        } else {
+          const r = 10 + 8 * t;
+          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: 2, alpha: 0.55 * (1 - t) });
+        }
+      }
+    }
+  }
+
+  // Sweep indicator for missiles
+  {
+    const list = (sim as any).fxSweep as
+      | { x: number; y: number; t0: number; ms: number; a0: number; a1: number; side: number }[]
+      | undefined;
+    if (list?.length) {
+      for (const s of list) {
+        const age = now - s.t0;
+        if (age >= s.ms) continue; // prune expired
+        const t = Math.max(0, Math.min(1, age / Math.max(1, s.ms)));
+        const color = s.side < 0 ? 'var(--left)' : 'var(--right)';
+        const a = s.a0 + t * (s.a1 - s.a0);
+        const r = 20;
+        // arc segment
+        cmds.push({ kind: 'arc', cx: s.x, cy: s.y, r, a0: s.a0, a1: s.a1, stroke: color, lineWidth: 2, alpha: 0.55 });
+        // pointer line
+        cmds.push({ kind: 'line', x1: s.x, y1: s.y, x2: s.x + Math.cos(a) * (r + 6), y2: s.y + Math.sin(a) * (r + 6), stroke: color, lineWidth: 2, alpha: 0.55 });
+      }
+    }
+  }
+
   // Beams (laser lines that fade)
   {
     const list = (sim as any).fxBeam as
@@ -273,4 +413,28 @@ export function toDrawCommands(): Scene {
   }
 
   return { width: W, height: H, commands: cmds };
+}
+
+// Jittered polyline between two points for laser glow
+function jitterPolyline(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  segments: number,
+  amp: number,
+  now: number,
+): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const x = x1 + (x2 - x1) * t;
+    const y = y1 + (y2 - y1) * t;
+    const a = Math.sin((now * 0.004 + i * 1.7) * 2.0);
+    const b = Math.cos((now * 0.003 + i * 1.3) * 1.6);
+    const jx = (a * amp) / 2;
+    const jy = (b * amp) / 2;
+    pts.push({ x: x + jx, y: y + jy });
+  }
+  return pts;
 }

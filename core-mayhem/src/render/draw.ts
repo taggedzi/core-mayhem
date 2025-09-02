@@ -240,16 +240,16 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   drawSideModsBadge(ctx, SIDE.RIGHT);
   renderProjectiles(ctx);
   renderProjectilesFancy(ctx);
-  drawLaserFX(ctx);
-  renderSweep(ctx);
   if (!USE_ADAPTER_FX) {
+    drawLaserFX(ctx);
+    renderSweep(ctx);
     renderBeams(ctx);
     renderImpactFX(ctx);
   }
   drawGameOverBanner(ctx);
 
   if (USE_ADAPTER) {
-    const scene = toDrawCommands();
+    const scene = toDrawCommands(performance.now());
     renderScene(ctx, scene);
   }
   drawCoreStats(ctx, sim.coreL, css('--left'));

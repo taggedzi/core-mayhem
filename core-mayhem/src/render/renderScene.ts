@@ -27,6 +27,9 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
     case 'line': {
       ctx.save();
       if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
+      if ((cmd as any).lineDash) ctx.setLineDash((cmd as any).lineDash as number[]);
+      if ((cmd as any).lineDashOffset != null)
+        ctx.lineDashOffset = (cmd as any).lineDashOffset as number;
       ctx.beginPath();
       ctx.lineWidth = cmd.lineWidth ?? 1;
       ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
@@ -71,6 +74,34 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       ctx.lineWidth = cmd.lineWidth ?? 1;
       ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
       ctx.stroke();
+      break;
+    }
+    case 'arc': {
+      ctx.save();
+      if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
+      ctx.beginPath();
+      ctx.lineWidth = cmd.lineWidth ?? 1;
+      ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
+      ctx.arc(cmd.cx, cmd.cy, cmd.r, cmd.a0, cmd.a1, false);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'path': {
+      const pts = cmd.points;
+      if (!pts.length) break;
+      ctx.save();
+      if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
+      if ((cmd as any).composite) ctx.globalCompositeOperation = (cmd as any).composite as GlobalCompositeOperation;
+      if ((cmd as any).shadowBlur != null) ctx.shadowBlur = (cmd as any).shadowBlur as number;
+      if ((cmd as any).shadowColor) ctx.shadowColor = cssVar(ctx, (cmd as any).shadowColor as string);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.lineWidth = cmd.lineWidth ?? 1;
+      ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
+      ctx.stroke();
+      ctx.restore();
       break;
     }
   }

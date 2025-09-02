@@ -30,6 +30,7 @@ import { runPhysics } from './systems/physics';
 import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
 import { checkTimeLimit, maybeEndMatch } from './systems/match';
+import { runFXPrune } from './systems/fx';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
 
@@ -171,6 +172,7 @@ export function startGame(canvas: HTMLCanvasElement) {
     checkTimeLimit();
 
     runPhysics(dtMs);
+    runFXPrune(performance.now());
     runSpawn(dtMs);
     runTriggers();
 
