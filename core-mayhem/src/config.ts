@@ -230,6 +230,28 @@ export const GELS_LEFT: readonly GelSpec[] = [
   { pos: [0.5, 0.14], sizeFrac: [0.96, 0.06], dampX: 2.2, dampY: 3.2 },
 ] as const;
 
+// Subtle ambient visuals to keep attention without distracting from gameplay
+export const MESMER = {
+  enabled: true,
+  stars: {
+    count: 70,
+    color: '#1a9bff',
+    altColor: '#ff00aa',
+    alpha: 0.18, // base alpha; twinkle varies this 40–100%
+    jitter: 0.002, // twinkle speed factor
+    sizeMin: 0.8,
+    sizeMax: 1.8,
+  },
+  arcs: {
+    countPerSide: 3,
+    baseRFrac: 0.18, // of min(W,H)
+    gapRFrac: 0.055,
+    width: 18,
+    alpha: 0.12,
+    blur: 22,
+  },
+} as const;
+
 export type BinId =
   | 'cannon'
   | 'laser'

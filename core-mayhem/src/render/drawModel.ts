@@ -6,6 +6,7 @@ import { WALL_T } from '../config'; // used for wall thickness
 import { LASER_FX } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { GAMEOVER } from '../config';
+import { MESMER } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
@@ -91,6 +92,9 @@ export type DrawCommand =
       stroke?: string;
       lineWidth?: number;
       alpha?: number;
+      composite?: GlobalCompositeOperation | 'lighter' | 'source-over';
+      shadowBlur?: number;
+      shadowColor?: string;
     }
   | {
       kind: 'path';
@@ -152,6 +156,78 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       tx = Math.sin(a * 1.7) * amp * k;
       ty = Math.cos(a * 1.3) * amp * k;
     }
+  }
+
+  // Mesmer background (subtle, additive)
+  if ((MESMER as any).enabled) {
+    const m = (sim as any).mesmer ?? ((sim as any).mesmer = {});
+    // Regenerate stars if missing or canvas size changed
+    if (!m.stars || m._w !== W || m._h !== H) {
+      const N = MESMER.stars.count;
+      const seed = ((sim.settings?.seed ?? 1) | 0) >>> 0;
+      // tiny PRNG (mulberry32)
+      let t = seed;
+      const rnd = () => {
+        t += 0x6d2b79f5;
+        let r = Math.imul(t ^ (t >>> 15), t | 1);
+        r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+      m.stars = Array.from({ length: N }, () => ({
+        x: rnd() * W,
+        y: rnd() * H,
+        r: MESMER.stars.sizeMin + rnd() * (MESMER.stars.sizeMax - MESMER.stars.sizeMin),
+        ph: rnd() * Math.PI * 2,
+        col: rnd() < 0.5 ? MESMER.stars.color : MESMER.stars.altColor,
+      }));
+      m._w = W;
+      m._h = H;
+    }
+    // draw stars (twinkle)
+    const J = MESMER.stars.jitter;
+    const baseA = MESMER.stars.alpha;
+    for (const s of m.stars as any[]) {
+      const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
+      const a = baseA * tw;
+      cmds.push({ kind: 'circle', x: s.x, y: s.y, r: s.r, fill: s.col, alpha: a, composite: 'lighter', shadowBlur: 8, shadowColor: s.col });
+    }
+
+    // flowing arcs around cores
+    const addArcs = (cx: number, cy: number, color: string) => {
+      const n = MESMER.arcs.countPerSide;
+      const baseR = Math.min(W, H) * MESMER.arcs.baseRFrac;
+      const gap = Math.min(W, H) * MESMER.arcs.gapRFrac;
+      for (let i = 0; i < n; i++) {
+        const r = baseR + i * gap;
+        const w = 0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1));
+        // Aim arc toward the midline for both sides so visuals mirror.
+        const base = cx < W * 0.5 ? 0 : Math.PI; // left→right or right→left
+        const drift = 0.6 * Math.sin(now * 0.00025 + i * 0.7);
+        const aC = base + drift;
+        const span = 0.9 + 0.5 * Math.sin(now * 0.0003 + i * 1.2);
+        const a0 = aC - span * 0.5;
+        const a1 = aC + span * 0.5;
+        cmds.push({
+          kind: 'arc',
+          cx,
+          cy,
+          r,
+          a0,
+          a1,
+          stroke: color,
+          lineWidth: MESMER.arcs.width * w,
+          alpha: MESMER.arcs.alpha,
+          composite: 'lighter',
+          shadowBlur: MESMER.arcs.blur,
+          shadowColor: color,
+        });
+      }
+    };
+
+    const cL = (sim.coreL as any)?.center;
+    const cR = (sim.coreR as any)?.center;
+    if (cL) addArcs(cL.x, cL.y, 'var(--left)');
+    if (cR) addArcs(cR.x, cR.y, 'var(--right)');
   }
 
   // Midline (dashed)

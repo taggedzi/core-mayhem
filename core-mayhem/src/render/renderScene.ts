@@ -117,6 +117,9 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
     case 'arc': {
       ctx.save();
       if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
+      if ((cmd as any).composite) ctx.globalCompositeOperation = (cmd as any).composite as GlobalCompositeOperation;
+      if ((cmd as any).shadowBlur != null) ctx.shadowBlur = (cmd as any).shadowBlur as number;
+      if ((cmd as any).shadowColor) ctx.shadowColor = cssVar(ctx, (cmd as any).shadowColor as string);
       ctx.beginPath();
       ctx.lineWidth = cmd.lineWidth ?? 1;
       ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
