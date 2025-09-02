@@ -4,9 +4,11 @@ export const DEFAULTS: Settings = {
   seed: Date.now() | 0,
   chaos: 0.7,
   spawnRate: 26,
-  targetAmmo: 100,
-  timescale: 0.9,
+  targetAmmo: 80,
+  timescale: 0.5,
   loop: false,
+  pipeUpSpeed: 22,
+  pipeUpGain: 3.2,
 };
 
 // Global “line” thickness for physical geometry (px)
@@ -230,8 +232,8 @@ export interface PaddleSpec {
 
 // Left-side paddle definitions; right mirrors x automatically and flips dir
 export const PADDLES_LEFT: readonly PaddleSpec[] = [
-  { pos: [0.30, 0.60], amp: 28, spd: 1.2, dir: +1 },
-  { pos: [0.70, 0.60], amp: 28, spd: 1.2, dir: -1 },
+  { pos: [0.3, 0.6], amp: 28, spd: 1.2, dir: +1 },
+  { pos: [0.7, 0.6], amp: 28, spd: 1.2, dir: -1 },
 ] as const;
 
 // Gel rectangles inside the pins field.
@@ -258,7 +260,7 @@ export const MESMER = {
     count: 70,
     color: '#1a9bff',
     altColor: '#ff00aa',
-    alpha: 0.20, // tiny bump in visibility
+    alpha: 0.2, // tiny bump in visibility
     jitter: 0.002, // twinkle speed factor
     sizeMin: 1.1,
     sizeMax: 2.2,

@@ -1,4 +1,4 @@
-import { DEV_KEYS } from '../config';
+import { DEV_KEYS, DEFAULTS } from '../config';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import type { WeaponsType } from '../sim/weapons';
 import { sim } from '../state';
@@ -9,6 +9,17 @@ const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
 
 export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => void {
   if (!devKeysOn) return () => {};
+
+  let toastTO = 0;
+  const toast = (msg: string, ms = 1500): void => {
+    const el = document.getElementById('state');
+    if (!el) { console.log(msg); return; }
+    const prev = el.textContent ?? '';
+    el.textContent = msg;
+    console.log(msg);
+    if (toastTO) clearTimeout(toastTO);
+    toastTO = window.setTimeout(() => { el.textContent = prev || 'Idle'; }, ms);
+  };
 
   const onKey = (e: KeyboardEvent): void => {
     if (sim.gameOver) return;
@@ -58,8 +69,65 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
         const idx = order.indexOf(cur as any);
         const next = order[(idx + 1) % order.length];
         (sim as any).mesmerMode = next;
-        const el = document.getElementById('state');
-        if (el) el.textContent = `Mesmer: ${next}`;
+        toast(`Mesmer: ${next}`);
+        break;
+      }
+
+      // Global tune: time scale slower/faster
+      case '[': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.timescale = Math.max(0.5, Math.min(1.5, (stg.timescale ?? 1) - 0.1));
+        toast(`Time x${(stg.timescale ?? 1).toFixed(2)}`);
+        break;
+      }
+      case ']': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.timescale = Math.max(0.5, Math.min(1.5, (stg.timescale ?? 1) + 0.1));
+        toast(`Time x${(stg.timescale ?? 1).toFixed(2)}`);
+        break;
+      }
+
+      // Global tune: on-field ammo target up/down
+      case '-': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.targetAmmo = Math.max(20, Math.round((stg.targetAmmo ?? 100) - 10));
+        toast(`TargetAmmo ${stg.targetAmmo}`);
+        break;
+      }
+      case '=': // usually + on US keyboards
+      case '+': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.targetAmmo = Math.max(20, Math.round((stg.targetAmmo ?? 100) + 10));
+        toast(`TargetAmmo ${stg.targetAmmo}`);
+        break;
+      }
+
+      // Pipe vertical lift speed (slower/faster in the side pipes)
+      case ',': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.pipeUpSpeed = Math.max(6, Math.round(((stg.pipeUpSpeed ?? DEFAULTS.pipeUpSpeed ?? 22) - 2)));
+        toast(`PipeUpSpeed ${stg.pipeUpSpeed}px/s`);
+        break;
+      }
+      case '.': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.pipeUpSpeed = Math.max(6, Math.round(((stg.pipeUpSpeed ?? DEFAULTS.pipeUpSpeed ?? 22) + 2)));
+        toast(`PipeUpSpeed ${stg.pipeUpSpeed}px/s`);
+        break;
+      }
+
+      // Pipe vertical lift responsiveness (how quickly it reaches target speed)
+      case ';': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.pipeUpGain = Math.max(0.4, Number(((stg.pipeUpGain ?? DEFAULTS.pipeUpGain ?? 3.2) - 0.2).toFixed(2)));
+        toast(`PipeUpGain ${stg.pipeUpGain.toFixed(2)}/s`);
+        break;
+      }
+      case 'p':
+      case 'P': {
+        const stg = ((sim as any).settings ||= { ...DEFAULTS });
+        stg.pipeUpGain = Math.min(8, Number(((stg.pipeUpGain ?? DEFAULTS.pipeUpGain ?? 3.2) + 0.2).toFixed(2)));
+        toast(`PipeUpGain ${stg.pipeUpGain.toFixed(2)}/s`);
         break;
       }
     }

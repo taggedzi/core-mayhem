@@ -136,9 +136,13 @@ export function startGame(canvas: HTMLCanvasElement) {
     // Time-limit
     checkTimeLimit();
 
-    runPhysics(dtMs);
+    // Apply configurable time scale (slow down/speed up sim)
+    const stg = (sim as any).settings ?? DEFAULTS;
+    const scaled = dtMs * (stg.timescale ?? 1);
+
+    runPhysics(scaled);
     runFXPrune(performance.now());
-    runSpawn(dtMs);
+    runSpawn(scaled);
     runTriggers();
 
     // did someone die this frame?

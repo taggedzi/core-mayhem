@@ -29,6 +29,9 @@ export interface Settings {
   targetAmmo: number;
   timescale: number;
   loop: boolean;
+  // Pipe vertical lift tuning (used by obstacles.applyPipeForces)
+  pipeUpSpeed?: number; // px/s toward upward target velocity
+  pipeUpGain?: number; // 1/s responsiveness (higher = snappier)
 }
 
 export interface Bin {
