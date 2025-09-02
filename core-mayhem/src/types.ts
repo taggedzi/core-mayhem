@@ -11,6 +11,17 @@ export interface Vec {
 
 export type AmmoType = 'basic' | 'heavy' | 'volatile' | 'emp' | 'repair' | 'shield';
 
+// Weapon kinds used across sim/render
+export type WeaponKind = 'cannon' | 'laser' | 'missile' | 'mortar';
+
+// Temporary side modifiers (buffs/debuffs)
+export interface SideMods {
+  dmgUntil: number;
+  dmgMul: number;
+  disableUntil: number;
+  disabledType: WeaponKind | null;
+}
+
 export interface Settings {
   seed: number;
   chaos: number;

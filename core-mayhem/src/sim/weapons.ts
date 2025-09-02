@@ -1,7 +1,7 @@
 import { Bodies, World, Body, Vector } from 'matter-js';
 
-import { currentDmgMul } from '../app/game';
-import { isDisabled } from '../app/game';
+import { currentDmgMul } from '../app/mods';
+import { isDisabled } from '../app/mods';
 import { LASER_FX } from '../config';
 import { DAMAGE } from '../config';
 import { WEAPON_WINDUP_MS } from '../config';

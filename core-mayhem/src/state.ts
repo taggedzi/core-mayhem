@@ -1,7 +1,7 @@
 // state.ts
 import type { Core } from './sim/core';
 import type { Pipe } from './sim/obstacles';
-import type { Settings, Bins, Side } from './types';
+import type { Settings, Bins, Side, SideMods } from './types';
 import type { Engine, Runner, World, Body } from 'matter-js';
 
 export interface FxSweep {
@@ -98,6 +98,10 @@ export interface SimState {
   ammoR: number;
   spawnAcc: number;
   cooldowns: SimCooldowns;
+
+  // Side modifiers (buffs / temporary disables)
+  modsL: SideMods;
+  modsR: SideMods;
 }
 
 // ——— Factory + singleton ———
@@ -141,6 +145,10 @@ export function createSimState(): SimState {
       L: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
       R: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
     },
+
+    // Default modifiers
+    modsL: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null },
+    modsR: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null },
   };
 }
 
@@ -165,4 +173,8 @@ export function resetSimState(s: SimState = sim): void {
   s.spawnAcc = 0;
   s.cooldowns.L = { cannon: 0, laser: 0, missile: 0, mortar: 0 };
   s.cooldowns.R = { cannon: 0, laser: 0, missile: 0, mortar: 0 };
+
+  // Reset modifiers to neutral state
+  s.modsL = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
+  s.modsR = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
 }

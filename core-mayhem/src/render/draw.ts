@@ -1091,8 +1091,7 @@ function fitFontPx(
 }
 
 function drawSideModsBadge(ctx: CanvasRenderingContext2D, side: Side): void {
-  const anySim = sim as any;
-  const m = side === SIDE.LEFT ? anySim.modsL : anySim.modsR;
+  const m = side === SIDE.LEFT ? sim.modsL : sim.modsR;
   if (!m) return;
   const now = performance.now();
 

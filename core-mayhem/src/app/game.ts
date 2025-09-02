@@ -8,7 +8,6 @@ import { REPAIR_EFFECT } from '../config';
 import { GAMEOVER } from '../config';
 import { DEV_KEYS } from '../config';
 import { MATCH_LIMIT } from '../config';
-import { MODS } from '../config';
 import { SHIELD } from '../config';
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
@@ -35,6 +34,7 @@ import {
 import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
+import { applyBuff, applyDebuff } from './mods';
 
 import type { World as MatterWorld, Engine, IEventCollision } from 'matter-js';
 
@@ -42,15 +42,6 @@ const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
 
 let _explosionCount = 0,
   _explosionWindowT0 = 0;
-
-export type WeaponKind = 'cannon' | 'laser' | 'missile' | 'mortar';
-
-interface SideMods {
-  dmgUntil: number;
-  dmgMul: number;
-  disableUntil: number;
-  disabledType: WeaponKind | null;
-}
 
 // --------- local runtime/type asserts (centralized, fail-fast) ----------
 interface Vec2 {
@@ -79,49 +70,6 @@ function assertCore(c: any): asserts c is { center: Vec2 } {
 }
 function assertCoreFull(c: any): asserts c is CoreMinimal {
   if (!c || !c.center || !Array.isArray(c.segHP)) throw new Error('Core not initialized');
-}
-
-function ensureMods(): void {
-  const anySim = sim as any;
-  anySim.modsL ??= { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null } as SideMods;
-  anySim.modsR ??= { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null } as SideMods;
-}
-
-function modsFor(side: Side): SideMods {
-  ensureMods();
-  return (side === SIDE.LEFT ? (sim as any).modsL : (sim as any).modsR) as SideMods;
-}
-
-export function currentDmgMul(side: Side): number {
-  const m = modsFor(side);
-  return performance.now() < m.dmgUntil ? m.dmgMul : 1;
-}
-
-export function isDisabled(side: Side, kind: WeaponKind): boolean {
-  const m = modsFor(side);
-  return performance.now() < m.disableUntil && m.disabledType === kind;
-}
-
-export function applyBuff(side: Side): void {
-  const m = modsFor(side);
-  m.dmgMul = MODS.buffMultiplier;
-  m.dmgUntil = performance.now() + MODS.buffDurationMs;
-}
-
-export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): void {
-  const m = modsFor(targetSide);
-  const pool = MODS.allowedDebuffs;
-  let k: WeaponKind | null = kind;
-  if (k === null) {
-    if (pool.length > 0) {
-      const idx = Math.floor(Math.random() * pool.length);
-      k = pool[idx] ?? null; // idx < length, but TS still allows undefined; coalesce to null
-    } else {
-      k = null;
-    }
-  }
-  m.disabledType = k;
-  m.disableUntil = performance.now() + MODS.debuffDurationMs;
 }
 
 function explodeAt(x: number, y: number, shooterSide: Side): void {
@@ -178,7 +126,6 @@ export function startGame(canvas: HTMLCanvasElement) {
   initWorld(canvas);
   const eng = sim.engine;
   assertEngine(eng);
-  ensureMods(); // (creates modsL/modsR with defaults)
   (sim as any).cooldowns = {
     L: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
     R: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
