@@ -1,31 +1,13 @@
 // Adapter (pure → canvas). Disabled for now to avoid behavior change.
 
-// Feature flags
-const USE_ADAPTER = true; // keep the adapter hook enabled
-const USE_ADAPTER_CORES = true; // render cores via adapter instead of legacy code
-const USE_ADAPTER_FX = true;
-const USE_ADAPTER_AMMO = true;
-const USE_ADAPTER_PINS = true;
-const USE_ADAPTER_ROTORS = true;
-const USE_ADAPTER_WALLS = true;
+// Adapter is the sole render path (no feature flags)
 
 import { Composite } from 'matter-js';
 
-import { LASER_FX } from '../config';
-import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
-import { WALL_T } from '../config';
-import { WEAPON_WINDUP_MS } from '../config';
-import {
-  CORE_RIM_WIDTH_R,
-  SHIELD_RING_WIDTH_R,
-  SHIELD_RING_GLOW,
-  SHIELD_RING_COLOR,
-} from '../config';
-import { GAMEOVER } from '../config';
+// no direct config imports needed here anymore (adapter path handles visuals)
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
-import { colorForAmmo } from './colors';
 import { toDrawCommands } from './drawModel';
 import { renderScene } from './renderScene';
 
@@ -63,17 +45,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   const world = sim.world; // capture to allow narrowing
   assertWorld(world);
 
-  // midline (legacy) — adapter scene draws its own
-  if (!USE_ADAPTER) {
-    ctx.setLineDash([6, 6]);
-    ctx.strokeStyle = '#20336e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(W / 2, 0);
-    ctx.lineTo(W / 2, H);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  // midline is rendered via the adapter scene
 
   // dampers (faint outline only)
   if (SHOW_DAMPERS) {
@@ -88,62 +60,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
     }
   }
 
-  // pins (filled dots)
-  if (!USE_ADAPTER_PINS) {
-    ctx.fillStyle = '#2b3a78';
-    Composite.allBodies(world).forEach((b) => {
-      const k = (b as any).plugin?.kind;
-      if (k === 'pin') {
-        ctx.beginPath();
-        const r = ((b as any).circleRadius ?? 4) as number;
-        ctx.arc(b.position.x, b.position.y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-  }
-
-  // rotors (thin outlines)
-  if (!USE_ADAPTER_ROTORS) {
-    ctx.strokeStyle = '#2b3a78';
-    ctx.lineWidth = 2;
-    Composite.allBodies(world).forEach((b) => {
-      const k = (b as any).plugin?.kind;
-      if (k === 'rotor') {
-        const v = b.vertices as { x: number; y: number }[] | undefined;
-        if (!v || v.length === 0) return;
-        const p0 = v[0];
-        if (!p0) return;
-        ctx.moveTo(p0.x, p0.y);
-        for (let i = 1; i < v.length; i++) {
-          const p = v[i];
-          if (!p) continue;
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-      }
-    });
-  }
-
-  // pipe walls as single vertical strokes
-  if (!USE_ADAPTER_WALLS) {
-    Composite.allBodies(world).forEach((b) => {
-      const k = (b as any).plugin?.kind;
-      if (k === 'pipeWall') {
-        const m = b.bounds;
-        const cx = (m.min.x + m.max.x) * 0.5;
-        ctx.save();
-        ctx.lineWidth = WALL_T;
-        ctx.lineCap = 'butt';
-        ctx.strokeStyle = '#3558b6';
-        ctx.beginPath();
-        ctx.moveTo(cx, m.min.y);
-        ctx.lineTo(cx, m.max.y);
-        ctx.stroke();
-        ctx.restore();
-      }
-    });
-  }
+  // pins/rotors/walls are rendered via the adapter scene
 
   // optional: intake visual (dashed box)
   Composite.allBodies(world).forEach((b) => {
@@ -170,27 +87,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
     ctx.restore();
   });
 
-  // lane walls as single vertical strokes
-  if (!USE_ADAPTER_WALLS) {
-    Composite.allBodies(world).forEach((b) => {
-      const k = (b as any).plugin?.kind;
-      if (k === 'laneWall') {
-        const m = b.bounds;
-        const cx = (m.min.x + m.max.x) * 0.5;
-        const c = getCSS('--line') || '#88aaff';
-        ctx.save();
-        ctx.lineWidth = WALL_T;
-        ctx.lineCap = 'butt';
-        ctx.strokeStyle = c;
-        ctx.beginPath();
-        ctx.moveTo(cx, m.min.y);
-        ctx.lineTo(cx, m.max.y);
-        ctx.stroke();
-        ctx.restore();
-      }
-      // NOTE: we intentionally do NOT draw laneDamp here; it's already shown faint above.
-    });
-  }
+  // lane walls are rendered via the adapter scene
 
   // paddles
   ctx.strokeStyle = '#2b3a78';
@@ -206,79 +103,11 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   drawBins(ctx, sim.binsL);
   drawBins(ctx, sim.binsR);
 
-  // cores
-  if (!USE_ADAPTER_CORES) {
-    drawCore(ctx, sim.coreL);
-    drawCore(ctx, sim.coreR);
-    drawShieldRing(ctx, sim.coreL, css('--left'));
-    drawShieldRing(ctx, sim.coreR, css('--right'));
-  }
-
-  // weapon mount icons
-  if (!USE_ADAPTER) {
-    drawWeaponMounts(ctx, (sim as any).wepL, getCSS('--left'));
-    drawWeaponMounts(ctx, (sim as any).wepR, getCSS('--right'));
-  }
-
-  // Wind-up flashes on weapon mounts
-  if (!USE_ADAPTER_FX) {
-    const t = performance.now();
-    sim.fxArm = sim.fxArm.filter((fx) => fx.until > t);
-    sim.fxArm.forEach((fx) => {
-      const left = (fx.until - t) / WEAPON_WINDUP_MS; // 1 → 0 over the windup window
-      const pulse = 0.5 + 0.5 * Math.sin((1 - left) * Math.PI * 2.5);
-      const r0 = 10,
-        r1 = 16;
-      const r = r0 + (1 - left) * (r1 - r0);
-      ctx.save();
-      ctx.globalAlpha = 0.35 + 0.45 * pulse;
-      ctx.strokeStyle = fx.color || getCSS('--accent');
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    });
-  }
-
-  // ammo & projectiles
-  if (!USE_ADAPTER_AMMO) {
-    Composite.allBodies(world).forEach((b) => {
-      const plug = (b as any).plugin;
-      if (!plug) return;
-      if (plug.kind === 'ammo') {
-        const col = colorForAmmo(plug.type);
-        ctx.beginPath();
-        ctx.arc(b.position.x, b.position.y, b.circleRadius ?? 6, 0, Math.PI * 2);
-        ctx.fillStyle = col;
-        ctx.fill();
-      }
-    });
-  }
-
-  if (!USE_ADAPTER) {
-    drawSideModsBadge(ctx, SIDE.LEFT);
-    drawSideModsBadge(ctx, SIDE.RIGHT);
-  }
-  if (!USE_ADAPTER) {
-    renderProjectiles(ctx);
-    renderProjectilesFancy(ctx);
-  }
-  if (!USE_ADAPTER_FX) {
-    drawLaserFX(ctx);
-    renderSweep(ctx);
-    renderBeams(ctx);
-    renderImpactFX(ctx);
-  }
-  if (!USE_ADAPTER) drawGameOverBanner(ctx);
+  // cores, mounts, fx, ammo are rendered via the adapter scene
 
   // Always use adapter scene now
   const scene = toDrawCommands(performance.now());
   renderScene(ctx, scene);
-  if (!USE_ADAPTER) {
-    drawCoreStats(ctx, sim.coreL, css('--left'));
-    drawCoreStats(ctx, sim.coreR, css('--right'));
-  }
   ctx.restore();
 }
 
@@ -371,14 +200,14 @@ export function drawBins(ctx: CanvasRenderingContext2D, bins: any): void {
 
       // first line (name)
       const namePx = fitFontPx(ctx, nameText, 12, bw * 0.95); // max 12px, fit to ~95% box width
-      ctx.font = `${namePx}px var(--mono, monospace)`;
+      ctx.font = `${namePx}px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial`;
       ctx.fillStyle = css('--fg-weak');
       ctx.fillStyle = textCol; // for the name/values you draw
       ctx.fillText(nameText, cx, labelY);
 
       // second line (fill/cap)
       const statPx = fitFontPx(ctx, statText, 11, bw * 0.9);
-      ctx.font = `${statPx}px var(--mono, monospace)`;
+      ctx.font = `${statPx}px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial`;
       ctx.fillStyle = css('--fg-dim');
       ctx.fillStyle = textCol; // for the name/values you draw
       ctx.fillText(statText, cx, statsY);
