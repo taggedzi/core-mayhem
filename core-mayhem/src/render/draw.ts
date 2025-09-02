@@ -44,6 +44,22 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   const W = sim.W,
     H = sim.H;
   ctx.clearRect(0, 0, W, H);
+  // screen shake (applies to whole frame)
+  ctx.save();
+  {
+    const now = performance.now();
+    const t0 = (sim as any).shakeT0 ?? 0;
+    const ms = (sim as any).shakeMs ?? 0;
+    const amp = (sim as any).shakeAmp ?? 0;
+    const age = now - t0;
+    if (age >= 0 && age < ms && amp > 0) {
+      const k = 1 - age / ms;
+      const a = now * 0.08;
+      const dx = Math.sin(a * 1.7) * amp * k;
+      const dy = Math.cos(a * 1.3) * amp * k;
+      ctx.translate(dx, dy);
+    }
+  }
   const world = sim.world; // capture to allow narrowing
   assertWorld(world);
 
@@ -257,6 +273,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   renderScene(ctx, scene);
   drawCoreStats(ctx, sim.coreL, css('--left'));
   drawCoreStats(ctx, sim.coreR, css('--right'));
+  ctx.restore();
 }
 
 export function drawBins(ctx: CanvasRenderingContext2D, bins: any): void {

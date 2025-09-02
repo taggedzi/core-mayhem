@@ -6,7 +6,6 @@ import { WALL_T } from '../config'; // used for wall thickness
 import { LASER_FX } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { GAMEOVER } from '../config';
-import { LASER_FX } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
@@ -21,6 +20,9 @@ export type DrawCommand =
       fill?: string;
       lineWidth?: number;
       alpha?: number;
+      composite?: GlobalCompositeOperation | 'lighter' | 'source-over';
+      shadowBlur?: number;
+      shadowColor?: string;
     }
   | {
       kind: 'line';
@@ -33,6 +35,10 @@ export type DrawCommand =
       alpha?: number;
       lineDash?: number[];
       lineDashOffset?: number;
+      lineCap?: CanvasLineCap;
+      composite?: GlobalCompositeOperation | 'lighter' | 'source-over';
+      shadowBlur?: number;
+      shadowColor?: string;
     }
   | {
       kind: 'text';
@@ -61,8 +67,13 @@ export type DrawCommand =
       kind: 'poly';
       points: { x: number; y: number }[];
       stroke?: string;
+      fill?: string;
       lineWidth?: number;
       close?: boolean;
+      alpha?: number;
+      composite?: GlobalCompositeOperation | 'lighter' | 'source-over';
+      shadowBlur?: number;
+      shadowColor?: string;
     }
   | {
       kind: 'arc';
@@ -93,6 +104,19 @@ export type DrawCommand =
       h: number;
       fill?: string;
       alpha?: number;
+    }
+  | {
+      kind: 'gradLine';
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      from: string;
+      to: string;
+      lineWidth?: number;
+      alpha?: number;
+      lineCap?: CanvasLineCap;
+      composite?: GlobalCompositeOperation | 'lighter' | 'source-over';
     };
 
 export interface Scene {
@@ -107,8 +131,17 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   const H = sim.H ?? 600;
   const cmds: DrawCommand[] = [];
 
-  // Midline
-  cmds.push({ kind: 'line', x1: W / 2, y1: 0, x2: W / 2, y2: H, stroke: '#20336e', lineWidth: 2 });
+  // Midline (dashed)
+  cmds.push({
+    kind: 'line',
+    x1: W / 2,
+    y1: 0,
+    x2: W / 2,
+    y2: H,
+    stroke: '#20336e',
+    lineWidth: 2,
+    lineDash: [6, 6],
+  });
 
   const addCore = (core: any, colorVar: string) => {
     if (!core?.center) return;
@@ -208,7 +241,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       }
     }
   }
-  // projectiles (simple fill + outline)
+  // Projectiles: trails + bodies (approximate legacy look)
   {
     const w = sim.world;
     if (w) {
@@ -217,8 +250,61 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const plug = (b as any).plugin;
         if (!plug || plug.kind !== 'projectile') continue;
         const sty = (PROJECTILE_STYLE as any)[plug.ptype] ?? PROJECTILE_STYLE.cannon;
-        const r = (b as any).circleRadius ?? 3;
-        cmds.push({ kind: 'circle', x: b.position.x, y: b.position.y, r, fill: sty.fill, stroke: sty.glow, lineWidth: 1.2 });
+        const pos = b.position;
+        const vel = (b as any).velocity ?? { x: 0, y: 0 };
+        const speed = Math.hypot(vel.x, vel.y);
+
+        // Trail
+        const trailLen = Math.min(30, 6 + speed * 2);
+        const tx = pos.x - vel.x * trailLen * 0.8;
+        const ty = pos.y - vel.y * trailLen * 0.8;
+        cmds.push({
+          kind: 'gradLine',
+          x1: pos.x,
+          y1: pos.y,
+          x2: tx,
+          y2: ty,
+          from: sty.glow,
+          to: 'rgba(0,0,0,0)',
+          alpha: 1,
+          lineWidth: Math.max(2, 0.06 * trailLen),
+          lineCap: 'round',
+          composite: 'lighter',
+        });
+
+        // Body
+        const outline = PROJECTILE_OUTLINE;
+        const ptype = String(plug.ptype);
+        if (ptype === 'missile') {
+          const ang = Math.atan2(vel.y, vel.x);
+          const ux = Math.cos(ang), uy = Math.sin(ang);
+          const nx = -uy, ny = ux;
+          const r = 9;
+          const nose = { x: pos.x + ux * r, y: pos.y + uy * r };
+          const tailR = { x: pos.x - ux * r * 0.6 + nx * r * 0.55, y: pos.y - uy * r * 0.6 + ny * r * 0.55 };
+          const tailL = { x: pos.x - ux * r * 0.6 - nx * r * 0.55, y: pos.y - uy * r * 0.6 - ny * r * 0.55 };
+          cmds.push({ kind: 'poly', points: [nose, tailR, tailL], fill: sty.fill, stroke: outline, lineWidth: 2, close: true, shadowBlur: 12, shadowColor: sty.glow, composite: 'lighter' });
+          // engine flare
+          const t0 = { x: pos.x - ux * r * 0.6, y: pos.y - uy * r * 0.6 };
+          const t1 = { x: pos.x - ux * r * 1.2, y: pos.y - uy * r * 1.2 };
+          cmds.push({ kind: 'line', x1: t0.x, y1: t0.y, x2: t1.x, y2: t1.y, stroke: sty.glow, lineWidth: 3, alpha: 1, composite: 'lighter', lineCap: 'round' });
+        } else if (ptype === 'mortar') {
+          cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 6, fill: sty.fill, stroke: outline, lineWidth: 2, shadowBlur: 10, shadowColor: sty.glow, composite: 'lighter' });
+          cmds.push({ kind: 'line', x1: pos.x - 4, y1: pos.y - 4, x2: pos.x + 4, y2: pos.y + 4, stroke: '#FFFFFF', lineWidth: 1.5 });
+        } else if (ptype === 'artillery') {
+          const ang = Math.atan2(vel.y, vel.x);
+          const ux = Math.cos(ang), uy = Math.sin(ang);
+          const nx = -uy, ny = ux;
+          const r = 10;
+          const p1 = { x: pos.x + ux * r, y: pos.y + uy * r };
+          const p2 = { x: pos.x, y: pos.y + ny * 6 };
+          const p3 = { x: pos.x - ux * r, y: pos.y - uy * r };
+          const p4 = { x: pos.x, y: pos.y - ny * 6 };
+          cmds.push({ kind: 'poly', points: [p1, p2, p3, p4], fill: sty.fill, stroke: outline, lineWidth: 2, close: true, shadowBlur: 10, shadowColor: sty.glow, composite: 'lighter' });
+        } else {
+          // cannon
+          cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 5, fill: sty.fill, stroke: outline, lineWidth: 2, shadowBlur: 8, shadowColor: sty.glow, composite: 'lighter' });
+        }
       }
     }
   }
@@ -378,13 +464,25 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (age >= f.ms) continue; // prune expired
         const t = Math.max(0, Math.min(1, age / Math.max(1, f.ms)));
         if (f.kind === 'burst') {
-          const baseR = 8;
-          const maxR = 48;
-          const r = baseR + (maxR - baseR) * t * 0.82;
-          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: Math.max(1, 6 - 5 * t), alpha: 0.9 * (1 - t) });
+          const power = Math.max(0, Number((f as any).power) || 0);
+          const baseR = 10;
+          const maxR = Math.max(22, Math.min(72, baseR + power * 1.2));
+          const r = baseR + (maxR - baseR) * t;
+          cmds.push({
+            kind: 'circle',
+            x: f.x,
+            y: f.y,
+            r,
+            stroke: f.color,
+            lineWidth: Math.max(1, 6 - 5 * t),
+            alpha: 0.9 * (1 - t),
+            composite: 'lighter',
+            shadowBlur: 14,
+            shadowColor: f.color,
+          });
         } else {
           const r = 10 + 8 * t;
-          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: 2, alpha: 0.55 * (1 - t) });
+          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: 2, alpha: 0.55 * (1 - t), composite: 'lighter' });
         }
       }
     }
@@ -407,6 +505,42 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         cmds.push({ kind: 'arc', cx: s.x, cy: s.y, r, a0: s.a0, a1: s.a1, stroke: color, lineWidth: 2, alpha: 0.55 });
         // pointer line
         cmds.push({ kind: 'line', x1: s.x, y1: s.y, x2: s.x + Math.cos(a) * (r + 6), y2: s.y + Math.sin(a) * (r + 6), stroke: color, lineWidth: 2, alpha: 0.55 });
+      }
+    }
+  }
+
+  // Sparks (particles from impacts/explosions)
+  {
+    const list = (sim as any).fxSparks as
+      | { x: number; y: number; vx: number; vy: number; t0: number; ms: number; color: string }[]
+      | undefined;
+    if (list?.length) {
+      const G = 0.0022; // px/ms^2
+      for (const p of list) {
+        const age = now - p.t0;
+        if (age < 0 || age >= p.ms) continue;
+        const dt = age;
+        const x = p.x + p.vx * dt;
+        const y = p.y + p.vy * dt + 0.5 * G * dt * dt;
+        const fade = 1 - age / p.ms;
+        const len = 6 + 8 * fade;
+        const nx = p.vx, ny = p.vy + G * dt;
+        const n = Math.max(0.001, Math.hypot(nx, ny));
+        const ux = nx / n,
+          uy = ny / n;
+        cmds.push({
+          kind: 'gradLine',
+          x1: x,
+          y1: y,
+          x2: x - ux * len,
+          y2: y - uy * len,
+          from: p.color,
+          to: 'rgba(0,0,0,0)',
+          lineWidth: 2,
+          alpha: 0.9 * fade,
+          lineCap: 'round',
+          composite: 'lighter',
+        });
       }
     }
   }

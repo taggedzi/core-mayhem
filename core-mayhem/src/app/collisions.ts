@@ -1,6 +1,6 @@
 import { Events, World, Body, Query, Composite } from 'matter-js';
 
-import { EXPLOSION, FX_MS } from '../config';
+import { EXPLOSION, FX_MS, PROJECTILE_STYLE } from '../config';
 import { applyCoreDamage } from '../sim/damage';
 import { angleToSeg } from '../sim/core';
 import { sim } from '../state';
@@ -30,7 +30,13 @@ const css = (name: string): string =>
 let _explosionCount = 0;
 let _explosionWindowT0 = 0;
 
-function explodeAt(x: number, y: number, shooterSide: Side): void {
+function explodeAt(
+  x: number,
+  y: number,
+  shooterSide: Side,
+  colorOverride?: string,
+  power?: number,
+): void {
   if (!EXPLOSION.enabled) return;
 
   const now = performance.now();
@@ -40,8 +46,18 @@ function explodeAt(x: number, y: number, shooterSide: Side): void {
   }
   if (_explosionCount++ > EXPLOSION.maxPerSec) return;
 
-  const color = shooterSide === SIDE.LEFT ? css('--left') : css('--right');
-  (sim.fxImp ||= []).push({ x, y, t0: now, ms: 350, color, kind: 'burst' });
+  const color = colorOverride ?? (shooterSide === SIDE.LEFT ? css('--left') : css('--right'));
+  (sim.fxImp ||= []).push({ x, y, t0: now, ms: 350, color, kind: 'burst', power });
+  // camera shake + sparks
+  (sim as any).shakeT0 = now;
+  (sim as any).shakeMs = 220;
+  (sim as any).shakeAmp = Math.max(2, Math.min(8, (sim as any).shakeAmp ?? 0 + 3));
+  const sparks = (sim as any).fxSparks || ((sim as any).fxSparks = []);
+  for (let i = 0; i < 24; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 1.6 + Math.random() * 3.2;
+    sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t0: now, ms: 600 + Math.random() * 400, color });
+  }
 
   const r = EXPLOSION.radius;
   const aabb = { min: { x: x - r, y: y - r }, max: { x: x + r, y: y + r } };
@@ -91,7 +107,9 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   if (((core.shieldHP as number) | 0) > 0) {
     core.shieldHP = Math.max(0, core.shieldHP - dmg);
     const shooterSide = proj?.plugin?.side;
-    const color = shooterSide === SIDE.LEFT ? css('--left') : css('--right');
+    const ptype = String(proj?.plugin?.ptype ?? 'cannon');
+    const sty = (PROJECTILE_STYLE as any)[ptype];
+    const color = sty?.glow ?? (shooterSide === SIDE.LEFT ? css('--left') : css('--right'));
     (sim.fxImp ||= []).push({
       x: proj.position.x,
       y: proj.position.y,
@@ -99,10 +117,11 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
       ms: FX_MS.impact,
       color,
       kind: 'burst',
+      power: Number(dmg) || undefined,
     });
     const w = sim.world;
     assertWorld(w);
-    explodeAt(proj.position.x, proj.position.y, proj.plugin.side);
+    explodeAt(proj.position.x, proj.position.y, proj.plugin.side, color, Number(dmg) || undefined);
     World.remove(w, proj);
     onPostHit?.();
     return;
@@ -113,7 +132,8 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 
   const ptype = proj?.plugin?.ptype ?? 'cannon';
   const shooterSide = proj?.plugin?.side;
-  const color = shooterSide === SIDE.LEFT ? css('--left') : css('--right');
+  const sty = (PROJECTILE_STYLE as any)[String(ptype)];
+  const color = sty?.glow ?? (shooterSide === SIDE.LEFT ? css('--left') : css('--right'));
   (sim.fxImp ||= []).push({
     x: proj.position.x,
     y: proj.position.y,
@@ -121,12 +141,18 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     ms: ptype === 'laser' ? FX_MS.burn : FX_MS.impact,
     color,
     kind: ptype === 'laser' ? 'burn' : 'burst',
+    power: Number(dmg) || undefined,
   });
 
   const w = sim.world;
   assertWorld(w);
-  explodeAt(proj.position.x, proj.position.y, proj.plugin.side);
+  const ringColor2 = sty?.glow ?? (shooterSide === SIDE.LEFT ? css('--left') : css('--right'));
+  explodeAt(proj.position.x, proj.position.y, proj.plugin.side, ringColor2, Number(dmg) || undefined);
   World.remove(w, proj);
+  // minor shake for direct hits
+  (sim as any).shakeT0 = performance.now();
+  (sim as any).shakeMs = 160;
+  (sim as any).shakeAmp = Math.max(2, Math.min(6, (sim as any).shakeAmp ?? 0 + 2));
   onPostHit?.();
 }
 
@@ -164,7 +190,10 @@ export function registerCollisions(
         if (pp.kind !== 'projectile') return;
         if (other?.plugin?.kind === 'weaponMount') return;
         if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
-        explodeAt(proj.position.x, proj.position.y, pp.side);
+        const ptype = String(pp.ptype ?? 'cannon');
+        const sty = (PROJECTILE_STYLE as any)[ptype];
+        const ringColor = sty?.glow ?? (pp.side === SIDE.LEFT ? css('--left') : css('--right'));
+        explodeAt(proj.position.x, proj.position.y, pp.side, ringColor, Number(pp.dmg) || undefined);
         const w = sim.world;
         assertWorld(w);
         World.remove(w, proj);
@@ -178,4 +207,3 @@ export function registerCollisions(
   Events.on(eng, 'collisionStart', onStart);
   return () => Events.off(eng, 'collisionStart', onStart);
 }
-

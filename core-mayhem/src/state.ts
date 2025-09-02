@@ -29,6 +29,7 @@ export interface FxImpact {
   ms: number;
   color: string;
   kind: FxImpactKind;
+  power?: number; // used to scale ring size/intensity
 }
 
 export interface FxBeam {
@@ -39,6 +40,16 @@ export interface FxBeam {
   t0: number;
   ms: number;
   side: Side;
+}
+
+export interface FxSpark {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  t0: number;
+  ms: number;
+  color: string;
 }
 
 export interface Cooldowns {
@@ -92,6 +103,7 @@ export interface SimState {
   fxArm: FxArm[];
   fxImp: FxImpact[];
   fxBeam: FxBeam[];
+  fxSparks?: FxSpark[];
 
   // Resources / timers
   ammoL: number;
@@ -102,6 +114,11 @@ export interface SimState {
   // Side modifiers (buffs / temporary disables)
   modsL: SideMods;
   modsR: SideMods;
+
+  // Screen shake (optional)
+  shakeT0?: number;
+  shakeMs?: number;
+  shakeAmp?: number;
 }
 
 // ——— Factory + singleton ———
@@ -137,6 +154,7 @@ export function createSimState(): SimState {
     fxArm: [],
     fxImp: [],
     fxBeam: [],
+    fxSparks: [],
 
     ammoL: 0,
     ammoR: 0,
@@ -167,6 +185,7 @@ export function resetSimState(s: SimState = sim): void {
   s.fxArm.length = 0;
   s.fxImp.length = 0;
   s.fxBeam.length = 0;
+  if (s.fxSparks) s.fxSparks.length = 0;
 
   s.ammoL = 0;
   s.ammoR = 0;
