@@ -6,6 +6,7 @@ import { WALL_T } from '../config'; // used for wall thickness
 import { LASER_FX } from '../config';
 import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { GAMEOVER } from '../config';
+import { SHIELD_RING_COLOR, SHIELD_RING_GLOW } from '../config';
 import { MESMER } from '../config';
 import { sim } from '../state';
 
@@ -328,15 +329,25 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       }
     }
 
-    // shield ring as a stroked circle centered between shieldR0..shieldR1
-    cmds.push({
-      kind: 'circle',
-      x: cx,
-      y: cy,
-      r: (shieldR0 + shieldR1) * 0.5,
-      stroke: colorVar,
-      lineWidth: Math.max(1, shieldR1 - shieldR0),
-    });
+    // Shield ring: fade with ablative shield pool
+    const havePool = typeof (core as any).shieldHP === 'number' && typeof (core as any).shieldHPmax === 'number';
+    const ratio = havePool ? Math.max(0, Math.min(1, (core as any).shieldHP / Math.max(1, (core as any).shieldHPmax))) : 0;
+    if (ratio > 0) {
+      const rMid = (shieldR0 + shieldR1) * 0.5;
+      const width = Math.max(1, shieldR1 - shieldR0);
+      const alpha = 0.18 + 0.82 * ratio; // visible when low, brighter when full
+      cmds.push({
+        kind: 'circle',
+        x: cx,
+        y: cy,
+        r: rMid,
+        stroke: SHIELD_RING_COLOR,
+        lineWidth: width,
+        alpha,
+        shadowBlur: Math.max(0, Math.round(SHIELD_RING_GLOW * (0.5 + 0.5 * ratio))),
+        shadowColor: SHIELD_RING_COLOR,
+      });
+    }
   };
 
   // LEFT core in left color, RIGHT core in right color

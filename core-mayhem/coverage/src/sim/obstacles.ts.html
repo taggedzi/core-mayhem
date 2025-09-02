@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">87.57% </span>
+                <span class="strong">94.67% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>148/169</span>
+                <span class='fraction'>160/169</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.04% </span>
+                <span class="strong">75.55% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>32/41</span>
+                <span class='fraction'>34/45</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">87.57% </span>
+                <span class="strong">94.67% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>148/169</span>
+                <span class='fraction'>160/169</span>
             </div>
         
             
@@ -388,44 +388,44 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">3x</span>
@@ -631,27 +631,27 @@ export function applyPipeForces(pipes: Pipe[]): void {
       }
 &nbsp;
       // vertical lift inside pipe: smoothly servo vy toward target
-      if (inVertical) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
-<span class="cstat-no" title="statement not covered" >        const dt = Math.max(0.001, (sim.engine?.timing?.lastDelta ?? 16.6) / 1000);</span>
-<span class="cstat-no" title="statement not covered" >        const vy = (b as any).velocity?.y ?? b.velocity.y;</span>
-<span class="cstat-no" title="statement not covered" >        const vx = (b as any).velocity?.x ?? b.velocity.x;</span>
+      if (inVertical) {
+        const dt = Math.max(0.001, (sim.engine?.timing?.<span class="branch-0 cbranch-no" title="branch not covered" >lastDelta ?? 16.6) / 1</span>000);
+        const vy = (b as any).velocity?.<span class="branch-0 cbranch-no" title="branch not covered" >y ?? b.velocity.y;</span>
+        const vx = (b as any).velocity?.<span class="branch-0 cbranch-no" title="branch not covered" >x ?? b.velocity.x;</span>
         // Settings no longer define these; read if present at runtime, else defaults
-<span class="cstat-no" title="statement not covered" >        const upSpeed = (sim as any)?.settings?.pipeUpSpeed ?? 28; // px/s</span>
-<span class="cstat-no" title="statement not covered" >        const gain = (sim as any)?.settings?.pipeUpGain ?? 3.2; // 1/s</span>
-<span class="cstat-no" title="statement not covered" >        const vT = -upSpeed; // negative = up</span>
+        const upSpeed = (sim as any)?.settings?.pipeUpSpeed ?? 28; // px/s
+        const gain = (sim as any)?.settings?.pipeUpGain ?? 3.2; // 1/s
+        const vT = -upSpeed; // negative = up
 &nbsp;
         // Exponential smoothing toward target vy
-<span class="cstat-no" title="statement not covered" >        const alpha = 1 - Math.exp(-gain * dt); // stable 0..1</span>
-<span class="cstat-no" title="statement not covered" >        const vyNew = vy + (vT - vy) * alpha;</span>
-<span class="cstat-no" title="statement not covered" >        Body.setVelocity(b, { x: vx, y: vyNew });</span>
+        const alpha = 1 - Math.exp(-gain * dt); // stable 0..1
+        const vyNew = vy + (vT - vy) * alpha;
+        Body.setVelocity(b, { x: vx, y: vyNew });
 &nbsp;
         // gentle centering to avoid rubbing walls
-<span class="cstat-no" title="statement not covered" >        const dx = P.x - b.position.x;</span>
-<span class="cstat-no" title="statement not covered" >        Body.applyForce(b, b.position, { x: dx * 0.0008 * b.mass, y: 0 });</span>
+        const dx = P.x - b.position.x;
+        Body.applyForce(b, b.position, { x: dx * 0.0008 * b.mass, y: 0 });
 &nbsp;
         // optional tiny lateral damping (uncomment if they ping-pong)
         // Body.applyForce(b, b.position, { x: -vx * 0.02 * b.mass, y: 0 });
-<span class="cstat-no" title="statement not covered" >      }</span>
+      }
     }
   }
 }
@@ -748,7 +748,7 @@ export function placeObstaclesFromSpecs(side: -1 | 1, pinsMid: number, pinsWidth
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-09-02T22:14:59.423Z
+                at 2025-09-02T22:18:23.232Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
