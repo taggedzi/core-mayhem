@@ -6,7 +6,6 @@ import { FX_MS } from '../config';
 import { EXPLOSION } from '../config';
 import { REPAIR_EFFECT } from '../config';
 import { GAMEOVER } from '../config';
-import { DEV_KEYS } from '../config';
 import { MATCH_LIMIT } from '../config';
 import { SHIELD } from '../config';
 import { drawFrame } from '../render/draw';
@@ -21,7 +20,6 @@ import { applyGelForces } from '../sim/gel';
 import { makePipe, applyPipeForces, addPaddle, tickPaddles, gelRect } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
 import { tickHoming } from '../sim/weapons';
-import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 
 // --- DEV HOTKEYS: only in Vite dev or if forced via config ---
 import {
@@ -35,13 +33,10 @@ import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 import { applyBuff, applyDebuff } from './mods';
+import { attachDevHotkeys } from './devKeys';
+import { registerCollisions } from './collisions';
 
-import type { World as MatterWorld, Engine, IEventCollision } from 'matter-js';
-
-const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
-
-let _explosionCount = 0,
-  _explosionWindowT0 = 0;
+import type { World as MatterWorld, Engine } from 'matter-js';
 
 // --------- local runtime/type asserts (centralized, fail-fast) ----------
 interface Vec2 {
@@ -72,54 +67,7 @@ function assertCoreFull(c: any): asserts c is CoreMinimal {
   if (!c || !c.center || !Array.isArray(c.segHP)) throw new Error('Core not initialized');
 }
 
-function explodeAt(x: number, y: number, shooterSide: Side): void {
-  if (!EXPLOSION.enabled) return;
-
-  // rate limit
-  const now = performance.now();
-  if (now - _explosionWindowT0 > 1000) {
-    _explosionWindowT0 = now;
-    _explosionCount = 0;
-  }
-  if (_explosionCount++ > EXPLOSION.maxPerSec) return;
-
-  // FX (burst)
-  const color = shooterSide === SIDE.LEFT ? css('--left') : css('--right');
-  (sim.fxImp ||= []).push({ x, y, t0: now, ms: 350, color, kind: 'burst' });
-
-  // query nearby & push
-  const r = EXPLOSION.radius;
-  const aabb = { min: { x: x - r, y: y - r }, max: { x: x + r, y: y + r } };
-  let bodies = null;
-  {
-    const w = sim.world;
-    assertWorld(w);
-    bodies = Query.region(Composite.allBodies(w), aabb);
-  }
-
-  for (const b of bodies) {
-    const plug = (b as any).plugin ?? {};
-    // Push ammo & projectiles away
-    if (plug.kind === 'ammo' || plug.kind === 'projectile') {
-      const dx = b.position.x - x,
-        dy = b.position.y - y;
-      const dist = Math.max(6, Math.hypot(dx, dy));
-      const k = EXPLOSION.force / dist;
-      Body.applyForce(b, b.position, { x: dx * k * b.mass, y: dy * k * b.mass });
-
-      // Optional: destroy ammo with probability
-      if (plug.kind === 'ammo' && Math.random() < EXPLOSION.ammoDestroyPct) {
-        {
-          const w = sim.world;
-          assertWorld(w);
-          World.remove(w, b);
-        }
-        if (plug.side === SIDE.LEFT) sim.ammoL = Math.max(0, sim.ammoL - 1);
-        else if (plug.side === SIDE.RIGHT) sim.ammoR = Math.max(0, sim.ammoR - 1);
-      }
-    }
-  }
-}
+// explodeAt moved to app/collisions.ts
 
 export function startGame(canvas: HTMLCanvasElement) {
   clearWorld();
@@ -210,196 +158,13 @@ export function startGame(canvas: HTMLCanvasElement) {
   (sim as any).wepL = wepL;
   (sim as any).wepR = wepR;
 
-  if (devKeysOn) {
-    const onKey = (e: KeyboardEvent): void => {
-      if ((sim as any).gameOver) return;
-
-      // helpers
-      const L = SIDE.LEFT,
-        R = SIDE.RIGHT;
-      const cLCore = sim.coreL;
-      assertCore(cLCore);
-      const cRCore = sim.coreR;
-      assertCore(cRCore);
-      const cL = cLCore.center,
-        cR = cRCore.center;
-
-      switch (e.key) {
-        // Left side (lowercase)
-        case 'c':
-          fireCannon(L, (wepL as any).cannon.pos, cR, /*speedOrDmg?*/ 16);
-          break;
-        case 'l':
-          {
-            const tc = sim.coreR;
-            assertCore(tc);
-            fireLaser(L, (wepL as any).laser.pos, tc);
-          }
-          break;
-        case 'm':
-          fireMissiles(L, (wepL as any).missile.pos, 5 /*count*/);
-          break;
-        case 'o':
-          fireMortar(L, (wepL as any).mortar.pos, 3 /*count*/);
-          break;
-
-        // Right side (uppercase)
-        case 'C':
-          fireCannon(R, (wepR as any).cannon.pos, cL, 16);
-          break;
-        case 'L':
-          {
-            const tc = sim.coreL;
-            assertCore(tc);
-            fireLaser(R, (wepR as any).laser.pos, tc);
-          }
-          break;
-        case 'M':
-          fireMissiles(R, (wepR as any).missile.pos, 5);
-          break;
-        case 'O':
-          fireMortar(R, (wepR as any).mortar.pos, 3);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', onKey);
-    // Remove on stop so we don't stack listeners across restarts
-    (sim as any)._devKeyHandler = onKey;
-  }
+  // Dev hotkeys
+  const detachHotkeys = attachDevHotkeys(wepL, wepR);
 
   // Collisions: deposits + core hits
-  Events.on(eng, 'collisionStart', (e: IEventCollision<Engine>) => {
-    for (const p of e.pairs) {
-      const A = p.bodyA as any,
-        B = p.bodyB as any;
-      const a = A.plugin ?? {},
-        b = B.plugin ?? {};
+  const detachCollisions = registerCollisions(eng, { onPostHit: maybeEndMatch });
 
-      // deposits (unchanged)
-      if (a.kind === 'ammo' && b.kind === 'container') {
-        deposit(A, B);
-        continue;
-      }
-      if (b.kind === 'ammo' && a.kind === 'container') {
-        deposit(B, A);
-        continue;
-      }
-
-      // direct core hits (apply damage + FX; we also explode below inside hit())
-      if (a.kind === 'projectile' && (b.kind === 'coreRing' || b.kind === 'coreCenter')) {
-        hit(A, B);
-        continue;
-      }
-      if (b.kind === 'projectile' && (a.kind === 'coreRing' || a.kind === 'coreCenter')) {
-        hit(B, A);
-        continue;
-      }
-
-      // explode-on-anything (except mounts) with grace period
-      const explodeIf = (proj: any, other: any): void => {
-        const pp = proj?.plugin ?? {};
-        if (pp.kind !== 'projectile') return;
-        if (other?.plugin?.kind === 'weaponMount') return; // ignore mounts
-        if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return; // grace
-
-        explodeAt(proj.position.x, proj.position.y, pp.side);
-        {
-          const w = sim.world;
-          assertWorld(w);
-          World.remove(w, proj);
-        }
-      };
-
-      // pop if projectile touches anything (ammo, pins, walls, containers, beamSensor, etc.)
-      explodeIf(A, B);
-      explodeIf(B, A);
-    }
-  });
-
-  function deposit(ammo: any, container: any): void {
-    const accept = container.plugin.accept as string[];
-    if (!accept.includes(ammo.plugin.type)) return;
-    {
-      const w = sim.world;
-      assertWorld(w);
-      World.remove(w, ammo);
-    }
-    if (ammo.plugin.side === SIDE.LEFT) {
-      sim.ammoL--;
-    } else {
-      sim.ammoR--;
-    }
-    const bins = (container.plugin.side === SIDE.LEFT ? sim.binsL : sim.binsR) as any;
-    const key = container.plugin.label as string;
-    if (bins[key]) bins[key].fill++;
-  }
-
-  function hit(proj: any, coreBody: any): void {
-    const side: Side = coreBody.plugin.side; // the side being hit
-    const coreMaybe = side === SIDE.LEFT ? sim.coreL : sim.coreR;
-    assertCoreFull(coreMaybe);
-    const core = coreMaybe;
-    const dmg = proj?.plugin?.dmg ?? 8;
-    const isCenter = coreBody.plugin.kind === 'coreCenter';
-
-    // --- ABLATIVE SHIELD: if any shieldHP remains, it absorbs projectile damage ---
-    if (((core.shieldHP as number) | 0) > 0) {
-      core.shieldHP = Math.max(
-        0,
-        core.shieldHP - dmg /* * SHIELD.projectileFactor if you added it */,
-      );
-
-      // FX for shield hit (nice pop)
-      const shooterSide = proj?.plugin?.side;
-      const color = shooterSide === SIDE.LEFT ? css('--left') : css('--right');
-      (sim.fxImp ||= []).push({
-        x: proj.position.x,
-        y: proj.position.y,
-        t0: performance.now(),
-        ms: FX_MS.impact,
-        color,
-        kind: 'burst',
-      });
-
-      explodeAt(proj.position.x, proj.position.y, proj.plugin.side);
-      {
-        const w = sim.world;
-        assertWorld(w);
-        World.remove(w, proj);
-      }
-      maybeEndMatch();
-      return;
-    }
-
-    // --- No shield: apply to core as before ---
-    if (isCenter) {
-      core.centerHP = Math.max(0, core.centerHP - dmg);
-    } else {
-      applyCoreDamage(core, proj.position, dmg, angleToSeg);
-    }
-
-    // impact/burn FX + explode
-    const ptype = proj?.plugin?.ptype ?? 'cannon';
-    const shooterSide = proj?.plugin?.side;
-    const color = shooterSide === SIDE.LEFT ? css('--left') : css('--right');
-    (sim.fxImp ||= []).push({
-      x: proj.position.x,
-      y: proj.position.y,
-      t0: performance.now(),
-      ms: ptype === 'laser' ? FX_MS.burn : FX_MS.impact,
-      color,
-      kind: ptype === 'laser' ? 'burn' : 'burst',
-    });
-
-    explodeAt(proj.position.x, proj.position.y, proj.plugin.side);
-    {
-      const w = sim.world;
-      assertWorld(w);
-      World.remove(w, proj);
-    }
-    maybeEndMatch();
-  }
+  // deposit() and hit() moved to app/collisions.ts
 
   // Game update
   Events.on(eng, 'beforeUpdate', () => {
@@ -572,6 +337,8 @@ export function startGame(canvas: HTMLCanvasElement) {
   return function stop() {
     sim.started = false;
     cancelAnimationFrame(raf);
+    detachHotkeys?.();
+    detachCollisions?.();
     clearWorld();
     updateHUD();
   };
