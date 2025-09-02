@@ -40,7 +40,10 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       break;
     }
     case 'text': {
-      ctx.fillStyle = '#000';
+      if ((cmd as any).font) ctx.font = (cmd as any).font as string;
+      if ((cmd as any).align) ctx.textAlign = (cmd as any).align as CanvasTextAlign;
+      if ((cmd as any).baseline) ctx.textBaseline = (cmd as any).baseline as CanvasTextBaseline;
+      ctx.fillStyle = cssVar(ctx, (cmd as any).fill ?? '#000');
       ctx.fillText(cmd.text, cmd.x, cmd.y);
       break;
     }
@@ -101,6 +104,14 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       ctx.lineWidth = cmd.lineWidth ?? 1;
       ctx.strokeStyle = cssVar(ctx, cmd.stroke ?? '#000');
       ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'rect': {
+      ctx.save();
+      if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
+      ctx.fillStyle = cssVar(ctx, (cmd as any).fill ?? '#000');
+      ctx.fillRect((cmd as any).x, (cmd as any).y, (cmd as any).w, (cmd as any).h);
       ctx.restore();
       break;
     }

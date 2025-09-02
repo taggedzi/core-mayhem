@@ -47,15 +47,17 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
   const world = sim.world; // capture to allow narrowing
   assertWorld(world);
 
-  // midline
-  ctx.setLineDash([6, 6]);
-  ctx.strokeStyle = '#20336e';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(W / 2, 0);
-  ctx.lineTo(W / 2, H);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  // midline (legacy) — adapter scene draws its own
+  if (!USE_ADAPTER) {
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = '#20336e';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W / 2, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
   // dampers (faint outline only)
   if (SHOW_DAMPERS) {
@@ -238,20 +240,21 @@ export function drawFrame(ctx: CanvasRenderingContext2D): void {
 
   drawSideModsBadge(ctx, SIDE.LEFT);
   drawSideModsBadge(ctx, SIDE.RIGHT);
-  renderProjectiles(ctx);
-  renderProjectilesFancy(ctx);
+  if (!USE_ADAPTER) {
+    renderProjectiles(ctx);
+    renderProjectilesFancy(ctx);
+  }
   if (!USE_ADAPTER_FX) {
     drawLaserFX(ctx);
     renderSweep(ctx);
     renderBeams(ctx);
     renderImpactFX(ctx);
   }
-  drawGameOverBanner(ctx);
+  if (!USE_ADAPTER) drawGameOverBanner(ctx);
 
-  if (USE_ADAPTER) {
-    const scene = toDrawCommands(performance.now());
-    renderScene(ctx, scene);
-  }
+  // Always use adapter scene now
+  const scene = toDrawCommands(performance.now());
+  renderScene(ctx, scene);
   drawCoreStats(ctx, sim.coreL, css('--left'));
   drawCoreStats(ctx, sim.coreR, css('--right'));
 }

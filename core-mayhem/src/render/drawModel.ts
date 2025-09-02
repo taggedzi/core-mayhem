@@ -4,6 +4,9 @@ import { Composite } from 'matter-js';
 import { WEAPON_WINDUP_MS } from '../config';
 import { WALL_T } from '../config'; // used for wall thickness
 import { LASER_FX } from '../config';
+import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
+import { GAMEOVER } from '../config';
+import { LASER_FX } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
@@ -31,7 +34,16 @@ export type DrawCommand =
       lineDash?: number[];
       lineDashOffset?: number;
     }
-  | { kind: 'text'; x: number; y: number; text: string }
+  | {
+      kind: 'text';
+      x: number;
+      y: number;
+      text: string;
+      font?: string;
+      fill?: string;
+      align?: CanvasTextAlign;
+      baseline?: CanvasTextBaseline;
+    }
   | {
       kind: 'wedge';
       cx: number;
@@ -72,6 +84,15 @@ export type DrawCommand =
       composite?: GlobalCompositeOperation | 'lighter' | 'source-over';
       shadowBlur?: number;
       shadowColor?: string;
+    }
+  | {
+      kind: 'rect';
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      fill?: string;
+      alpha?: number;
     };
 
 export interface Scene {
@@ -85,6 +106,9 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   const W = sim.W ?? 800;
   const H = sim.H ?? 600;
   const cmds: DrawCommand[] = [];
+
+  // Midline
+  cmds.push({ kind: 'line', x1: W / 2, y1: 0, x2: W / 2, y2: H, stroke: '#20336e', lineWidth: 2 });
 
   const addCore = (core: any, colorVar: string) => {
     if (!core?.center) return;
@@ -181,6 +205,20 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const col = colorForAmmo(String(plug.type));
         const r = (b as any).circleRadius ?? 6;
         cmds.push({ kind: 'circle', x: b.position.x, y: b.position.y, r, fill: col });
+      }
+    }
+  }
+  // projectiles (simple fill + outline)
+  {
+    const w = sim.world;
+    if (w) {
+      const bodies = Composite.allBodies(w);
+      for (const b of bodies) {
+        const plug = (b as any).plugin;
+        if (!plug || plug.kind !== 'projectile') continue;
+        const sty = (PROJECTILE_STYLE as any)[plug.ptype] ?? PROJECTILE_STYLE.cannon;
+        const r = (b as any).circleRadius ?? 3;
+        cmds.push({ kind: 'circle', x: b.position.x, y: b.position.y, r, fill: sty.fill, stroke: sty.glow, lineWidth: 1.2 });
       }
     }
   }
@@ -371,6 +409,43 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         cmds.push({ kind: 'line', x1: s.x, y1: s.y, x2: s.x + Math.cos(a) * (r + 6), y2: s.y + Math.sin(a) * (r + 6), stroke: color, lineWidth: 2, alpha: 0.55 });
       }
     }
+  }
+
+  // Game Over banner
+  if ((sim as any).gameOver) {
+    const winner = (sim as any).winner as -1 | 1 | 0;
+    const msg = winner === 0 ? 'STALEMATE' : winner === -1 ? 'LEFT WINS' : 'RIGHT WINS';
+    const t0 = (sim as any).winnerAt ?? now;
+    const remainMs = Math.max(0, GAMEOVER.bannerMs - (now - t0));
+    const remainSec = Math.ceil(remainMs / 1000);
+
+    const bw = Math.min(W * 0.8, 720);
+    const bh = Math.min(H * 0.22, 180);
+    const x = (W - bw) / 2;
+    const y = (H - bh) / 2;
+
+    cmds.push({ kind: 'rect', x, y, w: bw, h: bh, fill: 'rgba(0,0,0,0.75)' });
+    cmds.push({
+      kind: 'text',
+      x: W / 2,
+      y: y + bh * 0.42,
+      text: msg,
+      font: `bold ${Math.floor(H * 0.085)}px var(--mono, monospace)`,
+      fill: '#fff',
+      align: 'center',
+      baseline: 'middle',
+    });
+    const sub = GAMEOVER.autoRestart ? `Restarting in ${remainSec}s` : 'Press START to play again';
+    cmds.push({
+      kind: 'text',
+      x: W / 2,
+      y: y + bh * 0.75,
+      text: sub,
+      font: `bold ${Math.floor(H * 0.042)}px var(--mono, monospace)`,
+      fill: '#ddd',
+      align: 'center',
+      baseline: 'middle',
+    });
   }
 
   // Beams (laser lines that fade)
