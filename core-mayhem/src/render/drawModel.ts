@@ -125,6 +125,21 @@ export type DrawCommand =
       alpha?: number;
     }
   | {
+      // Draw centered text with an auto-sized background box
+      kind: 'textBox';
+      x: number;
+      y: number;
+      text: string;
+      font?: string; // canvas font string
+      textFill?: string; // text color
+      fill?: string; // box fill color
+      stroke?: string; // box border color
+      lineWidth?: number; // border width
+      padX?: number; // horizontal padding in px
+      padY?: number; // vertical padding in px
+      alpha?: number;
+    }
+  | {
       kind: 'vignette';
       cx: number;
       cy: number;
@@ -1101,108 +1116,40 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       // Buff badge
       if (nowMs < (m.dmgUntil ?? 0)) {
         const tLeft = Math.max(0, Math.ceil(((m.dmgUntil ?? 0) - nowMs) / 1000));
-        const w = 120,
-          h = 22;
-        cmds.push({ kind: 'rect', x: x - w / 2, y: y - h / 2, w, h, fill: '#032e12', alpha: 1 });
+        const text = `DMG x${(m.dmgMul ?? 1).toFixed(1)}  ${tLeft}s`;
         cmds.push({
-          kind: 'line',
-          x1: x - w / 2,
-          y1: y - h / 2,
-          x2: x + w / 2,
-          y2: y - h / 2,
-          stroke: '#5CFF7A',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'line',
-          x1: x + w / 2,
-          y1: y - h / 2,
-          x2: x + w / 2,
-          y2: y + h / 2,
-          stroke: '#5CFF7A',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'line',
-          x1: x + w / 2,
-          y1: y + h / 2,
-          x2: x - w / 2,
-          y2: y + h / 2,
-          stroke: '#5CFF7A',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'line',
-          x1: x - w / 2,
-          y1: y + h / 2,
-          x2: x - w / 2,
-          y2: y - h / 2,
-          stroke: '#5CFF7A',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'text',
+          kind: 'textBox',
           x,
           y,
-          text: `DMG x${(m.dmgMul ?? 1).toFixed(1)}  ${tLeft}s`,
+          text,
           font: `${fontPx}px var(--mono, monospace)`,
-          fill: '#5CFF7A',
-          align: 'center',
-          baseline: 'middle',
+          fill: '#032e12',
+          stroke: '#5CFF7A',
+          lineWidth: 2,
+          textFill: '#5CFF7A',
+          alpha: 1,
+          padX: 10,
+          padY: 4,
         });
       }
       // Debuff badge
       if (nowMs < (m.disableUntil ?? 0) && m.disabledType) {
         const tLeft = Math.max(0, Math.ceil(((m.disableUntil ?? 0) - nowMs) / 1000));
-        const w = 140,
-          h = 22,
-          y2 = y + 26;
-        cmds.push({ kind: 'rect', x: x - w / 2, y: y2 - h / 2, w, h, fill: '#3b0c0c', alpha: 1 });
+        const y2 = y + 26;
+        const text = `DISABLED ${(m.disabledType as string).toUpperCase()}  ${tLeft}s`;
         cmds.push({
-          kind: 'line',
-          x1: x - w / 2,
-          y1: y2 - h / 2,
-          x2: x + w / 2,
-          y2: y2 - h / 2,
-          stroke: '#FF6B6B',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'line',
-          x1: x + w / 2,
-          y1: y2 - h / 2,
-          x2: x + w / 2,
-          y2: y2 + h / 2,
-          stroke: '#FF6B6B',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'line',
-          x1: x + w / 2,
-          y1: y2 + h / 2,
-          x2: x - w / 2,
-          y2: y2 + h / 2,
-          stroke: '#FF6B6B',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'line',
-          x1: x - w / 2,
-          y1: y2 + h / 2,
-          x2: x - w / 2,
-          y2: y2 - h / 2,
-          stroke: '#FF6B6B',
-          lineWidth: 2,
-        });
-        cmds.push({
-          kind: 'text',
+          kind: 'textBox',
           x,
           y: y2,
-          text: `DISABLED ${(m.disabledType as string).toUpperCase()}  ${tLeft}s`,
+          text,
           font: `${fontPx}px var(--mono, monospace)`,
-          fill: '#FFB1B1',
-          align: 'center',
-          baseline: 'middle',
+          fill: '#3b0c0c',
+          stroke: '#FF6B6B',
+          lineWidth: 2,
+          textFill: '#FFB1B1',
+          alpha: 1,
+          padX: 12,
+          padY: 4,
         });
       }
     };

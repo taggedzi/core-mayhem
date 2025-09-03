@@ -179,6 +179,41 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       ctx.restore();
       break;
     }
+    case 'textBox': {
+      ctx.save();
+      if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
+      const font = (cmd as any).font ? resolveFontVars((cmd as any).font as string) : ctx.font;
+      if (font) ctx.font = font;
+      const text = (cmd as any).text as string;
+      const mx = ctx.measureText(text);
+      const padX = ((cmd as any).padX as number | undefined) ?? 10;
+      const padY = ((cmd as any).padY as number | undefined) ?? 4;
+      const textW = mx.width;
+      const fontSize = (() => {
+        const m = /([0-9]+\.?[0-9]*)px/.exec(font || '');
+        return m ? parseFloat(m[1]!) : 14;
+      })();
+      const textH = (mx.actualBoundingBoxAscent ?? fontSize * 0.8) + (mx.actualBoundingBoxDescent ?? fontSize * 0.2);
+      const w = textW + padX * 2;
+      const h = textH + padY * 2;
+      const x0 = (cmd as any).x - w / 2;
+      const y0 = (cmd as any).y - h / 2;
+      if ((cmd as any).fill) {
+        ctx.fillStyle = cssVar(ctx, (cmd as any).fill as string);
+        ctx.fillRect(x0, y0, w, h);
+      }
+      if ((cmd as any).stroke) {
+        ctx.lineWidth = (cmd as any).lineWidth ?? 1;
+        ctx.strokeStyle = cssVar(ctx, (cmd as any).stroke as string);
+        ctx.strokeRect(x0, y0, w, h);
+      }
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = cssVar(ctx, (cmd as any).textFill ?? '#fff');
+      ctx.fillText(text, (cmd as any).x, (cmd as any).y);
+      ctx.restore();
+      break;
+    }
     case 'vignette': {
       ctx.save();
       try {
