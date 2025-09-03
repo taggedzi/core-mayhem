@@ -33,7 +33,8 @@ export const COOLDOWN_MS = {
 export const PROJ_SPEED = {
   cannon: 0.8,
   laser: 1.0, // laser beam stays instant-ish; visual burn handles feedback
-  missile: 0.65,
+  // Slight bump so missiles have a bit more energy off the rail
+  missile: 0.75,
   mortar: 0.55,
 } as const;
 
@@ -51,14 +52,23 @@ export const MISSILE_JITTER_DEG = 20; // random per-missile wobble at launch
 // Negative tilts aim the arc more upward (screen up).
 export const MISSILE_ARC_TILT_DEG = -55; // tweak to taste
 
+// Time between individual missile launches (ms)
+export const MISSILE_STAGGER_MS = 300; // increase to reduce early self-collisions
+
 // Enable/disable missile homing globally
 export const HOMING_ENABLED = true;
 
 // Homing parameters (units are per-second for accel/turn; speeds match your current scale)
 export const HOMING = {
-  maxSpeed: 9,
-  accelPerSec: 6,
-  maxTurnRadPerSec: 3.2,
+  // Speed and turn tuned for visibly curving flight without heavy compute
+  maxSpeed: 12,
+  accelPerSec: 9,
+  maxTurnRadPerSec: 3.8,
+  // Ensure missiles never stall completely while homing
+  minSpeed: 3,
+  // Apply a tiny upward bias only when the missile has dipped below the target
+  // to counter gentle gravity; kept small to avoid overshoot (degrees)
+  liftBiasDeg: 8,
   ttlMs: 7000,
   fuseRadius: 0,
 } as const;
@@ -276,15 +286,7 @@ export const MESMER = {
   },
 } as const;
 
-type BinId =
-  | 'cannon'
-  | 'laser'
-  | 'missile'
-  | 'mortar'
-  | 'shield'
-  | 'repair'
-  | 'buff'
-  | 'debuff';
+type BinId = 'cannon' | 'laser' | 'missile' | 'mortar' | 'shield' | 'repair' | 'buff' | 'debuff';
 
 type AmmoKind = 'basic' | 'heavy' | 'volatile' | 'emp' | 'shield' | 'repair';
 export type IntakeSide = 'top' | 'bottom' | 'left' | 'right';

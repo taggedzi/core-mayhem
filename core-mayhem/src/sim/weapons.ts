@@ -11,6 +11,7 @@ import {
   MISSILE_JITTER_DEG,
   MISSILE_ARC_TILT_DEG,
 } from '../config';
+import { MISSILE_STAGGER_MS } from '../config';
 import { HOMING, HOMING_ENABLED } from '../config';
 import { MORTAR_ANGLE } from '../config';
 import { SHIELD } from '../config';
@@ -83,6 +84,7 @@ export function queueFireMissiles(
   count = 5,
   windupMs = WEAPON_WINDUP_MS,
   arcTiltDeg?: number, // optional per-shot override
+  staggerMs?: number, // optional override for per-missile spacing
 ): void {
   if (sim.gameOver) return;
   if (isDisabled(from, 'missile')) return;
@@ -108,11 +110,14 @@ export function queueFireMissiles(
   // Keep sweep direction visually consistent (up -> down) on both sides
   const sweepA0 = from === SIDE.RIGHT ? center + spread / 2 : center - spread / 2;
   const sweepA1 = from === SIDE.RIGHT ? center - spread / 2 : center + spread / 2;
+  const perMs = Math.max(0, staggerMs ?? MISSILE_STAGGER_MS);
+  const totalFireMs = perMs * Math.max(0, count - 1);
   (sim.fxSweep ||= []).push({
     x: src.x,
     y: src.y,
     t0: performance.now(),
-    ms: windupMs,
+    // Extend sweep to continue through the firing window
+    ms: windupMs + totalFireMs,
     a0: sweepA0,
     a1: sweepA1,
     side: from,
@@ -121,7 +126,7 @@ export function queueFireMissiles(
   // fire after wind-up; pass the same tilt so launch matches the indicator
   setTimeout(() => {
     if (sim.gameOver) return;
-    fireMissiles(from, src, count, arcTiltDeg);
+    fireMissiles(from, src, count, arcTiltDeg, perMs);
   }, windupMs);
 }
 
@@ -267,6 +272,7 @@ export function fireMissiles(
   src: { x: number; y: number },
   count = 5,
   arcTiltDeg?: number,
+  staggerMs?: number,
 ): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'missile')) return;
@@ -290,6 +296,7 @@ export function fireMissiles(
   const jitter = rad(MISSILE_JITTER_DEG);
   const mul = currentDmgMul(from);
 
+  const stepMs = Math.max(0, staggerMs ?? MISSILE_STAGGER_MS);
   for (let i = 0; i < count; i++)
     setTimeout(() => {
       const m = Bodies.circle(src.x, src.y, 5, { density: 0.003, frictionAir: 0.02 });
@@ -313,7 +320,7 @@ export function fireMissiles(
       Body.setVelocity(m, { x: Math.cos(ang) * speed, y: Math.sin(ang) * speed });
 
       sim.homing.push(m);
-    }, i * 100);
+    }, i * stepMs);
 }
 
 // -- Mortar --
@@ -409,7 +416,13 @@ export function tickHoming(dtMs: number): void {
     const toX = target.x - m.position.x;
     const toY = target.y - m.position.y;
     const toLen = Math.hypot(toX, toY) || 1;
-    const desiredAng = Math.atan2(toY, toX);
+    let desiredAng = Math.atan2(toY, toX);
+
+    // Small upward bias if we are below the target on screen (y grows downward)
+    // Helps counter soft gravity visually without extra forces.
+    if (HOMING.liftBiasDeg && m.position.y > target.y) {
+      desiredAng -= rad(HOMING.liftBiasDeg);
+    }
 
     // current velocity → angle & speed
     interface Vec {
@@ -431,7 +444,8 @@ export function tickHoming(dtMs: number): void {
     const newAng = currAng + turn;
 
     // accelerate toward maxSpeed
-    const newSpeed = Math.min(HOMING.maxSpeed, speed + accel);
+    const minSp = (HOMING as any).minSpeed ?? 0;
+    const newSpeed = Math.max(minSp, Math.min(HOMING.maxSpeed, speed + accel));
 
     // set new velocity
     const nvx = Math.cos(newAng) * newSpeed;
