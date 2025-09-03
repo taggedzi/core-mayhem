@@ -5,7 +5,7 @@ export const DEFAULTS: Settings = {
   chaos: 0.7,
   spawnRate: 26,
   targetAmmo: 80,
-  timescale: 0.5,
+  timescale: 0.7,
   loop: false,
   pipeUpSpeed: 22,
   pipeUpGain: 3.2,
