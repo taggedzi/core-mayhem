@@ -22,7 +22,7 @@ import { applyCoreDamage } from './damage';
 
 import type { Vec } from '../types';
 import type { World as MatterWorld } from 'matter-js';
-import { WEAPONS_LEFT, type WeaponSpec } from '../config';
+import { WEAPONS_LEFT } from '../config';
 
 const DEG = Math.PI / 180;
 const rad = (d: number): number => d * DEG;
@@ -508,11 +508,7 @@ export function makeWeapons(side: Side): WeaponsType {
   // Row geometry matches prior hard-coded layout
   const topY = Math.max(36, sim.H * TOP_Y_FRACTION);
   const yByRow = {
-    top: (order: number) => {
-      // Each weapon type has its own vertical stagger based on the previous implementation
-      // order affects X only; Y is determined by id-specific offset
-      return topY; // base; adjusted per weapon id below
-    },
+    top: (_order: number) => topY,
     bottom: (_order: number) => Math.min(sim.H - 36, sim.H * BOTTOM_Y_FRACTION),
   } as const;
 

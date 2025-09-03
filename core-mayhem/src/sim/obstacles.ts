@@ -211,7 +211,11 @@ export function placeObstaclesFromSpecs(side: -1 | 1, pinsMid: number, pinsWidth
     const y = g.pos[1] * sim.H;
     const w = Math.max(4, pinsWidth * g.sizeFrac[0]);
     const h = Math.max(4, sim.H * g.sizeFrac[1]);
-    gelRect(x, y, w, h, { dampX: g.dampX, dampY: g.dampY });
+    // Omit undefined to satisfy exactOptionalPropertyTypes
+    const opts: { dampX?: number; dampY?: number; kx?: number; ky?: number } = {};
+    if (g.dampX !== undefined) opts.dampX = g.dampX;
+    if (g.dampY !== undefined) opts.dampY = g.dampY;
+    gelRect(x, y, w, h, opts);
   }
 
   // Paddles

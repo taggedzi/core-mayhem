@@ -24,10 +24,6 @@ export default tseslint.config(
     plugins: {
       import: await import('eslint-plugin-import'),
     },
-    settings: {
-      // Helps import rules understand TS paths and extensions
-      'import/resolver': { typescript: true },
-    },
     rules: {
       // Core quality
       'no-console': ['warn', { allow: ['warn', 'error'] }],
@@ -51,7 +47,7 @@ export default tseslint.config(
           alphabetize: { order: 'asc', caseInsensitive: true },
         },
       ],
-      'import/no-unresolved': 'off', // TS handles this
+      'import/no-unresolved': 'off', // TS handles this; avoid custom resolver
 
       // TS specifics
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],

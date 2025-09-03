@@ -221,7 +221,7 @@ export function createSimState(): SimState {
     winner: null,
     winnerAt: 0,
 
-    mesmerMode: undefined,
+    mesmerMode: 'off',
     mesmerFade: 0,
     mesmerLastT: 0,
   };

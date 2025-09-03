@@ -21,7 +21,6 @@ import * as weapons from '../sim/weapons';
 import * as mods from '../app/mods';
 import * as repairMod from '../core/repair';
 import { sim, resetSimState } from '../state';
-import { SIDE } from '../types';
 
 describe('runTriggers', () => {
   beforeEach(() => {
@@ -88,4 +87,3 @@ describe('runTriggers', () => {
     expect((sim as any).fxArm.length).toBeGreaterThanOrEqual(4);
   });
 });
-

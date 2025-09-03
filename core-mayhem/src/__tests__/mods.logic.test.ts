@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { currentDmgMul, isDisabled, applyBuff, applyDebuff } from '../app/mods';
-import { sim, resetSimState } from '../state';
+import { resetSimState } from '../state';
 import { SIDE } from '../types';
 
 describe('mods logic', () => {
@@ -26,4 +26,3 @@ describe('mods logic', () => {
     expect(isDisabled(SIDE.RIGHT, 'cannon')).toBe(false);
   });
 });
-
