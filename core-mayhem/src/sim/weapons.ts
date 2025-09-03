@@ -485,7 +485,7 @@ function clampX(x: number): number {
 const BOTTOM_Y_FRACTION = 0.88; // vertical row near bottom
 const ARTY_X_FROM_MID_R = 0.45; // horizontal offset from midline (in core radii)
 
-export interface WeapType {
+interface WeapType {
   pos: {
     x: number;
     y: number;

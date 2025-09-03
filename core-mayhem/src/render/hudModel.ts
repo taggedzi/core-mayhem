@@ -3,7 +3,7 @@ import { sim } from '../state';
 
 const i = (x: number): number => Math.max(0, Math.round(x));
 
-export interface HudData {
+interface HudData {
   leftHp: string; // e.g. "50|Σ120"
   rightHp: string; // e.g. "48|Σ110"
   state: string; // "Running" | "Idle" | "Game Over"

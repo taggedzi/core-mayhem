@@ -993,7 +993,11 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     };
     type Vec2 = { x: number; y: number };
     type BodyLike = { bounds: { min: Vec2; max: Vec2 }; position?: Vec2 };
-    type RenderBin = import('../types').Bin & {
+    type RenderBin = {
+      body?: any;
+      fill: number;
+      cap: number;
+      label?: string;
       box?: BodyLike;
       intake?: BodyLike;
       pos?: Vec2;

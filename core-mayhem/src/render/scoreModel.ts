@@ -1,6 +1,6 @@
 import { sim } from '../state';
 
-export interface ScoreData {
+interface ScoreData {
   leftWins: number;
   rightWins: number;
   ties: number;

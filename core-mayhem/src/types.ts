@@ -9,7 +9,7 @@ export interface Vec {
   y: number;
 }
 
-export type AmmoType = 'basic' | 'heavy' | 'volatile' | 'emp' | 'repair' | 'shield';
+type AmmoType = 'basic' | 'heavy' | 'volatile' | 'emp' | 'repair' | 'shield';
 
 // Weapon kinds used across sim/render
 export type WeaponKind = 'cannon' | 'laser' | 'missile' | 'mortar';
@@ -34,7 +34,7 @@ export interface Settings {
   pipeUpGain?: number; // 1/s responsiveness (higher = snappier)
 }
 
-export interface Bin {
+interface Bin {
   body: Body;
   accept: readonly AmmoType[]; // ✅ satisfies eslint array-type
   fill: number; // current amount

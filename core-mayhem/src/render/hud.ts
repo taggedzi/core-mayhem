@@ -12,16 +12,3 @@ export function updateHUD(): void {
   const stateEl = document.getElementById('state');
   if (stateEl) stateEl.textContent = hud.state;
 }
-
-export function setState(text: string): void {
-  const el = document.getElementById('state');
-  if (el) el.textContent = text;
-}
-
-export function setButtons(running: boolean): void {
-  const btnStart = document.getElementById('btnStart') as HTMLButtonElement | null;
-  if (btnStart) btnStart.disabled = running;
-
-  const btnStop = document.getElementById('btnStop') as HTMLButtonElement | null;
-  if (btnStop) btnStop.disabled = !running;
-}

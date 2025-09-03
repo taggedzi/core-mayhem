@@ -1,6 +1,6 @@
 import { ARMOR } from '../config';
 
-export interface Vec2 {
+interface Vec2 {
   x: number;
   y: number;
 }

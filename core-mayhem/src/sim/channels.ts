@@ -5,7 +5,7 @@ import { WALL_T, WALL_PHYS_T } from '../config';
 import { sim } from '../state';
 
 // Info if you need it later
-export interface LanesInfo {
+interface LanesInfo {
   lanes: number;
   gap: number;
   walls: Matter.Body[];

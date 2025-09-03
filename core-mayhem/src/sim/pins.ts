@@ -2,7 +2,7 @@ import { Bodies, World, Constraint, Body } from 'matter-js';
 
 import { sim } from '../state';
 
-export interface PinField {
+interface PinField {
   mid: number;
   width: number;
 }

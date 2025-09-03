@@ -15,7 +15,7 @@ export const DEFAULTS: Settings = {
 export const WALL_T = 6;
 export const WALL_PHYS_T = 24; // collider thickness (invisible)
 
-export const BIN_T = 2; // thin border stroke for boxes
+// thin border stroke for boxes (unused)
 export const BIN_INTAKE_H = 6; // height of the visible intake strip
 
 // Global wind-up (arming) delay
@@ -64,7 +64,7 @@ export const HOMING = {
 } as const;
 
 // Visual thickness of the shield ring in pixels (scales a bit with H too)
-export const SHIELD_RING_PX = 6;
+// SHIELD_RING_PX (unused)
 
 // Explosions (projectiles pop on any contact + nearby push)
 export const EXPLOSION = {
@@ -76,12 +76,7 @@ export const EXPLOSION = {
   ammoDestroyPct: 0.25,
 } as const;
 
-export const SHOTS_PER_FILL = {
-  cannon: 20,
-  missile: 8,
-  mortar: 1,
-  laserMs: 800,
-} as const;
+// SHOTS_PER_FILL (unused)
 
 export const DAMAGE = {
   cannon: 3,
@@ -90,9 +85,7 @@ export const DAMAGE = {
   laserDps: 40,
 } as const;
 
-export const SHIELD_EFFECT = {
-  gain: 20,
-} as const;
+// SHIELD_EFFECT (unused)
 
 export const REPAIR_EFFECT = {
   segmentsToHeal: 3,
@@ -101,9 +94,9 @@ export const REPAIR_EFFECT = {
   centerAmount: 90,
 } as const;
 
-export const CORE_RIM_WIDTH_R = 0.06;
+// CORE_RIM_WIDTH_R (unused)
 
-export const SHIELD_RING_WIDTH_R = 0.1;
+// SHIELD_RING_WIDTH_R (unused)
 export const SHIELD_RING_GLOW = 12;
 export const SHIELD_RING_COLOR = 'rgba(120, 200, 255, 0.95)';
 
@@ -184,7 +177,7 @@ export const ARMOR = {
   chipChance: 0.0,
 } as const;
 
-export const DEBUG_DAMAGE = false;
+// DEBUG_DAMAGE (unused)
 
 export const MATCH_LIMIT = {
   enabled: true,
@@ -200,12 +193,12 @@ export const MODS = {
 
 // ---- Modular placement specs (mirrored like bins) ----
 
-export type WeaponId = 'cannon' | 'laser' | 'missile' | 'mortar';
+type WeaponId = 'cannon' | 'laser' | 'missile' | 'mortar';
 
 // Weapon row placement using the existing computed layout rules.
 // - row 'top' uses the same top row as cannon/laser/missile spaced by core radius.
 // - row 'bottom' is the artillery row near the bottom.
-export interface WeaponSpec {
+interface WeaponSpec {
   id: WeaponId;
   row: 'top' | 'bottom';
   order: number; // index along the row from nearest midline outward (0,1,2,...)
@@ -222,7 +215,7 @@ export const WEAPONS_LEFT: readonly WeaponSpec[] = [
 
 // Paddles positioned inside the pins field using fractions of the pin-field width.
 // pos: [xFrac, yFrac] where xFrac=0 at left edge of pins field and 1 at right edge
-export interface PaddleSpec {
+interface PaddleSpec {
   pos: [number, number];
   amp: number;
   spd: number;
@@ -237,7 +230,7 @@ export const PADDLES_LEFT: readonly PaddleSpec[] = [
 ] as const;
 
 // Gel rectangles inside the pins field.
-export interface GelSpec {
+interface GelSpec {
   pos: [number, number]; // center in fractions; x relative to pins field, y relative to canvas height
   sizeFrac: [number, number]; // [width as fraction of pinsWidth, height as fraction of H]
   dampX?: number;
@@ -283,7 +276,7 @@ export const MESMER = {
   },
 } as const;
 
-export type BinId =
+type BinId =
   | 'cannon'
   | 'laser'
   | 'missile'
@@ -293,10 +286,10 @@ export type BinId =
   | 'buff'
   | 'debuff';
 
-export type AmmoKind = 'basic' | 'heavy' | 'volatile' | 'emp' | 'shield' | 'repair';
+type AmmoKind = 'basic' | 'heavy' | 'volatile' | 'emp' | 'shield' | 'repair';
 export type IntakeSide = 'top' | 'bottom' | 'left' | 'right';
 
-export interface BinStyle {
+interface BinStyle {
   strokePx?: number;
   stroke?: string;
   box?: string;

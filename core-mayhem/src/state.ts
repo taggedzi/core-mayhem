@@ -22,7 +22,7 @@ export interface FxArm {
   color: string;
 }
 
-export type FxImpactKind = 'burst' | 'burn';
+type FxImpactKind = 'burst' | 'burn';
 export interface FxImpact {
   x: number;
   y: number;
@@ -74,7 +74,7 @@ export interface FxSpark {
   color: string;
 }
 
-export interface FxBanner {
+interface FxBanner {
   side: Side;
   text: string; // big header
   sub?: string; // optional subtitle (kept for compat)
@@ -84,20 +84,20 @@ export interface FxBanner {
   ms: number;
 }
 
-export interface Cooldowns {
+interface Cooldowns {
   cannon: number;
   laser: number;
   missile: number;
   mortar: number;
 }
 
-export interface SimCooldowns {
+interface SimCooldowns {
   L: Cooldowns;
   R: Cooldowns;
 }
 
 // ——— Main state shape ———
-export interface SimState {
+interface SimState {
   // Matter
   engine: Engine | null;
   runner: Runner | null;
@@ -167,7 +167,7 @@ export interface SimState {
 }
 
 // ——— Factory + singleton ———
-export function createSimState(): SimState {
+function createSimState(): SimState {
   return {
     engine: null,
     runner: null,

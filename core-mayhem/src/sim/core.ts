@@ -115,7 +115,7 @@ export function makeCore(world: World, side: Side, teamColor: string): Core {
   return core;
 }
 
-export interface Seg {
+interface Seg {
   i0: number;
   i1: number;
   w0: number;

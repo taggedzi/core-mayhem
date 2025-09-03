@@ -52,7 +52,7 @@ function sidePanelX(side: Side, pinsMid: number, pinsWidth: number, xFrac: numbe
   return x0 + mirrored * (x1 - x0);
 }
 
-export interface Offset {
+interface Offset {
   dx: number;
   dy: number;
   iw: number;
@@ -79,7 +79,7 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-export interface pxRatio {
+interface pxRatio {
   w: number;
   h: number;
 }
@@ -101,7 +101,7 @@ function assertWorld(w: World | null): asserts w is World {
   if (!w) throw new Error('World not initialized');
 }
 
-export interface BinModel {
+interface BinModel {
   key: BinSpec['id'];
   pos: { x: number; y: number };
   box: Body;

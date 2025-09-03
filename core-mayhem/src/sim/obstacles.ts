@@ -139,7 +139,7 @@ export function applyPipeForces(pipes: Pipe[]): void {
   }
 }
 
-export function gelRect(
+function gelRect(
   x: number,
   y: number,
   w: number,
@@ -162,7 +162,7 @@ export function gelRect(
   return b;
 }
 
-export function addPaddle(x: number, y: number, amp: number, spd: number, dir: number): Body {
+function addPaddle(x: number, y: number, amp: number, spd: number, dir: number): Body {
   const p = Bodies.rectangle(x, y, 80, 8, { isStatic: true, isSensor: true });
   (p as any).plugin = { kind: 'paddle', t: Math.random() * 6, amp, spd, dir };
   {

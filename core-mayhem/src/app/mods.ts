@@ -59,5 +59,5 @@ export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): v
   });
 }
 
-export type { WeaponKind, SideMods };
+// no re-exports needed
 
