@@ -3,6 +3,7 @@ import { DEV_HELP_LINES } from '../app/devKeys';
 
 let overlayEl: HTMLElement | null = null;
 let contentEl: HTMLElement | null = null;
+let lastFocusEl: Element | null = null;
 
 const devKeysOn = (import.meta as any)?.env?.DEV === true || DEV_KEYS.enabledInProd;
 
@@ -26,6 +27,8 @@ export function initHelpOverlay(): void {
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-label', 'Dev Hotkeys Help');
+  // Make panel programmatically focusable for accessibility
+  (panel as any).tabIndex = -1;
 
   const header = document.createElement('div');
   header.className = 'help-header';
@@ -106,6 +109,7 @@ export function initHelpOverlay(): void {
 export function openHelpOverlay(): void {
   if (!overlayEl) initHelpOverlay();
   if (!overlayEl) return;
+  lastFocusEl = document.activeElement;
   overlayEl.style.display = 'block';
   overlayEl.setAttribute('aria-hidden', 'false');
   // refresh enabled flag text
@@ -121,8 +125,18 @@ export function openHelpOverlay(): void {
 
 export function closeHelpOverlay(): void {
   if (!overlayEl) return;
+  // Move focus off hidden subtree to avoid aria-hidden warning
+  try {
+    (contentEl as HTMLElement | null)?.blur?.();
+    const active = document.activeElement as HTMLElement | null;
+    if (active && overlayEl.contains(active)) active.blur();
+  } catch {}
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
+  // Restore focus back to the opener if possible
+  if (lastFocusEl && (lastFocusEl as HTMLElement).focus) {
+    try { (lastFocusEl as HTMLElement).focus(); } catch {}
+  }
 }
 
 function isOpen(): boolean {

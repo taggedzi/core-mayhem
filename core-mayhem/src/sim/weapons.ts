@@ -21,6 +21,7 @@ import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { applyCoreDamage } from './damage';
+import { recordShotFired, recordLaserHit, recordMiss } from '../app/stats';
 
 import type { Vec } from '../types';
 import type { World as MatterWorld } from 'matter-js';
@@ -176,12 +177,15 @@ export function fireCannon(
         side: from,
         dmg: DAMAGE.cannon * mul,
         spawnT: performance.now(),
+        didDamage: false,
       };
       {
         const w = sim.world;
         assertWorld(w);
         World.add(w, b);
       }
+      // stats: shot fired
+      try { recordShotFired(from, 'cannon'); } catch {}
       const jitter = 3; // small spread
       Body.setVelocity(b, {
         x: dir.x * speed + (Math.random() - 0.5) * jitter,
@@ -206,6 +210,9 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
 
   const aim: Vec2 = target && !(target as any).center ? (target as Vec2) : enemyCore.center;
 
+  // stats: count a laser shot at fire time
+  try { recordShotFired(side, 'laser'); } catch {}
+
   // --- Laser damage with ablative shield ---
   // Base damage for this laser pulse, scaled by side's buff
   const base = DAMAGE.laserDps * currentDmgMul(side);
@@ -219,19 +226,45 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     typeof (enemyCore as any).shieldHPmax === 'number'
   ) {
     const coreAny = enemyCore as any;
+    const SHIELD_EPS = 1e-3;
+    const shieldBefore = coreAny.shieldHP as number;
     if (coreAny.shieldHP > 0) {
       // Portion that penetrates to the core while shield is up
       toCore = base * SHIELD.laserPenetration;
       // Portion that drains the shield pool (optionally amplified)
       const toShield = base * (1 - SHIELD.laserPenetration) * SHIELD.laserShieldFactor;
       coreAny.shieldHP = Math.max(0, coreAny.shieldHP - toShield);
+      if (coreAny.shieldHP < SHIELD_EPS) coreAny.shieldHP = 0;
     } else {
       toCore = base; // shield depleted: all damage hits core
     }
-  }
+    const shieldAfter = coreAny.shieldHP as number;
+    const shieldDelta = Math.max(0, shieldBefore - shieldAfter);
 
-  // Apply damage to core exactly once (your helper handles center/segments)
-  applyCoreDamage(enemyCore as any, aim, toCore, angleToSeg);
+    const centerBefore = (enemyCore as any).centerHP | 0;
+    const segBefore = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
+    // Apply damage to core exactly once (your helper handles center/segments)
+    applyCoreDamage(enemyCore as any, aim, toCore, angleToSeg);
+    const centerAfter = (enemyCore as any).centerHP | 0;
+    const segAfter = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
+    try { recordLaserHit(side, shieldDelta, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch {}
+  } else {
+    // No shield pool: all to core
+    const centerBefore = (enemyCore as any).centerHP | 0;
+    const segBefore = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
+    applyCoreDamage(enemyCore as any, aim, base, angleToSeg);
+    const centerAfter = (enemyCore as any).centerHP | 0;
+    const segAfter = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
+    try { recordLaserHit(side, 0, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch {}
+  }
 
   // --- FX (kept as you had it) ---
   const now = performance.now();
@@ -306,12 +339,14 @@ export function fireMissiles(
         side: from,
         dmg: DAMAGE.missile * mul,
         spawnT: performance.now(),
+        didDamage: false,
       };
       {
         const w = sim.world;
         assertWorld(w);
         World.add(w, m);
       }
+      try { recordShotFired(from, 'missile'); } catch {}
 
       const t = count === 1 ? 0 : i / (count - 1) - 0.5;
       const ang = center + t * spread + (Math.random() - 0.5) * jitter;
@@ -348,6 +383,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
         dmg: DAMAGE.mortar * currentDmgMul(from),
         spawnT: performance.now(),
         gExtra: MORTAR_ANGLE.extraGravity || 0,
+        didDamage: false,
       };
       {
         const w = sim.world;
@@ -369,6 +405,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
       const vy = -Math.sin(ang) * spd; // negative = up (canvas Y-down)
 
       Body.setVelocity(shell, { x: vx, y: vy });
+      try { recordShotFired(from, 'mortar'); } catch {}
     }, i * 220);
   }
 }
@@ -403,6 +440,7 @@ export function tickHoming(dtMs: number): void {
         World.remove(w, m);
       }
       sim.homing.splice(i, 1);
+      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch {}
       continue;
     }
 
@@ -470,6 +508,7 @@ export function tickHoming(dtMs: number): void {
         color: '#ffb700',
         kind: 'burst',
       });
+      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch {}
     }
   }
 }

@@ -2,6 +2,7 @@ import { GAMEOVER, MATCH_LIMIT } from '../../config';
 import { updateScoreboard } from '../../render/score';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
+import { recordMatchEnd } from '../stats';
 
 function isDead(core: any): boolean {
   return (core?.centerHP | 0) <= 0;
@@ -18,6 +19,13 @@ export function declareWinner(winner: Side | 0): void {
   else stats.ties++;
 
   updateScoreboard();
+
+  // Record match summary into stats
+  try {
+    recordMatchEnd();
+  } catch {
+    // ignore stats errors
+  }
 
   if (GAMEOVER.autoRestart && !(sim as any).restartTO) {
     (sim as any).restartTO = setTimeout(() => {

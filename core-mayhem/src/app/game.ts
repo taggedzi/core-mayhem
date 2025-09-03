@@ -24,6 +24,7 @@ import { checkTimeLimit, maybeEndMatch } from './systems/match';
 import { runPhysics } from './systems/physics';
 import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
+import { startNewMatch } from './stats';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
 
@@ -69,6 +70,8 @@ export function startGame(canvas: HTMLCanvasElement) {
   (sim as any).winner = null;
   (sim as any).winnerAt = 0;
   (sim as any).matchStart = performance.now(); // ⬅️ stamp match start
+  // Start a new stats match session
+  startNewMatch();
 
   // Edge pipes
   const pipeL = makePipe(SIDE.LEFT);

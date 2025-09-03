@@ -576,8 +576,12 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     // Shield ring: fade with ablative shield pool
     const havePool =
       typeof (core as any).shieldHP === 'number' && typeof (core as any).shieldHPmax === 'number';
+    const SHIELD_EPS = 1e-3;
+    const sHP = havePool ? Math.max(0, Number((core as any).shieldHP)) : 0;
     const ratio = havePool
-      ? Math.max(0, Math.min(1, (core as any).shieldHP / Math.max(1, (core as any).shieldHPmax)))
+      ? sHP <= SHIELD_EPS
+        ? 0
+        : Math.max(0, Math.min(1, sHP / Math.max(1, (core as any).shieldHPmax)))
       : 0;
     if (ratio > 0) {
       const rMid = (shieldR0 + shieldR1) * 0.5;

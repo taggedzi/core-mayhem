@@ -6,6 +6,7 @@ import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from '../sim/damage';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
+import { recordBinDeposit, recordProjectileHit, recordMiss, recordBinCap } from './stats';
 
 import type { Engine, IEventCollision, World as MatterWorld } from 'matter-js';
 
@@ -97,6 +98,10 @@ function deposit(ammo: any, container: any): void {
   if (bins[key]) {
     const add = Math.max(1, Math.round(currentBinFillMul(container.plugin.side)));
     bins[key].fill += add;
+    // stats: deposit event
+    try {
+      recordBinDeposit(container.plugin.side, key as any, add);
+    } catch {}
     if (add > 1) {
       (bins[key] as any)._fxLastAdd = add;
       (bins[key] as any)._fxT0 = performance.now();
@@ -112,10 +117,13 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   let dmg = proj?.plugin?.dmg ?? 8;
   const isCenter = coreBody.plugin.kind === 'coreCenter';
 
-  if (((core.shieldHP as number) | 0) > 0) {
+  // Treat tiny fractional remnants as zero to avoid "stuck" shield visuals
+  const SHIELD_EPS = 1e-3;
+  if ((core.shieldHP as number) > SHIELD_EPS) {
     // Allow excess to penetrate instead of being lost when the shot breaks the shield
     const shieldBefore = core.shieldHP as number;
     core.shieldHP = Math.max(0, shieldBefore - dmg);
+    if (core.shieldHP < SHIELD_EPS) core.shieldHP = 0;
     const excess = Math.max(0, dmg - shieldBefore);
 
     const shooterSide = proj?.plugin?.side;
@@ -140,6 +148,10 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 
     if (excess <= 0) {
       // Shot fully absorbed by the shield
+      try {
+        recordProjectileHit(proj?.plugin?.side, proj?.plugin?.ptype ?? 'cannon', shieldBefore - core.shieldHP, 0, 0);
+        proj.plugin.didDamage = true;
+      } catch {}
       World.remove(w, proj);
       onPostHit?.();
       return;
@@ -148,8 +160,23 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     dmg = excess;
   }
 
+  // Snapshot before
+  const segBefore = core.segHP.reduce((a, b) => a + (b | 0), 0);
+  const centerBefore = core.centerHP | 0;
   if (isCenter) core.centerHP = Math.max(0, core.centerHP - dmg);
   else applyCoreDamage(core, proj.position, dmg, angleToSeg);
+  const segAfter = core.segHP.reduce((a, b) => a + (b | 0), 0);
+  const centerAfter = core.centerHP | 0;
+  try {
+    recordProjectileHit(
+      proj?.plugin?.side,
+      proj?.plugin?.ptype ?? 'cannon',
+      0,
+      Math.max(0, segBefore - segAfter),
+      Math.max(0, centerBefore - centerAfter),
+    );
+    proj.plugin.didDamage = true;
+  } catch {}
 
   const ptype = proj?.plugin?.ptype ?? 'cannon';
   const shooterSide = proj?.plugin?.side;
@@ -206,19 +233,23 @@ export function registerCollisions(
         continue;
       }
 
-      const explodeIf = (proj: any, other: any): void => {
-        const pp = proj?.plugin ?? {};
-        if (pp.kind !== 'projectile') return;
-        if (other?.plugin?.kind === 'weaponMount') return;
-        if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
+  const explodeIf = (proj: any, other: any): void => {
+    const pp = proj?.plugin ?? {};
+    if (pp.kind !== 'projectile') return;
+    if (other?.plugin?.kind === 'weaponMount') return;
+    if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
         const ptype = String(pp.ptype ?? 'cannon');
         const sty = (PROJECTILE_STYLE as any)[ptype];
         const ringColor = sty?.glow ?? (pp.side === SIDE.LEFT ? css('--left') : css('--right'));
-        explodeAt(proj.position.x, proj.position.y, pp.side, ringColor, Number(pp.dmg) || undefined);
-        const w = sim.world;
-        assertWorld(w);
-        World.remove(w, proj);
-      };
+    explodeAt(proj.position.x, proj.position.y, pp.side, ringColor, Number(pp.dmg) || undefined);
+    const w = sim.world;
+    assertWorld(w);
+    World.remove(w, proj);
+    // count miss if no damage was recorded
+    try {
+      if (!pp.didDamage) recordMiss(pp.side, pp.ptype ?? 'cannon');
+    } catch {}
+  };
 
       explodeIf(A, B);
       explodeIf(B, A);

@@ -101,18 +101,21 @@ button:disabled {
 }
 
 /* Help overlay */
-#helpOverlay {
+#helpOverlay,
+#statsOverlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
 }
-#helpOverlay .help-backdrop {
+#helpOverlay .help-backdrop,
+#statsOverlay .help-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
 }
-#helpOverlay .help-panel {
+#helpOverlay .help-panel,
+#statsOverlay .help-panel {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -128,7 +131,8 @@ button:disabled {
   color: #d0e7ff;
   outline: none;
 }
-#helpOverlay .help-header {
+#helpOverlay .help-header,
+#statsOverlay .help-header {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -139,23 +143,28 @@ button:disabled {
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
-#helpOverlay .help-header h2 {
+#helpOverlay .help-header h2,
+#statsOverlay .help-header h2 {
   margin: 0;
   font-size: 18px;
 }
-#helpOverlay .help-header .help-sub {
+#helpOverlay .help-header .help-sub,
+#statsOverlay .help-header .help-sub {
   opacity: 0.8;
   font-size: 12px;
   margin-left: auto;
   margin-right: 10px;
 }
-#helpOverlay .help-header .help-sub.enabled {
+#helpOverlay .help-header .help-sub.enabled,
+#statsOverlay .help-header .help-sub.enabled {
   color: #7dffa6;
 }
-#helpOverlay .help-header .help-sub.disabled {
+#helpOverlay .help-header .help-sub.disabled,
+#statsOverlay .help-header .help-sub.disabled {
   color: #a0a8b8;
 }
-#helpOverlay .help-close {
+#helpOverlay .help-close,
+#statsOverlay .help-close {
   margin-left: auto;
   padding: 6px 10px;
   border-radius: 4px;
@@ -164,13 +173,16 @@ button:disabled {
   color: #e8f3ff;
   cursor: pointer;
 }
-#helpOverlay .help-close:hover {
+#helpOverlay .help-close:hover,
+#statsOverlay .help-close:hover {
   filter: brightness(1.08);
 }
-#helpOverlay .help-body {
+#helpOverlay .help-body,
+#statsOverlay .help-body {
   padding: 14px 16px 16px;
 }
-#helpOverlay .help-note {
+#helpOverlay .help-note,
+#statsOverlay .help-note {
   margin: 0 0 12px 0;
   opacity: 0.85;
 }
@@ -211,7 +223,8 @@ button:disabled {
 }
 
 /* kbd pill styling */
-#helpOverlay kbd {
+#helpOverlay kbd,
+#statsOverlay kbd {
   display: inline-block;
   min-width: 18px;
   padding: 2px 6px;

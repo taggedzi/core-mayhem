@@ -1,5 +1,7 @@
 // main.ts
 import { startGame } from './app/game';
+import { initStats } from './app/stats';
+import { initStatsOverlay, openStatsOverlay } from './ui/stats';
 import { initHelpOverlay, openHelpOverlay } from './ui/help';
 import { updateHUD } from './render/hud';
 
@@ -32,6 +34,8 @@ function debounce<F extends (...args: any[]) => void>(
 }
 
 function init(): void {
+  // Ensure stats session is ready (load from localStorage if present)
+  initStats();
   const canvas = document.getElementById('view') as HTMLCanvasElement | null;
   const btnStart = document.getElementById('btnStart') as HTMLButtonElement | null;
   const btnStop = document.getElementById('btnStop') as HTMLButtonElement | null;
@@ -127,6 +131,8 @@ function init(): void {
   btnStop.onclick = stop;
   const btnHelp = document.getElementById('btnHelp') as HTMLButtonElement | null;
   if (btnHelp) btnHelp.onclick = () => openHelpOverlay();
+  const btnStats = document.getElementById('btnStats') as HTMLButtonElement | null;
+  if (btnStats) btnStats.onclick = () => openStatsOverlay();
 
   // Window resize (debounced)
   window.addEventListener('resize', () => {
@@ -162,6 +168,7 @@ function init(): void {
 
   // Initialize help overlay after DOM is ready
   initHelpOverlay();
+  initStatsOverlay();
 }
 
 // Ensure DOM elements exist before wiring
