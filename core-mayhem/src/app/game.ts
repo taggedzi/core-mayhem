@@ -10,20 +10,20 @@ import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { makeCore } from '../sim/core';
 import { makePipe, placeObstaclesFromSpecs } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
-
 // --- DEV HOTKEYS: only in Vite dev or if forced via config ---
 import { makeWeapons } from '../sim/weapons';
 import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
 import { SIDE } from '../types';
+
 // import { applyBuff, applyDebuff } from './mods';
-import { attachDevHotkeys } from './devKeys';
 import { registerCollisions } from './collisions';
+import { attachDevHotkeys } from './devKeys';
+import { runFXPrune } from './systems/fx';
+import { checkTimeLimit, maybeEndMatch } from './systems/match';
 import { runPhysics } from './systems/physics';
 import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
-import { checkTimeLimit, maybeEndMatch } from './systems/match';
-import { runFXPrune } from './systems/fx';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
 

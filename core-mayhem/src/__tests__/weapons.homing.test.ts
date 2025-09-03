@@ -1,9 +1,9 @@
+import Matter, { Bodies, Body, World } from 'matter-js';
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import Matter, { Bodies, Body, World } from 'matter-js';
+import { tickHoming } from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
-import { tickHoming } from '../sim/weapons';
 
 function angleOf(vx: number, vy: number): number {
   return Math.atan2(vy, vx);

@@ -1,6 +1,6 @@
+import Matter from 'matter-js';
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import Matter from 'matter-js';
 import { buildLanes } from '../sim/channels';
 import { sim, resetSimState } from '../state';
 

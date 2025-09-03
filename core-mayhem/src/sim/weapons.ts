@@ -14,6 +14,7 @@ import {
 import { HOMING, HOMING_ENABLED } from '../config';
 import { MORTAR_ANGLE } from '../config';
 import { SHIELD } from '../config';
+import { WEAPONS_LEFT } from '../config';
 import { angleToSeg } from '../sim/core';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
@@ -22,7 +23,6 @@ import { applyCoreDamage } from './damage';
 
 import type { Vec } from '../types';
 import type { World as MatterWorld } from 'matter-js';
-import { WEAPONS_LEFT } from '../config';
 
 const DEG = Math.PI / 180;
 const rad = (d: number): number => d * DEG;

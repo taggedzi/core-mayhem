@@ -221,7 +221,7 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       if (font) ctx.font = font;
       const padX = ((cmd as any).padX as number | undefined) ?? 10;
       const padY = ((cmd as any).padY as number | undefined) ?? 4;
-      const segs = (cmd as any).segments as Array<{ text: string; fill?: string; opacity?: number }>;
+      const segs = (cmd as any).segments as { text: string; fill?: string; opacity?: number }[];
       // measure
       let totalW = 0;
       let maxAscent = 0;
@@ -340,7 +340,7 @@ function cssVar(_ctx: CanvasRenderingContext2D, v: string): string {
 function resolveFontVars(font: string): string {
   if (!font || font.indexOf('var(') === -1) return font;
   const css = getComputedStyle(document.documentElement);
-  return font.replace(/var\(([^\)]+)\)/g, (_, body: string) => {
+  return font.replace(/var\(([^)]+)\)/g, (_, body: string) => {
     const parts = body.split(',');
     const name = (parts.shift() || '').trim();
     const fallback = parts.join(',').trim() || 'monospace';

@@ -63,6 +63,15 @@ export default tseslint.config(
     },
   },
 
+  // Loosen a few rules in tests and Vitest setup
+  {
+    files: ['src/__tests__/**/*.ts', 'vitest.setup.ts'],
+    rules: {
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
   // Allow plain config/build scripts to be JS/CommonJS if you have any
   {
     files: ['*.config.{js,cjs,mjs}'],

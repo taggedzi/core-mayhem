@@ -1,10 +1,10 @@
 import { COOLDOWN_MS, WEAPON_WINDUP_MS } from '../../config';
 import { SHIELD } from '../../config';
-import { applyBuff, applyDebuff } from '../mods';
+import { repair } from '../../core/repair';
 import { queueFireCannon, queueFireLaser, queueFireMissiles, queueFireMortar } from '../../sim/weapons';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
-import { repair } from '../../core/repair';
+import { applyBuff, applyDebuff } from '../mods';
 
 function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();

@@ -1,15 +1,18 @@
 import { DEV_KEYS, DEFAULTS } from '../config';
-import { applyBuff, applyDebuff, pushBanner } from './mods';
+import { MESMER } from '../config';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
-import type { WeaponsType } from '../sim/weapons';
 import { sim } from '../state';
 import { SIDE } from '../types';
-import { MESMER } from '../config';
+
+import { applyBuff, applyDebuff, pushBanner } from './mods';
+
+import type { WeaponsType } from '../sim/weapons';
+
 
 const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
 
 export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => void {
-  if (!devKeysOn) return () => {};
+  if (!devKeysOn) return () => undefined;
 
   let toastTO = 0;
   const toast = (msg: string, ms = 1500): void => {
@@ -65,7 +68,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       // Visuals: cycle mesmer mode Off → Low → Always
       case 'v':
       case 'V': {
-        const order: Array<'off' | 'low' | 'always'> = ['off', 'low', 'always'];
+        const order: ('off' | 'low' | 'always')[] = ['off', 'low', 'always'];
         const cur = (sim as any).mesmerMode ?? (MESMER as any).mode ?? 'always';
         const idx = order.indexOf(cur as any);
         const next = order[(idx + 1) % order.length];

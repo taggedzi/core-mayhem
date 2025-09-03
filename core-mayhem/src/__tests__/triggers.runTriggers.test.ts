@@ -16,10 +16,10 @@ vi.mock('../core/repair', () => ({
   repair: vi.fn(),
 }));
 
-import { runTriggers } from '../app/systems/triggers';
-import * as weapons from '../sim/weapons';
 import * as mods from '../app/mods';
+import { runTriggers } from '../app/systems/triggers';
 import * as repairMod from '../core/repair';
+import * as weapons from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 
 describe('runTriggers', () => {

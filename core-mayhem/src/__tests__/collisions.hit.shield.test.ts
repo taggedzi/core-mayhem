@@ -1,6 +1,6 @@
+import Matter, { Bodies, World, Events } from 'matter-js';
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import Matter, { Bodies, World, Events } from 'matter-js';
 import { registerCollisions } from '../app/collisions';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';

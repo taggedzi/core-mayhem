@@ -1,8 +1,8 @@
 // state.ts
 import type { Core } from './sim/core';
 import type { Pipe } from './sim/obstacles';
-import type { Settings, Bins, Side, SideMods } from './types';
 import type { WeaponsType } from './sim/weapons';
+import type { Settings, Bins, Side, SideMods } from './types';
 import type { Engine, Runner, World, Body } from 'matter-js';
 
 export interface FxSweep {

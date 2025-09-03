@@ -1,8 +1,8 @@
 import { Events, World, Body, Query, Composite } from 'matter-js';
 
 import { EXPLOSION, FX_MS, PROJECTILE_STYLE } from '../config';
-import { applyCoreDamage } from '../sim/damage';
 import { angleToSeg } from '../sim/core';
+import { applyCoreDamage } from '../sim/damage';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 

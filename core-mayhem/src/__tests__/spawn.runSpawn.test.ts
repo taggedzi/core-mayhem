@@ -1,9 +1,9 @@
+import Matter from 'matter-js';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { runSpawn } from '../app/systems/spawn';
-import Matter from 'matter-js';
-import { sim, resetSimState } from '../state';
 import { DEFAULTS } from '../config';
+import { sim, resetSimState } from '../state';
 
 describe('runSpawn', () => {
   beforeEach(() => {

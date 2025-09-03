@@ -35,7 +35,8 @@ export function spawnAmmo(side: Side) {
     World.add(world, b);
   }
   Body.setVelocity(b, { x: side === SIDE.LEFT ? -1 : +1, y: -1 });
-  side === SIDE.LEFT ? sim.ammoL++ : sim.ammoR++;
+  if (side === SIDE.LEFT) sim.ammoL++;
+  else sim.ammoR++;
 }
 
 export function beforeUpdateAmmo() {
@@ -72,7 +73,8 @@ export function beforeUpdateAmmo() {
         plug.idle > 8
       ) {
         World.remove(world, b);
-        plug.side === SIDE.LEFT ? sim.ammoL-- : sim.ammoR--;
+        if (plug.side === SIDE.LEFT) sim.ammoL--;
+        else sim.ammoR--;
       }
     }
   }

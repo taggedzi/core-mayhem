@@ -1,4 +1,5 @@
 import { sim } from '../state';
+
 import { toDrawCommands } from './drawModel';
 import { renderScene } from './renderScene';
 

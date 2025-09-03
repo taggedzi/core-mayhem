@@ -12,9 +12,11 @@ import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
 import { getScoreData } from './scoreModel';
+
+import type { Core } from '../sim/core';
 import type { WeaponsType } from '../sim/weapons';
 import type { FxArm, FxBeam, FxImpact, FxSweep, FxSpark, FxLaserBeam, FxBurst } from '../state';
-import type { Core } from '../sim/core';
+import type { Bins } from '../types';
 
 export type DrawCommand =
   | {
@@ -146,7 +148,7 @@ export type DrawCommand =
       x: number;
       y: number;
       font?: string;
-      segments: Array<{ text: string; fill?: string; opacity?: number }>;
+      segments: { text: string; fill?: string; opacity?: number }[];
       fill?: string; // box fill color
       stroke?: string; // box border color
       lineWidth?: number; // border width
@@ -887,7 +889,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const t = Math.max(0, Math.min(1, age / Math.max(1, s.ms)));
         const color = s.side < 0 ? 'var(--left)' : 'var(--right)';
         // normalize to the minor arc between a0..a1 and remember direction
-        let a0 = s.a0,
+        const a0 = s.a0,
           a1 = s.a1;
         let d = a1 - a0;
         while (d > Math.PI) {
@@ -983,17 +985,17 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Bins (containers) — outline, background, fill gauge, intake strip, labels
   {
-    type BinStyle = {
+    interface BinStyle {
       stroke?: string;
       box?: string;
       fill?: string;
       gauge?: string;
       text?: string;
       strokePx?: number;
-    };
-    type Vec2 = { x: number; y: number };
-    type BodyLike = { bounds: { min: Vec2; max: Vec2 }; position?: Vec2 };
-    type RenderBin = {
+    }
+    interface Vec2 { x: number; y: number }
+    interface BodyLike { bounds: { min: Vec2; max: Vec2 }; position?: Vec2 }
+    interface RenderBin {
       body?: any;
       fill: number;
       cap: number;
@@ -1002,8 +1004,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       intake?: BodyLike;
       pos?: Vec2;
       style?: BinStyle;
-    };
-    const renderBinSet = (bins: import('../types').Bins | null): void => {
+    }
+    const renderBinSet = (bins: Bins | null): void => {
       if (!bins) return;
       const keys: (keyof typeof bins)[] = [
         'cannon',
@@ -1284,7 +1286,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   {
     const mk = (wep: WeaponsType | null, color: string): void => {
       if (!wep) return;
-      const entries: ReadonlyArray<readonly [string, { x: number; y: number } | undefined]> = [
+      const entries: readonly (readonly [string, { x: number; y: number } | undefined])[] = [
         ['C', wep.cannon?.pos],
         ['L', wep.laser?.pos],
         ['M', wep.missile?.pos],
@@ -1409,14 +1411,14 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Buff/Debuff Banners
   {
-    const list = ((sim as any).fxBanners ?? []) as Array<{
+    const list = ((sim as any).fxBanners ?? []) as {
       side: number;
       text: string;
       sub?: string;
       color?: string;
       t0: number;
       ms: number;
-    }>;
+    }[];
     if (list?.length) {
       for (const b of list) {
         const age = now - b.t0;
@@ -1604,7 +1606,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const lLoss = rightWins;
     const rLoss = leftWins;
     const fontPx = Math.max(12, Math.floor(H * 0.022));
-    const segs: Array<{ text: string; fill?: string; opacity?: number }> = [];
+    const segs: { text: string; fill?: string; opacity?: number }[] = [];
     segs.push({ text: 'LEFT ', fill: 'var(--left)' });
     segs.push({ text: `${leftWins}–${lLoss}` });
     segs.push({ text: '  |  ', opacity: 0.6 });

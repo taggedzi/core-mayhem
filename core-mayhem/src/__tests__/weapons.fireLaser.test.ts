@@ -1,7 +1,7 @@
+import Matter from 'matter-js';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { fireLaser } from '../sim/weapons';
-import Matter from 'matter-js';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
