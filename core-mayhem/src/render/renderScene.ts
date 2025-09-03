@@ -214,6 +214,59 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       ctx.restore();
       break;
     }
+    case 'richTextBox': {
+      ctx.save();
+      if ((cmd as any).alpha != null) ctx.globalAlpha = (cmd as any).alpha as number;
+      const font = (cmd as any).font ? resolveFontVars((cmd as any).font as string) : ctx.font;
+      if (font) ctx.font = font;
+      const padX = ((cmd as any).padX as number | undefined) ?? 10;
+      const padY = ((cmd as any).padY as number | undefined) ?? 4;
+      const segs = (cmd as any).segments as Array<{ text: string; fill?: string; opacity?: number }>;
+      // measure
+      let totalW = 0;
+      let maxAscent = 0;
+      let maxDescent = 0;
+      for (const s of segs) {
+        const m = ctx.measureText(s.text);
+        totalW += m.width;
+        maxAscent = Math.max(maxAscent, (m.actualBoundingBoxAscent ?? 0));
+        maxDescent = Math.max(maxDescent, (m.actualBoundingBoxDescent ?? 0));
+      }
+      const textH = (maxAscent + maxDescent) || (() => {
+        const m = /([0-9]+\.?[0-9]*)px/.exec(font || '');
+        const px = m ? parseFloat(m[1]!) : 14;
+        return px * 1.1;
+      })();
+      const w = totalW + padX * 2;
+      const h = textH + padY * 2;
+      const x0 = (cmd as any).x - w / 2;
+      const y0 = (cmd as any).y - h / 2;
+      if ((cmd as any).fill) {
+        ctx.fillStyle = cssVar(ctx, (cmd as any).fill as string);
+        ctx.fillRect(x0, y0, w, h);
+      }
+      if ((cmd as any).stroke) {
+        ctx.lineWidth = (cmd as any).lineWidth ?? 1;
+        ctx.strokeStyle = cssVar(ctx, (cmd as any).stroke as string);
+        ctx.strokeRect(x0, y0, w, h);
+      }
+      // draw text segments centered horizontally
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      let cx = x0 + padX + (w - 2 * padX - totalW) / 2; // offset to center combined segments
+      const cy = (cmd as any).y;
+      for (const s of segs) {
+        const prevAlpha = ctx.globalAlpha;
+        if (s.opacity != null) ctx.globalAlpha = prevAlpha * s.opacity;
+        ctx.fillStyle = cssVar(ctx, (s.fill as string) ?? (cmd as any).textFill ?? '#fff');
+        ctx.fillText(s.text, cx, cy);
+        const m = ctx.measureText(s.text);
+        cx += m.width;
+        ctx.globalAlpha = prevAlpha;
+      }
+      ctx.restore();
+      break;
+    }
     case 'vignette': {
       ctx.save();
       try {

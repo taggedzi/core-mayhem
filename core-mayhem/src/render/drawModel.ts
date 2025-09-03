@@ -11,6 +11,7 @@ import { MESMER } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
+import { getScoreData } from './scoreModel';
 import type { WeaponsType } from '../sim/weapons';
 import type { FxArm, FxBeam, FxImpact, FxSweep, FxSpark, FxLaserBeam, FxBurst } from '../state';
 import type { Core } from '../sim/core';
@@ -132,6 +133,20 @@ export type DrawCommand =
       text: string;
       font?: string; // canvas font string
       textFill?: string; // text color
+      fill?: string; // box fill color
+      stroke?: string; // box border color
+      lineWidth?: number; // border width
+      padX?: number; // horizontal padding in px
+      padY?: number; // vertical padding in px
+      alpha?: number;
+    }
+  | {
+      // Rich text with colored segments inside an auto-sized background box (centered on x,y)
+      kind: 'richTextBox';
+      x: number;
+      y: number;
+      font?: string;
+      segments: Array<{ text: string; fill?: string; opacity?: number }>;
       fill?: string; // box fill color
       stroke?: string; // box border color
       lineWidth?: number; // border width
@@ -1561,7 +1576,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     }
   }
 
-  // Vignette overlay last to subtly focus the center
+  // Vignette overlay (drawn near the end)
   if ((MESMER as any)?.vignette?.enabled) {
     const inner = Math.min(W, H) * 0.5 * ((MESMER as any).vignette.innerFrac ?? 0.55);
     const outer = Math.hypot(W, H) * 0.5 * ((MESMER as any).vignette.outerFrac ?? 1.0);
@@ -1573,6 +1588,39 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       r1: outer,
       color: (MESMER as any).vignette.color ?? 'rgba(0,0,0,1)',
       alpha: (MESMER as any).vignette.alpha ?? 0.5,
+    });
+  }
+
+  // Scoreboard: permanent box centered at bottom inside the canvas
+  {
+    const s = getScoreData();
+    const leftWins = s.leftWins | 0;
+    const rightWins = s.rightWins | 0;
+    const ties = s.ties | 0;
+    const lLoss = rightWins;
+    const rLoss = leftWins;
+    const fontPx = Math.max(12, Math.floor(H * 0.022));
+    const segs: Array<{ text: string; fill?: string; opacity?: number }> = [];
+    segs.push({ text: 'LEFT ', fill: 'var(--left)' });
+    segs.push({ text: `${leftWins}–${lLoss}` });
+    segs.push({ text: '  |  ', opacity: 0.6 });
+    if (ties) {
+      segs.push({ text: `T:${ties}` });
+      segs.push({ text: '  |  ', opacity: 0.6 });
+    }
+    segs.push({ text: 'RIGHT ', fill: 'var(--right)' });
+    segs.push({ text: `${rightWins}–${rLoss}` });
+    cmds.push({
+      kind: 'richTextBox',
+      x: W * 0.5,
+      y: H - Math.max(14, Math.floor(H * 0.02)),
+      font: `${fontPx}px var(--mono, monospace)`,
+      segments: segs,
+      fill: 'rgba(14,23,48,0.85)',
+      stroke: '#2b3a78',
+      lineWidth: 1,
+      padX: 12,
+      padY: 6,
     });
   }
 
