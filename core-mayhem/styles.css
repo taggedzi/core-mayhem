@@ -37,6 +37,22 @@ header .right {
   display: flex;
   gap: 8px;
 }
+/* Header state pill styled to match buttons */
+.pill-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(#19305f, #0f2149);
+  border: 1px solid #3558b6;
+  color: #e8f3ff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  font: 12px/1 var(--mono, monospace, Verdana);
+}
+.pill-state .tag {
+  opacity: 0.8;
+}
 button {
   background: linear-gradient(#19305f, #0f2149);
   border: 1px solid #3558b6;
