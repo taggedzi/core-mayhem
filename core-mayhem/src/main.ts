@@ -36,6 +36,7 @@ function init(): void {
   const btnStart = document.getElementById('btnStart') as HTMLButtonElement | null;
   const btnStop = document.getElementById('btnStop') as HTMLButtonElement | null;
   const stage = document.getElementById('stage') as HTMLElement | null;
+  const header = document.querySelector('header') as HTMLElement | null;
 
   if (!canvas) {
     console.error('[core-mayhem] Missing <canvas id="view">');
@@ -50,6 +51,13 @@ function init(): void {
   const safeCanvas = canvas!;
   const safeBtnStart = btnStart!;
   const safeBtnStop = btnStop!;
+
+  // Keep stage inset aligned with the actual header height
+  const updateHeaderInset = () => {
+    const h = Math.ceil(header?.getBoundingClientRect().height || 0);
+    if (h > 0) document.documentElement.style.setProperty('--header-h', `${h}px`);
+  };
+  updateHeaderInset();
 
   const scheduleRestart = debounce(() => {
     // Only restart if currently running; ignore if mid-restart
@@ -121,12 +129,24 @@ function init(): void {
   if (btnHelp) btnHelp.onclick = () => openHelpOverlay();
 
   // Window resize (debounced)
-  window.addEventListener('resize', scheduleRestart, { passive: true });
+  window.addEventListener('resize', () => {
+    updateHeaderInset();
+    scheduleRestart();
+  }, { passive: true });
 
   // Stage resize (letterboxing / flex changes)
   if (stage) {
     const ro = new ResizeObserver(() => scheduleRestart());
     ro.observe(stage);
+  }
+
+  // Header resize (font loading, zoom, UI changes)
+  if (header) {
+    const roHeader = new ResizeObserver(() => {
+      updateHeaderInset();
+      scheduleRestart();
+    });
+    roHeader.observe(header);
   }
 
   // External “soft” restart (keeps UI consistent)

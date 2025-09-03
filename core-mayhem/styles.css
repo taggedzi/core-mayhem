@@ -84,7 +84,8 @@ button:disabled {
 }
 #stage {
   position: fixed;
-  inset: 44px 0 0 0; /* footer removed; canvas uses full height below header */
+  /* Use computed header height so canvas never overlaps */
+  inset: var(--header-h, 48px) 0 0 0; /* footer removed; canvas uses full height below header */
 }
 /* canvas is centered; JS sets its px size to a 16:9 that fits Stage */
 #view {
