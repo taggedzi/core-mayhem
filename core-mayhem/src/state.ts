@@ -213,8 +213,8 @@ function createSimState(): SimState {
     },
 
     // Default modifiers
-    modsL: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null, buffUntil: 0, buffKind: null, cooldownMul: 1 },
-    modsR: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null, buffUntil: 0, buffKind: null, cooldownMul: 1 },
+    modsL: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null, buffUntil: 0, buffKind: null, cooldownMul: 1, binFillMul: 1 },
+    modsR: { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null, buffUntil: 0, buffKind: null, cooldownMul: 1, binFillMul: 1 },
 
     // Match outcome defaults
     gameOver: false,

@@ -29,6 +29,7 @@ export function clearTimedBuff(side: Side): void {
   m.dmgMul = 1;
   m.dmgUntil = 0;
   m.cooldownMul = 1;
+  m.binFillMul = 1;
 }
 
 export function applyBuff(side: Side): void {
@@ -66,13 +67,14 @@ export function applyShieldBuff(side: Side, points?: number): void {
   });
 }
 
-type BuffKind = 'damage' | 'shield';
+type BuffKind = 'damage' | 'shield' | 'binBoost';
 
 // Helper: choose a buff from allowed pool and apply it
 export function applyRandomBuff(side: Side): void {
   const pool = ((MODS as any).allowedBuffs as readonly BuffKind[] | undefined) ?? ['damage'];
   const pick = pool[Math.floor(Math.random() * pool.length)] ?? 'damage';
   if (pick === 'shield') applyShieldBuff(side);
+  else if (pick === 'binBoost') applyBinBoostBuff(side);
   else applyBuff(side);
 }
 
@@ -104,6 +106,30 @@ export function clearTimedDebuff(side: Side): void {
   const m = modsFor(side);
   m.disabledType = null;
   m.disableUntil = 0;
+}
+
+// Timed buff: Bin Boost — increases bin fill per deposit
+export function applyBinBoostBuff(side: Side, mult?: number, durationMs?: number): void {
+  clearTimedBuff(side);
+  const m = modsFor(side);
+  m.buffKind = 'binBoost';
+  const dur = Math.max(1000, Math.round(durationMs ?? (MODS as any).binBoostDurationMs ?? MODS.buffDurationMs));
+  m.buffUntil = performance.now() + dur;
+  m.binFillMul = Math.max(1, Number(mult ?? (MODS as any).binBoostMultiplier ?? 2));
+  pushBanner(side, 'BUFF!', {
+    sub: 'Bin Boost',
+    lines: [
+      `x${(m.binFillMul).toFixed(2)} fill`,
+      `Duration: ${(dur / 1000) | 0}s`,
+    ],
+  });
+}
+
+export function currentBinFillMul(side: Side): number {
+  const m = modsFor(side) as any;
+  const now = performance.now();
+  if ((m.buffKind === 'binBoost') && now < (m.buffUntil ?? 0)) return Math.max(1, m.binFillMul ?? 1);
+  return 1;
 }
 
 export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): void {

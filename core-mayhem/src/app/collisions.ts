@@ -1,6 +1,7 @@
 import { Events, World, Body, Query, Composite } from 'matter-js';
 
 import { EXPLOSION, FX_MS, PROJECTILE_STYLE } from '../config';
+import { currentBinFillMul } from './mods';
 import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from '../sim/damage';
 import { sim } from '../state';
@@ -93,7 +94,14 @@ function deposit(ammo: any, container: any): void {
   else sim.ammoR--;
   const bins = (container.plugin.side === SIDE.LEFT ? sim.binsL : sim.binsR) as any;
   const key = container.plugin.label as string;
-  if (bins[key]) bins[key].fill++;
+  if (bins[key]) {
+    const add = Math.max(1, Math.round(currentBinFillMul(container.plugin.side)));
+    bins[key].fill += add;
+    if (add > 1) {
+      (bins[key] as any)._fxLastAdd = add;
+      (bins[key] as any)._fxT0 = performance.now();
+    }
+  }
 }
 
 function hit(proj: any, coreBody: any, onPostHit?: () => void): void {

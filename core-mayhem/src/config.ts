@@ -200,11 +200,14 @@ export const MODS = {
   // New: immediate shield buff amount (points added to shield pool)
   buffShieldPoints: 120,
   // New: which buffs are in the random pool (used by applyRandomBuff)
-  allowedBuffs: ['damage', 'shield'] as const,
+  allowedBuffs: ['damage', 'shield', 'binBoost'] as const,
   // New: selection mode for triggers; switched to 'randomPool' per request
   buffChooser: 'randomPool' as 'damageOnly' | 'randomPool',
   // New: cooldown haste (x multiplier applied to weapon cooldowns when active)
   cooldownBuffMultiplier: 0.65,
+  // New: bin booster (multiplier to bin fill per deposit) and duration
+  binBoostMultiplier: 1.8,
+  binBoostDurationMs: 20000,
   debuffDurationMs: 30000,
   allowedDebuffs: ['cannon', 'laser', 'missile', 'mortar'] as const,
 } as const;

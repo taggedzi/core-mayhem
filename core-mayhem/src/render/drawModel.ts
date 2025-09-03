@@ -1121,6 +1121,30 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           align: 'center',
           baseline: 'alphabetic',
         });
+
+        // FX: brief "+N" indicator when a bin gets accelerated fill
+        const fxT0 = (raw as any)?._fxT0 as number | undefined;
+        const fxAdd = (raw as any)?._fxLastAdd as number | undefined;
+        if (typeof fxT0 === 'number' && typeof fxAdd === 'number' && fxAdd > 1) {
+          const age = now - fxT0;
+          const life = 900;
+          if (age >= 0 && age <= life) {
+            const t = age / life;
+            const ay = cy - h / 2 - 6 - 12 * t; // float upward slightly
+            const a = 1 - t;
+            cmds.push({
+              kind: 'text',
+              x: cx,
+              y: ay,
+              text: `+${fxAdd}`,
+              font: `bold 12px ${family}`,
+              fill: '#5CFF7A',
+              align: 'center',
+              baseline: 'alphabetic',
+              alpha: 0.75 * a,
+            });
+          }
+        }
       }
     };
     renderBinSet(sim.binsL);
@@ -1142,9 +1166,19 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       if (active) {
         const tLeft = Math.max(0, Math.ceil((until - nowMs) / 1000));
         const kind = String((m as any).buffKind ?? (nowMs < ((m as any).dmgUntil ?? 0) ? 'damage' : 'buff'));
-        const text = kind === 'damage'
-          ? `DMG x${(m as any).dmgMul?.toFixed ? (m as any).dmgMul.toFixed(1) : String((m as any).dmgMul ?? 1)}  ${tLeft}s`
-          : `${kind.toUpperCase()}  ${tLeft}s`;
+        let text: string;
+        if (kind === 'damage') {
+          const mul = (m as any).dmgMul?.toFixed ? (m as any).dmgMul.toFixed(1) : String((m as any).dmgMul ?? 1);
+          text = `DMG x${mul}  ${tLeft}s`;
+        } else if (kind === 'binBoost') {
+          const mul = (m as any).binFillMul?.toFixed ? (m as any).binFillMul.toFixed(1) : String((m as any).binFillMul ?? 1);
+          text = `BIN x${mul}  ${tLeft}s`;
+        } else if (kind === 'cooldown') {
+          const mul = (m as any).cooldownMul?.toFixed ? (m as any).cooldownMul.toFixed(2) : String((m as any).cooldownMul ?? 1);
+          text = `CD x${mul}  ${tLeft}s`;
+        } else {
+          text = `${kind.toUpperCase()}  ${tLeft}s`;
+        }
         cmds.push({
           kind: 'textBox',
           x,

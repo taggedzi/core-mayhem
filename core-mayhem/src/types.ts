@@ -25,6 +25,7 @@ export interface SideMods {
   buffKind?: string | null;
   // Optional effect fields used by specific timed buffs
   cooldownMul?: number;
+  binFillMul?: number;
 }
 
 export interface Settings {
