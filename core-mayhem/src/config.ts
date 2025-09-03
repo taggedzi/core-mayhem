@@ -201,8 +201,8 @@ export const MODS = {
   buffShieldPoints: 120,
   // New: which buffs are in the random pool (used by applyRandomBuff)
   allowedBuffs: ['damage', 'shield'] as const,
-  // New: selection mode for triggers; 'damageOnly' preserves previous behavior
-  buffChooser: 'damageOnly' as 'damageOnly' | 'randomPool',
+  // New: selection mode for triggers; switched to 'randomPool' per request
+  buffChooser: 'randomPool' as 'damageOnly' | 'randomPool',
   debuffDurationMs: 30000,
   allowedDebuffs: ['cannon', 'laser', 'missile', 'mortar'] as const,
 } as const;

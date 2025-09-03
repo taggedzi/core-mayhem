@@ -4,7 +4,7 @@ import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons'
 import { sim } from '../state';
 import { SIDE } from '../types';
 
-import { applyBuff, applyDebuff } from './mods';
+import { runTriggers } from './systems/triggers';
 
 import type { WeaponsType } from '../sim/weapons';
 
@@ -19,8 +19,8 @@ export const DEV_HELP_LINES: readonly string[] = [
   '- / +: Decrease / increase target ammo',
   ', / .: Decrease / increase pipe speed',
   '; / P: Decrease / increase pipe gain',
-  'b / B: Apply Buff (Left / Right)',
-  'd / D: Apply Debuff (Left / Right)',
+  'b / B: Fill Buff Bin (Left / Right)',
+  'd / D: Fill Debuff Bin (Left / Right)',
   'V: Cycle mesmer visuals Off → Low → Always',
 ];
 
@@ -149,19 +149,43 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       }
 
       // Quick banner previews / mod triggers
-      // b/B → apply BUFF on left/right (shows banner + applies effect)
+      // b/B → simulate filling the BUFF bin on left/right
       case 'b':
-        applyBuff(L);
+        try {
+          const bins: any = (sim as any).binsL;
+          if (bins?.buff) {
+            bins.buff.fill = bins.buff.cap;
+            runTriggers();
+          }
+        } catch {}
         break;
       case 'B':
-        applyBuff(R);
+        try {
+          const bins: any = (sim as any).binsR;
+          if (bins?.buff) {
+            bins.buff.fill = bins.buff.cap;
+            runTriggers();
+          }
+        } catch {}
         break;
-      // d/D → apply random DEBUFF on left/right
+      // d/D → simulate filling the DEBUFF bin on left/right
       case 'd':
-        applyDebuff(L);
+        try {
+          const bins: any = (sim as any).binsL;
+          if (bins?.debuff) {
+            bins.debuff.fill = bins.debuff.cap;
+            runTriggers();
+          }
+        } catch {}
         break;
       case 'D':
-        applyDebuff(R);
+        try {
+          const bins: any = (sim as any).binsR;
+          if (bins?.debuff) {
+            bins.debuff.fill = bins.debuff.cap;
+            runTriggers();
+          }
+        } catch {}
         break;
       // 'h' is handled globally by the help overlay (src/ui/help.ts)
     }
