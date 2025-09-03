@@ -4,12 +4,25 @@ import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons'
 import { sim } from '../state';
 import { SIDE } from '../types';
 
-import { applyBuff, applyDebuff, pushBanner } from './mods';
+import { applyBuff, applyDebuff } from './mods';
 
 import type { WeaponsType } from '../sim/weapons';
 
 
 const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
+
+// Export a concise help list for UI overlay
+export const DEV_HELP_LINES: readonly string[] = [
+  'c/l/m/o: Left fire Cannon/Laser/Missile/Mortar',
+  'C/L/M/O: Right fire Cannon/Laser/Missile/Mortar',
+  '[ / ]: Slow down / speed up time',
+  '- / +: Decrease / increase target ammo',
+  ', / .: Decrease / increase pipe speed',
+  '; / P: Decrease / increase pipe gain',
+  'b / B: Apply Buff (Left / Right)',
+  'd / D: Apply Debuff (Left / Right)',
+  'V: Cycle mesmer visuals Off → Low → Always',
+];
 
 export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => void {
   if (!devKeysOn) return () => undefined;
@@ -150,23 +163,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       case 'D':
         applyDebuff(R);
         break;
-      // h/H → show a help banner describing controls (non-mod, preview only)
-      case 'h':
-      case 'H': {
-        pushBanner(L, 'HELP', {
-          sub: 'Dev Controls',
-          lines: [
-            '[ / ]: Time scale',
-            '- / =: Target ammo',
-            ', / .: Pipe speed',
-            '; / P: Pipe gain',
-            'b/B: Buff L/R  d/D: Debuff L/R',
-            'V: Mesmer Off/Low/Always',
-          ],
-          ms: 4200,
-        });
-        break;
-      }
+      // 'h' is handled globally by the help overlay (src/ui/help.ts)
     }
   };
 

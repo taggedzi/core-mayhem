@@ -27,6 +27,22 @@ header {
   border-bottom: 2px solid #20336e;
   padding: 8px 12px;
 }
+header .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+header #btnHelp {
+  padding: 6px 10px;
+  border: 1px solid #3558b6;
+  background: linear-gradient(#19305f, #0f2149);
+  color: #e8f3ff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+header #btnHelp:hover {
+  filter: brightness(1.08);
+}
 header .brand {
   font-weight: 900;
   color: #00ffd5;
@@ -81,6 +97,130 @@ button:disabled {
   height: auto; /* we’ll set explicit px via JS */
   max-width: 100%;
   max-height: 100%; /* safety */
+}
+
+/* Help overlay */
+#helpOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+#helpOverlay .help-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+#helpOverlay .help-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1000px, 96vw);
+  max-height: min(70vh, 800px);
+  overflow-y: auto;
+  overflow-x: hidden; /* avoid horizontal scrollbars */
+  background: #0b1422;
+  border: 1px solid #203348;
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+  color: #d0e7ff;
+  outline: none;
+}
+#helpOverlay .help-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #243348;
+  background: linear-gradient(180deg, #0f203f, #0d1a33);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+#helpOverlay .help-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+#helpOverlay .help-header .help-sub {
+  opacity: 0.8;
+  font-size: 12px;
+  margin-left: auto;
+  margin-right: 10px;
+}
+#helpOverlay .help-header .help-sub.enabled {
+  color: #7dffa6;
+}
+#helpOverlay .help-header .help-sub.disabled {
+  color: #a0a8b8;
+}
+#helpOverlay .help-close {
+  margin-left: auto;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #3558b6;
+  background: linear-gradient(#19305f, #0f2149);
+  color: #e8f3ff;
+  cursor: pointer;
+}
+#helpOverlay .help-close:hover {
+  filter: brightness(1.08);
+}
+#helpOverlay .help-body {
+  padding: 14px 16px 16px;
+}
+#helpOverlay .help-note {
+  margin: 0 0 12px 0;
+  opacity: 0.85;
+}
+
+/* Grid of help items */
+#helpOverlay .help-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 18px;
+}
+@media (min-width: 640px) {
+  #helpOverlay .help-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+#helpOverlay .help-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #1a2a48;
+  background: #0d1930;
+  border-radius: 8px;
+}
+#helpOverlay .help-item .keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+#helpOverlay .help-item .keys .sep {
+  opacity: 0.6;
+  margin: 0 2px;
+}
+#helpOverlay .help-item .desc {
+  opacity: 0.95;
+}
+
+/* kbd pill styling */
+#helpOverlay kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #2b3f72;
+  background: linear-gradient(#16264d, #0f1e3f);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #e6f0ff;
+  font: 12px/1 var(--mono, monospace, Verdana);
+  text-align: center;
 }
 #hud {
   position: absolute;

@@ -1,5 +1,6 @@
 // main.ts
 import { startGame } from './app/game';
+import { initHelpOverlay, openHelpOverlay } from './ui/help';
 import { updateHUD } from './render/hud';
 
 // ——— Types ———
@@ -116,6 +117,8 @@ function init(): void {
   // Button wiring
   btnStart.onclick = start;
   btnStop.onclick = stop;
+  const btnHelp = document.getElementById('btnHelp') as HTMLButtonElement | null;
+  if (btnHelp) btnHelp.onclick = () => openHelpOverlay();
 
   // Window resize (debounced)
   window.addEventListener('resize', scheduleRestart, { passive: true });
@@ -136,6 +139,9 @@ function init(): void {
 
   // Optional: start automatically, or leave to the user
   // start();
+
+  // Initialize help overlay after DOM is ready
+  initHelpOverlay();
 }
 
 // Ensure DOM elements exist before wiring
