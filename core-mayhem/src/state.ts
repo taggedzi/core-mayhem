@@ -221,7 +221,7 @@ function createSimState(): SimState {
     winner: null,
     winnerAt: 0,
 
-    mesmerMode: 'off',
+    // Leave mesmerMode unset to inherit from config (MESMER.mode)
     mesmerFade: 0,
     mesmerLastT: 0,
   };
