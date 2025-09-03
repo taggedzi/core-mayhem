@@ -1,10 +1,11 @@
-import { COOLDOWN_MS, WEAPON_WINDUP_MS } from '../../config';
+import { COOLDOWN_MS, WEAPON_WINDUP_MS, MODS } from '../../config';
 import { SHIELD } from '../../config';
 import { repair } from '../../core/repair';
 import { queueFireCannon, queueFireLaser, queueFireMissiles, queueFireMortar } from '../../sim/weapons';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
 import { applyBuff, applyDebuff } from '../mods';
+import { applyRandomBuff } from '../mods';
 
 function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -18,7 +19,9 @@ export function runTriggers(now = performance.now()): void {
 
     if (bins.buff && bins.buff.fill >= bins.buff.cap) {
       bins.buff.fill = 0;
-      applyBuff(side);
+      // Preserve prior behavior by default; allow random pool via config
+      if (((MODS as any).buffChooser ?? 'damageOnly') === 'randomPool') applyRandomBuff(side);
+      else applyBuff(side);
     }
     if (bins.debuff && bins.debuff.fill >= bins.debuff.cap) {
       bins.debuff.fill = 0;

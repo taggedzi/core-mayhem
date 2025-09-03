@@ -35,6 +35,35 @@ export function applyBuff(side: Side): void {
   });
 }
 
+// New: immediate shield boost buff (adds points to ablative shield pool)
+export function applyShieldBuff(side: Side, points?: number): void {
+  const core: any = side === SIDE.LEFT ? (sim as any).coreL : (sim as any).coreR;
+  if (!core) return;
+  const add = Math.max(0, Math.round(points ?? (MODS as any).buffShieldPoints ?? 0));
+  if (add <= 0) return;
+  const max = typeof core.shieldHPmax === 'number' ? core.shieldHPmax : core.shieldHP ?? 0;
+  const before = Math.max(0, Number(core.shieldHP ?? 0));
+  const after = Math.min(max, before + add);
+  core.shieldHP = after;
+  // banner FX
+  pushBanner(side, 'BUFF!', {
+    sub: `Shield +${add}`,
+    lines: [
+      `Total: ${Math.round(after)}/${Math.round(max)}`,
+    ],
+  });
+}
+
+type BuffKind = 'damage' | 'shield';
+
+// Helper: choose a buff from allowed pool and apply it
+export function applyRandomBuff(side: Side): void {
+  const pool = ((MODS as any).allowedBuffs as readonly BuffKind[] | undefined) ?? ['damage'];
+  const pick = pool[Math.floor(Math.random() * pool.length)] ?? 'damage';
+  if (pick === 'shield') applyShieldBuff(side);
+  else applyBuff(side);
+}
+
 export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): void {
   const m = modsFor(targetSide);
   const pool = MODS.allowedDebuffs as readonly WeaponKind[];

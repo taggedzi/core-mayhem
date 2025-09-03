@@ -197,6 +197,12 @@ export const MATCH_LIMIT = {
 export const MODS = {
   buffDurationMs: 30000,
   buffMultiplier: 1.6,
+  // New: immediate shield buff amount (points added to shield pool)
+  buffShieldPoints: 120,
+  // New: which buffs are in the random pool (used by applyRandomBuff)
+  allowedBuffs: ['damage', 'shield'] as const,
+  // New: selection mode for triggers; 'damageOnly' preserves previous behavior
+  buffChooser: 'damageOnly' as 'damageOnly' | 'randomPool',
   debuffDurationMs: 30000,
   allowedDebuffs: ['cannon', 'laser', 'missile', 'mortar'] as const,
 } as const;
