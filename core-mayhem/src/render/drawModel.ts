@@ -548,9 +548,12 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const pos = b.position;
         const vel = (b as any).velocity ?? { x: 0, y: 0 };
         const speed = Math.hypot(vel.x, vel.y);
+        const ptype = String(plug.ptype);
 
         // Trail
-        const trailLen = Math.min(30, 6 + speed * 2);
+        const baseTrail = Math.min(30, 6 + speed * 2);
+        const trailScale = ptype === 'cannon' ? 0.49 : 1.0; // ~51% shorter than original (another ~30% off)
+        const trailLen = baseTrail * trailScale;
         const tx = pos.x - vel.x * trailLen * 0.8;
         const ty = pos.y - vel.y * trailLen * 0.8;
         cmds.push({
@@ -569,7 +572,6 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
         // Body
         const outline = PROJECTILE_OUTLINE;
-        const ptype = String(plug.ptype);
         if (ptype === 'missile') {
           const ang = Math.atan2(vel.y, vel.x);
           const ux = Math.cos(ang),
@@ -889,8 +891,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const t = Math.max(0, Math.min(1, age / Math.max(1, s.ms)));
         const color = s.side < 0 ? 'var(--left)' : 'var(--right)';
         // normalize to the minor arc between a0..a1 and remember direction
-        const a0 = s.a0,
-          a1 = s.a1;
+        const a0 = s.a0;
+        let a1 = s.a1;
         let d = a1 - a0;
         while (d > Math.PI) {
           a1 -= Math.PI * 2;
