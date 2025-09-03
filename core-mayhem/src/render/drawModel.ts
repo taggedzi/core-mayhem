@@ -8,6 +8,8 @@ import { PROJECTILE_STYLE, PROJECTILE_OUTLINE } from '../config';
 import { GAMEOVER } from '../config';
 import { SHIELD_RING_COLOR, SHIELD_RING_GLOW, SHIELD_VFX } from '../config';
 import { MESMER } from '../config';
+// TOP_BAND removed
+import { LIGHT_PANEL } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
@@ -328,6 +330,195 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (cR) addArcs(cR.x, cR.y, 'var(--right)');
       }
     } // end fade guard
+  }
+
+  // Former TOP_BAND effect removed per request
+
+  // LED Light Panel (mirrored from center, bounded by inner pipe walls)
+  if ((LIGHT_PANEL as any).enabled) {
+    const cfg = LIGHT_PANEL as any;
+
+    // Determine inner bounds from pipes; fallback to 6% inset each side
+    const pipes: any[] = ((sim as any).pipes as any[]) || [];
+    const xs: number[] = [];
+    for (const p of pipes) {
+      if (typeof p?.innerX === 'number') xs.push(p.innerX as number);
+    }
+    let xL = Math.max(20, W * 0.06);
+    let xR = Math.min(W - 20, W * 0.94);
+    if (xs.length >= 2) {
+      xL = Math.min(xs[0], xs[1]) + cfg.margin;
+      xR = Math.max(xs[0], xs[1]) - cfg.margin;
+    }
+    const mid = W * 0.5;
+    const halfL = Math.max(0, mid - xL);
+    const halfR = Math.max(0, xR - mid);
+    // Apply centered width cap from config (percentage of screen width)
+    const halfCap = Math.max(0, (W * (cfg.widthFrac ?? 1)) * 0.5);
+    const half = Math.min(halfL, halfR, halfCap);
+    // Effective bounds after width cap
+    xL = mid - half;
+    xR = mid + half;
+    const size = cfg.cell;
+    const step = Math.max(2, cfg.cell + cfg.gap);
+    const maxN_L = Math.max(0, Math.floor(half / step));
+    const maxN_R = Math.max(0, Math.floor(half / step));
+    const y = Math.max(10, cfg.y);
+
+    // Advantage measurement (same as mesmer, but re-used here)
+    const score = (core: any) => {
+      if (!core) return 0;
+      const seg = (core.segHP as number[] | undefined) ?? [];
+      let s = 0;
+      for (const v of seg) s += Math.max(0, v | 0);
+      s += Math.max(0, (core.centerHP as number) ?? 0);
+      s += Math.max(0, (core.shieldHP as number) ?? 0) * 1.0;
+      return s;
+    };
+    const l = score((sim as any).coreL);
+    const r = score((sim as any).coreR);
+    const rawAdv = (l - r) / Math.max(1, l + r); // -1..1
+    // Sensitivity shaping: scale then gamma to expand near-zero differences
+    const g = Math.max(0.01, (cfg.advScale as number) ?? 1);
+    const s = Math.max(-1, Math.min(1, rawAdv * g));
+    const gam = Math.max(0.1, (cfg.advGamma as number) ?? 1);
+    const shapedAdv = Math.sign(s) * Math.pow(Math.abs(s), gam);
+    const targetAdv = Math.max(-1, Math.min(1, shapedAdv));
+
+    // Smooth progress toward target advantage
+    const lastT = ((sim as any).panelProgLastT as number) || now;
+    const dt = Math.max(0, now - lastT);
+    const tau = cfg.progressTauMs ?? 500;
+    const a = 1 - Math.exp(-dt / Math.max(1, tau));
+    const prev = ((sim as any).panelProg as number) ?? 0;
+    const prog = prev + (targetAdv - prev) * a;
+    (sim as any).panelProg = prog;
+    (sim as any).panelProgLastT = now;
+
+    // Determine how many LEDs light on each side
+    const p = Math.max(0, Math.min(1, Math.abs(prog)));
+    const litL = prog > 0 ? Math.min(maxN_L, Math.ceil(maxN_L * p)) : 0;
+    const litR = prog < 0 ? Math.min(maxN_R, Math.ceil(maxN_R * p)) : 0;
+
+    // Unlit pad color
+    const padAlpha = cfg.baseAlpha ?? 0.12;
+
+    // Draw left side (from center outward)
+    for (let i = 1; i <= maxN_L; i++) {
+      const x = mid - (i - 0.5) * step;
+      // base pad
+      cmds.push({ kind: 'circle', x, y, r: size * 0.5, fill: '#0b1122', alpha: padAlpha });
+      if (i <= litL) {
+        cmds.push({
+          kind: 'circle',
+          x,
+          y,
+          r: size * 0.5,
+          fill: 'var(--left)',
+          alpha: cfg.litAlpha ?? 0.9,
+          composite: 'lighter',
+          shadowBlur: cfg.glow ?? 10,
+          shadowColor: 'var(--left)',
+        });
+      }
+    }
+
+    // Draw right side
+    for (let i = 1; i <= maxN_R; i++) {
+      const x = mid + (i - 0.5) * step;
+      cmds.push({ kind: 'circle', x, y, r: size * 0.5, fill: '#0b1122', alpha: padAlpha });
+      if (i <= litR) {
+        cmds.push({
+          kind: 'circle',
+          x,
+          y,
+          r: size * 0.5,
+          fill: 'var(--right)',
+          alpha: cfg.litAlpha ?? 0.9,
+          composite: 'lighter',
+          shadowBlur: cfg.glow ?? 10,
+          shadowColor: 'var(--right)',
+        });
+      }
+    }
+
+    // Damage reaction row (red, expands from center based on recent activity)
+    if ((cfg.damageRow?.enabled ?? true) && (cfg.damageTauMs ?? 0) >= 1) {
+      // Aggregate quick activity metric from recent impacts and active beams
+      let activity = 0;
+      const imps = ((sim as any).fxImp as any[]) || [];
+      for (const fx of imps) {
+        const age = now - (fx.t0 ?? now);
+        if (age >= 0 && age < 800) {
+          const k = Math.exp(-age / 300);
+          const w = (fx.kind === 'burn' ? 0.4 : 1.0) * (fx.power ?? 1);
+          activity += k * w;
+        }
+      }
+      const beams = ((sim as any).fxBeams as any[]) || [];
+      for (const b of beams) {
+        if (now < (b?.tEnd ?? 0)) activity += 0.6; // steady contribution while active
+      }
+      // Apply per-hit scale, then dynamic peak normalization
+      const scaleD = (cfg.damageScale as number) ?? 0.25;
+      const eff = activity * scaleD;
+
+      const dyn = (cfg.damageDynamicMax as boolean) ?? true;
+      let peak = ((sim as any).panelDamagePeak as number) ?? 0;
+      const pkLast = ((sim as any).panelDamagePeakT as number) ?? now;
+      const decayMs = (cfg.damagePeakDecayMs as number) ?? 0;
+      if (decayMs > 1 && peak > 0) {
+        const dtPk = Math.max(0, now - pkLast);
+        const kPk = Math.exp(-dtPk / decayMs);
+        peak *= kPk;
+      }
+      if (dyn && eff > peak) peak = eff; // raise ceiling on new highs
+      (sim as any).panelDamagePeak = peak;
+      (sim as any).panelDamagePeakT = now;
+
+      let targetD = 0;
+      if (dyn) {
+        const head = Math.max(1, (cfg.damageHeadroom as number) ?? 1.4);
+        const denom = Math.max(1e-6, peak * head);
+        targetD = Math.max(0, Math.min(1, eff / denom));
+      } else {
+        targetD = Math.max(0, Math.min(1, eff));
+      }
+
+      const lastTD = ((sim as any).panelDamageLastT as number) || now;
+      const dtD = Math.max(0, now - lastTD);
+      const tauD = cfg.damageTauMs ?? 350;
+      const aD = 1 - Math.exp(-dtD / Math.max(1, tauD));
+      const prevD = ((sim as any).panelDamage as number) ?? 0;
+      const dmg = prevD + (targetD - prevD) * aD;
+      (sim as any).panelDamage = dmg;
+      (sim as any).panelDamageLastT = now;
+
+      const rowY = y + (cfg.damageRow.dy ?? 12);
+      // Asymptotic growth: easy early expansion, harder near ends
+      const k = (cfg.damageCurveK as number) ?? 3.2;
+      const gamma = Math.max(0.5, (cfg.damageGamma as number) ?? 1.0);
+      const shaped = Math.pow(Math.max(0, Math.min(1, dmg)), gamma);
+      const frac = 1 - Math.exp(-k * shaped);
+      const lit = Math.floor(Math.max(maxN_L, maxN_R) * frac);
+      const rSize = Math.max(3, size * 0.7);
+      const red = (cfg.damageRow.color as string) ?? '#ff4b4b';
+      const padA = (cfg.damageRow.baseAlpha as number) ?? 0.06;
+      const glow = (cfg.damageRow.glow as number) ?? 12;
+
+      // Base pads (optional, faint)
+      for (let i = 1; i <= maxN_L; i++) cmds.push({ kind: 'circle', x: mid - (i - 0.5) * step, y: rowY, r: rSize * 0.5, fill: '#070a14', alpha: padA });
+      for (let i = 1; i <= maxN_R; i++) cmds.push({ kind: 'circle', x: mid + (i - 0.5) * step, y: rowY, r: rSize * 0.5, fill: '#070a14', alpha: padA });
+
+      // Lit extent expands symmetrically from center
+      for (let i = 1; i <= lit; i++) {
+        const xl = mid - (i - 0.5) * step;
+        const xr = mid + (i - 0.5) * step;
+        const aCell = 0.45 + 0.55 * frac; // brightness follows asymptotic fraction
+        cmds.push({ kind: 'circle', x: xl, y: rowY, r: rSize * 0.5, fill: red, alpha: aCell, composite: 'lighter', shadowBlur: glow, shadowColor: red });
+        cmds.push({ kind: 'circle', x: xr, y: rowY, r: rSize * 0.5, fill: red, alpha: aCell, composite: 'lighter', shadowBlur: glow, shadowColor: red });
+      }
+    }
   }
 
   // Midline (dashed)

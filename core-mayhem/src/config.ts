@@ -297,6 +297,36 @@ export const MESMER = {
   },
 } as const;
 
+// Subtle top-band visual that hints at momentum without distraction
+// (TOP_BAND removed)
+
+// Arcade-style mirrored LED panel centered at top
+export const LIGHT_PANEL = {
+  enabled: true,
+  y: 38, // vertical position of the main row center
+  cell: 10, // LED diameter/size (px)
+  gap: 6, // spacing between LEDs (px)
+  margin: 8, // inset from the inner pipe walls
+  widthFrac: 0.5, // max width as a fraction of screen (centered)
+  baseAlpha: 0.14, // unlit pad visibility (0=black)
+  litAlpha: 0.7, // lit LED alpha (combined with additive glow)
+  glow: 10, // blur/glow radius for lit LEDs
+  progressTauMs: 500, // smoothing time constant for advantage movement
+  // Advantage sensitivity shaping (makes small differences show more lights)
+  advScale: 2.0, // gain applied to raw advantage before shaping
+  advGamma: 0.6, // <1 expands near zero (0.6–0.8 recommended)
+  damageTauMs: 350, // smoothing for damage bar decay
+  damageScale: 0.15, // scales raw activity before curve (lower = each hit counts less)
+  damageCurveK: 3.0, // asymptotic growth (higher = faster overall approach to 1)
+  damageGamma: 3.0, // >1 makes early growth slower; try 1.4–1.8 for conservative start
+  // Dynamic asymptote: renormalize by the largest recent activity so far (upward-only).
+  damageDynamicMax: true,
+  damagePeakDecayMs: 10000, // 0 = no decay; try 15000 for a very slow relaxation over time
+  damageHeadroom: 1.0, // >1 keeps headroom so even current peak won't max out
+  // second row (damage reaction)
+  damageRow: { enabled: true, dy: 14, color: '#ff4b4b', baseAlpha: 0.06, glow: 14 } as const,
+} as const;
+
 type BinId = 'cannon' | 'laser' | 'missile' | 'mortar' | 'shield' | 'repair' | 'buff' | 'debuff';
 
 type AmmoKind = 'basic' | 'heavy' | 'volatile' | 'emp' | 'shield' | 'repair';
