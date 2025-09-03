@@ -22,10 +22,22 @@ export function pushBanner(side: Side, title: string, opts?: { sub?: string; lin
   (sim as any).fxBanners.push({ side, text: title, sub: opts?.sub, lines: opts?.lines, color, t0: performance.now(), ms: opts?.ms ?? 2600 });
 }
 
-export function applyBuff(side: Side): void {
+export function clearTimedBuff(side: Side): void {
   const m = modsFor(side);
+  m.buffKind = null;
+  m.buffUntil = 0;
+  m.dmgMul = 1;
+  m.dmgUntil = 0;
+  m.cooldownMul = 1;
+}
+
+export function applyBuff(side: Side): void {
+  clearTimedBuff(side);
+  const m = modsFor(side);
+  m.buffKind = 'damage';
+  m.buffUntil = performance.now() + MODS.buffDurationMs;
   m.dmgMul = MODS.buffMultiplier;
-  m.dmgUntil = performance.now() + MODS.buffDurationMs;
+  m.dmgUntil = m.buffUntil; // keep existing UI badge behavior
   // banner FX
   pushBanner(side, 'BUFF!', {
     sub: `Damage x${MODS.buffMultiplier}`,
@@ -62,6 +74,36 @@ export function applyRandomBuff(side: Side): void {
   const pick = pool[Math.floor(Math.random() * pool.length)] ?? 'damage';
   if (pick === 'shield') applyShieldBuff(side);
   else applyBuff(side);
+}
+
+// Timed buff example: Cooldown Haste
+// Reduces weapon cooldowns by multiplier (<1 = faster). Uses the unified timed buff slot.
+export function applyCooldownBuff(side: Side, mult?: number): void {
+  clearTimedBuff(side);
+  const m = modsFor(side);
+  m.buffKind = 'cooldown';
+  m.buffUntil = performance.now() + MODS.buffDurationMs;
+  m.cooldownMul = Math.max(0.2, Math.min(1, Number(mult ?? (MODS as any).cooldownBuffMultiplier ?? 0.6)));
+  pushBanner(side, 'BUFF!', {
+    sub: 'Cooldown Haste',
+    lines: [
+      `x${(m.cooldownMul).toFixed(2)} cooldown`,
+      `Duration: ${(MODS.buffDurationMs / 1000) | 0}s`,
+    ],
+  });
+}
+
+export function currentCooldownMul(side: Side): number {
+  const m = modsFor(side) as any;
+  const now = performance.now();
+  if ((m.buffKind === 'cooldown') && now < (m.buffUntil ?? 0)) return Math.max(0.2, Math.min(1, m.cooldownMul ?? 1));
+  return 1;
+}
+
+export function clearTimedDebuff(side: Side): void {
+  const m = modsFor(side);
+  m.disabledType = null;
+  m.disableUntil = 0;
 }
 
 export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): void {

@@ -1136,10 +1136,15 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       if (!m) return;
       const x = side < 0 ? sim.W * 0.22 : sim.W * 0.78;
       const y = 26;
-      // Buff badge
-      if (nowMs < (m.dmgUntil ?? 0)) {
-        const tLeft = Math.max(0, Math.ceil(((m.dmgUntil ?? 0) - nowMs) / 1000));
-        const text = `DMG x${(m.dmgMul ?? 1).toFixed(1)}  ${tLeft}s`;
+      // Timed buff badge (generic slot)
+      const until = (m as any).buffUntil ?? (m as any).dmgUntil ?? 0;
+      const active = nowMs < until;
+      if (active) {
+        const tLeft = Math.max(0, Math.ceil((until - nowMs) / 1000));
+        const kind = String((m as any).buffKind ?? (nowMs < ((m as any).dmgUntil ?? 0) ? 'damage' : 'buff'));
+        const text = kind === 'damage'
+          ? `DMG x${(m as any).dmgMul?.toFixed ? (m as any).dmgMul.toFixed(1) : String((m as any).dmgMul ?? 1)}  ${tLeft}s`
+          : `${kind.toUpperCase()}  ${tLeft}s`;
         cmds.push({
           kind: 'textBox',
           x,

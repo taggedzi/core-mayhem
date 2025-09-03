@@ -203,6 +203,8 @@ export const MODS = {
   allowedBuffs: ['damage', 'shield'] as const,
   // New: selection mode for triggers; switched to 'randomPool' per request
   buffChooser: 'randomPool' as 'damageOnly' | 'randomPool',
+  // New: cooldown haste (x multiplier applied to weapon cooldowns when active)
+  cooldownBuffMultiplier: 0.65,
   debuffDurationMs: 30000,
   allowedDebuffs: ['cannon', 'laser', 'missile', 'mortar'] as const,
 } as const;

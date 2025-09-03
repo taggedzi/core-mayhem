@@ -20,6 +20,11 @@ export interface SideMods {
   dmgMul: number;
   disableUntil: number;
   disabledType: WeaponKind | null;
+  // Unified slot for any timed buff (exact effect determined elsewhere)
+  buffUntil?: number;
+  buffKind?: string | null;
+  // Optional effect fields used by specific timed buffs
+  cooldownMul?: number;
 }
 
 export interface Settings {
