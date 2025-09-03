@@ -74,6 +74,16 @@ export interface FxSpark {
   color: string;
 }
 
+export interface FxBanner {
+  side: Side;
+  text: string; // big header
+  sub?: string; // optional subtitle (kept for compat)
+  lines?: string[]; // optional detail lines rendered under header
+  color?: string;
+  t0: number;
+  ms: number;
+}
+
 export interface Cooldowns {
   cannon: number;
   laser: number;
@@ -128,6 +138,7 @@ export interface SimState {
   fxBeams?: FxLaserBeam[]; // modern
   fxBursts?: FxBurst[]; // modern
   fxSparks?: FxSpark[];
+  fxBanners?: FxBanner[];
 
   // Resources / timers
   ammoL: number;
@@ -191,6 +202,7 @@ export function createSimState(): SimState {
     fxBeams: [],
     fxBursts: [],
     fxSparks: [],
+    fxBanners: [],
 
     ammoL: 0,
     ammoR: 0,
@@ -233,6 +245,7 @@ export function resetSimState(s: SimState = sim): void {
   if (s.fxBeams) s.fxBeams.length = 0;
   if (s.fxBursts) s.fxBursts.length = 0;
   if (s.fxSparks) s.fxSparks.length = 0;
+  if ((s as any).fxBanners) (s as any).fxBanners.length = 0;
 
   s.ammoL = 0;
   s.ammoR = 0;

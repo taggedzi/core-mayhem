@@ -56,6 +56,7 @@ export type DrawCommand =
       baseline?: CanvasTextBaseline;
       stroke?: string;
       strokeWidth?: number;
+      maxWidth?: number;
     }
   | {
       kind: 'wedge';
@@ -1008,6 +1009,71 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         } else {
           const r = 10 + 8 * t;
           cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: 2, alpha: 0.55 * (1 - t) });
+        }
+      }
+    }
+  }
+
+  // Buff/Debuff Banners
+  {
+    const list = ((sim as any).fxBanners ?? []) as Array<{ side: number; text: string; sub?: string; color?: string; t0: number; ms: number }>;
+    if (list?.length) {
+      for (const b of list) {
+        const age = now - b.t0;
+        if (age < 0 || age > b.ms) continue;
+        const t = age / Math.max(1, b.ms);
+        const isLeft = b.side < 0;
+        // Make banner larger to accommodate oversized headline text
+        const bw = Math.min(W * 0.6, 680);
+        const bh = Math.min(H * 0.26, 180);
+        const pad = 12;
+        const targetX = isLeft ? W * 0.23 - bw / 2 : W * 0.77 - bw / 2;
+        const y = H * 0.18 - bh / 2;
+
+        // slide in/out along X
+        const ease = (x: number) => 1 - Math.pow(1 - x, 3);
+        let x = targetX;
+        let alpha = 1;
+        if (t < 0.2) {
+          const k = ease(t / 0.2);
+          const from = isLeft ? -bw - 40 : W + 40;
+          x = from + (targetX - from) * k;
+          alpha = 0.5 + 0.5 * k;
+        } else if (t > 0.8) {
+          const k = ease((t - 0.8) / 0.2);
+          const to = isLeft ? -bw - 40 : W + 40;
+          x = targetX + (to - targetX) * k;
+          alpha = 1 - 0.7 * k;
+        }
+
+        const col = b.color ?? (isLeft ? 'var(--left)' : 'var(--right)');
+        cmds.push({ kind: 'rect', x, y, w: bw, h: bh, fill: '#0e1730cc', alpha });
+        // top/bottom glow lines
+        cmds.push({ kind: 'line', x1: x + 4, y1: y + 6, x2: x + bw - 4, y2: y + 6, stroke: col, lineWidth: 3, alpha: alpha * 0.9, composite: 'lighter' });
+        cmds.push({ kind: 'line', x1: x + 4, y1: y + bh - 6, x2: x + bw - 4, y2: y + bh - 6, stroke: col, lineWidth: 3, alpha: alpha * 0.9, composite: 'lighter' });
+
+        // Main text
+        const tx = x + bw / 2;
+        const ty = y + bh * 0.38;
+        // Header: much larger and stroked for readability on glow
+        // Try to fill most of the banner width with the headline while staying tall
+        // Scale back further so header and lines do not overlap
+        const headPx = Math.floor(bh * 0.68);
+        const maxW = bw - pad * 2;
+        cmds.push({ kind: 'text', x: tx, y: ty, text: b.text, font: `900 ${headPx}px var(--mono, monospace)`, fill: col, stroke: '#0b0f1a', strokeWidth: 3, maxWidth: maxW, align: 'center', baseline: 'middle' });
+        // Subtitle (optional)
+        let lineY = ty + bh * 0.28;
+        if (b.sub) {
+          cmds.push({ kind: 'text', x: tx, y: lineY, text: b.sub, font: `bold ${Math.floor(bh * 0.18)}px var(--mono, monospace)`, fill: '#cfe1ff', maxWidth: maxW, align: 'center', baseline: 'middle' });
+          lineY += bh * 0.16;
+        }
+        // Optional detail lines
+        if (Array.isArray((b as any).lines)) {
+          const lines = (b as any).lines as string[];
+          for (const sLine of lines) {
+            cmds.push({ kind: 'text', x: tx, y: lineY, text: sLine, font: `${Math.floor(bh * 0.14)}px var(--mono, monospace)`, fill: '#b7c9ff', maxWidth: maxW, align: 'center', baseline: 'middle' });
+            lineY += bh * 0.14;
+          }
         }
       }
     }

@@ -1,4 +1,5 @@
 import { DEV_KEYS, DEFAULTS } from '../config';
+import { applyBuff, applyDebuff, pushBanner } from './mods';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import type { WeaponsType } from '../sim/weapons';
 import { sim } from '../state';
@@ -128,6 +129,39 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
         const stg = ((sim as any).settings ||= { ...DEFAULTS });
         stg.pipeUpGain = Math.min(8, Number(((stg.pipeUpGain ?? DEFAULTS.pipeUpGain ?? 3.2) + 0.2).toFixed(2)));
         toast(`PipeUpGain ${stg.pipeUpGain.toFixed(2)}/s`);
+        break;
+      }
+
+      // Quick banner previews / mod triggers
+      // b/B → apply BUFF on left/right (shows banner + applies effect)
+      case 'b':
+        applyBuff(L);
+        break;
+      case 'B':
+        applyBuff(R);
+        break;
+      // d/D → apply random DEBUFF on left/right
+      case 'd':
+        applyDebuff(L);
+        break;
+      case 'D':
+        applyDebuff(R);
+        break;
+      // h/H → show a help banner describing controls (non-mod, preview only)
+      case 'h':
+      case 'H': {
+        pushBanner(L, 'HELP', {
+          sub: 'Dev Controls',
+          lines: [
+            '[ / ]: Time scale',
+            '- / =: Target ammo',
+            ', / .: Pipe speed',
+            '; / P: Pipe gain',
+            'b/B: Buff L/R  d/D: Debuff L/R',
+            'V: Mesmer Off/Low/Always',
+          ],
+          ms: 4200,
+        });
         break;
       }
     }

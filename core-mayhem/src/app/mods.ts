@@ -16,10 +16,23 @@ export function isDisabled(side: Side, kind: WeaponKind): boolean {
   return performance.now() < m.disableUntil && m.disabledType === kind;
 }
 
+export function pushBanner(side: Side, title: string, opts?: { sub?: string; lines?: string[]; color?: string; ms?: number }): void {
+  const color = opts?.color ?? (side === SIDE.LEFT ? 'var(--left)' : 'var(--right)');
+  (sim as any).fxBanners = (sim as any).fxBanners || [];
+  (sim as any).fxBanners.push({ side, text: title, sub: opts?.sub, lines: opts?.lines, color, t0: performance.now(), ms: opts?.ms ?? 2600 });
+}
+
 export function applyBuff(side: Side): void {
   const m = modsFor(side);
   m.dmgMul = MODS.buffMultiplier;
   m.dmgUntil = performance.now() + MODS.buffDurationMs;
+  // banner FX
+  pushBanner(side, 'BUFF!', {
+    sub: `Damage x${MODS.buffMultiplier}`,
+    lines: [
+      `Duration: ${(MODS.buffDurationMs / 1000) | 0}s`,
+    ],
+  });
 }
 
 export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): void {
@@ -36,6 +49,14 @@ export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): v
   }
   m.disabledType = k;
   m.disableUntil = performance.now() + MODS.debuffDurationMs;
+  const txt = 'DEBUFF';
+  const sub = k ? `${String(k).toUpperCase()} DISABLED` : 'SYSTEMS OFFLINE';
+  pushBanner(targetSide, txt, {
+    sub,
+    lines: [
+      `Duration: ${(MODS.debuffDurationMs / 1000) | 0}s`,
+    ],
+  });
 }
 
 export type { WeaponKind, SideMods };

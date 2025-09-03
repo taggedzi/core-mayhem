@@ -14,4 +14,5 @@ export function runFXPrune(now = performance.now()): void {
   sim.fxImp = (sim.fxImp ?? []).filter((f) => now - (f?.t0 ?? 0) < (f?.ms ?? 0));
   sim.fxSweep = (sim.fxSweep ?? []).filter((s) => now - (s?.t0 ?? 0) < (s?.ms ?? 0));
   sim.fxSparks = (sim.fxSparks ?? []).filter((p) => now - (p?.t0 ?? 0) < (p?.ms ?? 0));
+  (sim as any).fxBanners = ((sim as any).fxBanners ?? []).filter((b: any) => now - (b?.t0 ?? 0) < (b?.ms ?? 0));
 }

@@ -54,16 +54,19 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       break;
     }
     case 'text': {
-      if ((cmd as any).font) ctx.font = (cmd as any).font as string;
+      if ((cmd as any).font) ctx.font = resolveFontVars((cmd as any).font as string);
       if ((cmd as any).align) ctx.textAlign = (cmd as any).align as CanvasTextAlign;
       if ((cmd as any).baseline) ctx.textBaseline = (cmd as any).baseline as CanvasTextBaseline;
+      const maxW = (cmd as any).maxWidth as number | undefined;
       if ((cmd as any).stroke) {
         ctx.lineWidth = (cmd as any).strokeWidth ?? 1;
         ctx.strokeStyle = cssVar(ctx, (cmd as any).stroke as string);
-        ctx.strokeText(cmd.text, cmd.x, cmd.y);
+        if (maxW != null) ctx.strokeText(cmd.text, cmd.x, cmd.y, maxW);
+        else ctx.strokeText(cmd.text, cmd.x, cmd.y);
       }
       ctx.fillStyle = cssVar(ctx, (cmd as any).fill ?? '#000');
-      ctx.fillText(cmd.text, cmd.x, cmd.y);
+      if (maxW != null) ctx.fillText(cmd.text, cmd.x, cmd.y, maxW);
+      else ctx.fillText(cmd.text, cmd.x, cmd.y);
       break;
     }
     case 'wedge': {
@@ -224,4 +227,17 @@ function cssVar(_ctx: CanvasRenderingContext2D, v: string): string {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#000';
   }
   return v;
+}
+
+// Replace any var(--name[, fallback]) tokens inside a font string with the resolved value.
+function resolveFontVars(font: string): string {
+  if (!font || font.indexOf('var(') === -1) return font;
+  const css = getComputedStyle(document.documentElement);
+  return font.replace(/var\(([^\)]+)\)/g, (_, body: string) => {
+    const parts = body.split(',');
+    const name = (parts.shift() || '').trim();
+    const fallback = parts.join(',').trim() || 'monospace';
+    const val = css.getPropertyValue(name).trim();
+    return val || fallback;
+  });
 }
