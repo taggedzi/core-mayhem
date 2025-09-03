@@ -178,7 +178,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Mesmer background (subtle, additive)
   if ((MESMER as any).enabled) {
-    const mode = ((sim as any).mesmerMode as 'off' | 'low' | 'always' | undefined) ?? ((MESMER as any).mode ?? 'always');
+    const mode =
+      ((sim as any).mesmerMode as 'off' | 'low' | 'always' | undefined) ??
+      (MESMER as any).mode ??
+      'always';
     // Determine desired visibility based on mode + activity
     let target = 1; // default: fully visible
     // Activity metric (used for low-mode gating and arc fading)
@@ -208,80 +211,90 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     (sim as any).mesmerFade = fade;
     (sim as any).mesmerLastT = now;
     if (fade > 0.01) {
-    const m = (sim as any).mesmer ?? ((sim as any).mesmer = {});
-    // Regenerate stars if missing or canvas size changed
-    if (!m.stars || m._w !== W || m._h !== H) {
-      const N = MESMER.stars.count;
-      const seed = ((sim.settings?.seed ?? 1) | 0) >>> 0;
-      // tiny PRNG (mulberry32)
-      let t = seed;
-      const rnd = () => {
-        t += 0x6d2b79f5;
-        let r = Math.imul(t ^ (t >>> 15), t | 1);
-        r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
-        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      const m = (sim as any).mesmer ?? ((sim as any).mesmer = {});
+      // Regenerate stars if missing or canvas size changed
+      if (!m.stars || m._w !== W || m._h !== H) {
+        const N = MESMER.stars.count;
+        const seed = ((sim.settings?.seed ?? 1) | 0) >>> 0;
+        // tiny PRNG (mulberry32)
+        let t = seed;
+        const rnd = () => {
+          t += 0x6d2b79f5;
+          let r = Math.imul(t ^ (t >>> 15), t | 1);
+          r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+          return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+        };
+        m.stars = Array.from({ length: N }, () => ({
+          x: rnd() * W,
+          y: rnd() * H,
+          r: MESMER.stars.sizeMin + rnd() * (MESMER.stars.sizeMax - MESMER.stars.sizeMin),
+          ph: rnd() * Math.PI * 2,
+          col: rnd() < 0.5 ? MESMER.stars.color : MESMER.stars.altColor,
+        }));
+        m._w = W;
+        m._h = H;
+      }
+      // draw stars (twinkle)
+      if ((MESMER as any).stars?.enabled !== false) {
+        const J = MESMER.stars.jitter;
+        const baseA = MESMER.stars.alpha;
+        for (const s of m.stars as any[]) {
+          const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
+          const aS = baseA * tw * fade;
+          if (aS > 0.002)
+            cmds.push({
+              kind: 'circle',
+              x: s.x,
+              y: s.y,
+              r: s.r,
+              fill: s.col,
+              alpha: aS,
+              composite: 'lighter',
+              shadowBlur: 8,
+              shadowColor: s.col,
+            });
+        }
+      }
+
+      // flowing arcs around cores
+      const addArcs = (cx: number, cy: number, color: string) => {
+        const n = MESMER.arcs.countPerSide;
+        const baseR = Math.min(W, H) * MESMER.arcs.baseRFrac;
+        const gap = Math.min(W, H) * MESMER.arcs.gapRFrac;
+        for (let i = 0; i < n; i++) {
+          const r = baseR + i * gap;
+          const w = 0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1));
+          // Aim arc toward the midline for both sides so visuals mirror.
+          const base = cx < W * 0.5 ? 0 : Math.PI; // left→right or right→left
+          const drift = 0.6 * Math.sin(now * 0.00025 + i * 0.7);
+          const aC = base + drift;
+          const span = 0.9 + 0.5 * Math.sin(now * 0.0003 + i * 1.2);
+          const a0 = aC - span * 0.5;
+          const a1 = aC + span * 0.5;
+          cmds.push({
+            kind: 'arc',
+            cx,
+            cy,
+            r,
+            a0,
+            a1,
+            stroke: color,
+            lineWidth: MESMER.arcs.width * w,
+            // Arcs fade with both global fade and current quietness (less visible when busy)
+            alpha: MESMER.arcs.alpha * fade * quiet,
+            composite: 'lighter',
+            shadowBlur: MESMER.arcs.blur,
+            shadowColor: color,
+          });
+        }
       };
-      m.stars = Array.from({ length: N }, () => ({
-        x: rnd() * W,
-        y: rnd() * H,
-        r: MESMER.stars.sizeMin + rnd() * (MESMER.stars.sizeMax - MESMER.stars.sizeMin),
-        ph: rnd() * Math.PI * 2,
-        col: rnd() < 0.5 ? MESMER.stars.color : MESMER.stars.altColor,
-      }));
-      m._w = W;
-      m._h = H;
-    }
-    // draw stars (twinkle)
-    if ((MESMER as any).stars?.enabled !== false) {
-      const J = MESMER.stars.jitter;
-      const baseA = MESMER.stars.alpha;
-      for (const s of m.stars as any[]) {
-        const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
-        const aS = baseA * tw * fade;
-        if (aS > 0.002)
-          cmds.push({ kind: 'circle', x: s.x, y: s.y, r: s.r, fill: s.col, alpha: aS, composite: 'lighter', shadowBlur: 8, shadowColor: s.col });
-      }
-    }
 
-    // flowing arcs around cores
-    const addArcs = (cx: number, cy: number, color: string) => {
-      const n = MESMER.arcs.countPerSide;
-      const baseR = Math.min(W, H) * MESMER.arcs.baseRFrac;
-      const gap = Math.min(W, H) * MESMER.arcs.gapRFrac;
-      for (let i = 0; i < n; i++) {
-        const r = baseR + i * gap;
-        const w = 0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1));
-        // Aim arc toward the midline for both sides so visuals mirror.
-        const base = cx < W * 0.5 ? 0 : Math.PI; // left→right or right→left
-        const drift = 0.6 * Math.sin(now * 0.00025 + i * 0.7);
-        const aC = base + drift;
-        const span = 0.9 + 0.5 * Math.sin(now * 0.0003 + i * 1.2);
-        const a0 = aC - span * 0.5;
-        const a1 = aC + span * 0.5;
-        cmds.push({
-          kind: 'arc',
-          cx,
-          cy,
-          r,
-          a0,
-          a1,
-          stroke: color,
-          lineWidth: MESMER.arcs.width * w,
-          // Arcs fade with both global fade and current quietness (less visible when busy)
-          alpha: MESMER.arcs.alpha * fade * quiet,
-          composite: 'lighter',
-          shadowBlur: MESMER.arcs.blur,
-          shadowColor: color,
-        });
+      if ((MESMER as any).arcs?.enabled !== false) {
+        const cL = (sim.coreL as any)?.center;
+        const cR = (sim.coreR as any)?.center;
+        if (cL) addArcs(cL.x, cL.y, 'var(--left)');
+        if (cR) addArcs(cR.x, cR.y, 'var(--right)');
       }
-    };
-
-    if ((MESMER as any).arcs?.enabled !== false) {
-      const cL = (sim.coreL as any)?.center;
-      const cR = (sim.coreR as any)?.center;
-      if (cL) addArcs(cL.x, cL.y, 'var(--left)');
-      if (cR) addArcs(cR.x, cR.y, 'var(--right)');
-    }
     } // end fade guard
   }
 
@@ -338,8 +351,11 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     }
 
     // Shield ring: fade with ablative shield pool
-    const havePool = typeof (core as any).shieldHP === 'number' && typeof (core as any).shieldHPmax === 'number';
-    const ratio = havePool ? Math.max(0, Math.min(1, (core as any).shieldHP / Math.max(1, (core as any).shieldHPmax))) : 0;
+    const havePool =
+      typeof (core as any).shieldHP === 'number' && typeof (core as any).shieldHPmax === 'number';
+    const ratio = havePool
+      ? Math.max(0, Math.min(1, (core as any).shieldHP / Math.max(1, (core as any).shieldHPmax)))
+      : 0;
     if (ratio > 0) {
       const rMid = (shieldR0 + shieldR1) * 0.5;
       const width = Math.max(1, shieldR1 - shieldR0);
@@ -385,7 +401,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
       // Lightning-like sparks: short radial crackles that scale up as shield weakens
       if ((SHIELD_VFX as any).sparks?.enabled !== false) {
-        const count = Math.max(0, Math.round((SHIELD_VFX.sparks.count ?? 3) * (0.25 + 0.85 * (1 - ratio))));
+        const count = Math.max(
+          0,
+          Math.round((SHIELD_VFX.sparks.count ?? 3) * (0.25 + 0.85 * (1 - ratio))),
+        );
         const len = Math.max(4, SHIELD_VFX.sparks.len ?? 10);
         const baseAlpha = SHIELD_VFX.sparks.alpha ?? 0.5;
         // simple deterministic pseudo-random from time + index
@@ -400,8 +419,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           const seed = ((now * 33) | 0) + i * 9173 + (core.side < 0 ? 37 : 61);
           const u = rand(seed);
           const a = u * Math.PI * 2;
-          const ux = Math.cos(a), uy = Math.sin(a);
-          const tx = -uy, ty = ux; // tangent
+          const ux = Math.cos(a),
+            uy = Math.sin(a);
+          const tx = -uy,
+            ty = ux; // tangent
           const jitter = (rand(seed ^ 0xabcdef) - 0.5) * 0.6;
           const p0x = cx + ux * rMid;
           const p0y = cy + uy * rMid;
@@ -411,8 +432,32 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           const p2y = p0y + uy * (len * 0.75) + ty * jitter * len;
           const alphaL = baseAlpha * (0.5 + 0.5 * (1 - ratio));
           // two short gradient strokes to suggest a crackle
-          cmds.push({ kind: 'gradLine', x1: p0x, y1: p0y, x2: p1x, y2: p1y, from: SHIELD_RING_COLOR, to: 'rgba(0,0,0,0)', lineWidth: 2, alpha: alphaL, lineCap: 'round', composite: 'lighter' });
-          cmds.push({ kind: 'gradLine', x1: p0x, y1: p0y, x2: p2x, y2: p2y, from: SHIELD_RING_COLOR, to: 'rgba(0,0,0,0)', lineWidth: 2, alpha: alphaL * 0.9, lineCap: 'round', composite: 'lighter' });
+          cmds.push({
+            kind: 'gradLine',
+            x1: p0x,
+            y1: p0y,
+            x2: p1x,
+            y2: p1y,
+            from: SHIELD_RING_COLOR,
+            to: 'rgba(0,0,0,0)',
+            lineWidth: 2,
+            alpha: alphaL,
+            lineCap: 'round',
+            composite: 'lighter',
+          });
+          cmds.push({
+            kind: 'gradLine',
+            x1: p0x,
+            y1: p0y,
+            x2: p2x,
+            y2: p2y,
+            from: SHIELD_RING_COLOR,
+            to: 'rgba(0,0,0,0)',
+            lineWidth: 2,
+            alpha: alphaL * 0.9,
+            lineCap: 'round',
+            composite: 'lighter',
+          });
         }
       }
     }
@@ -495,33 +540,103 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const ptype = String(plug.ptype);
         if (ptype === 'missile') {
           const ang = Math.atan2(vel.y, vel.x);
-          const ux = Math.cos(ang), uy = Math.sin(ang);
-          const nx = -uy, ny = ux;
+          const ux = Math.cos(ang),
+            uy = Math.sin(ang);
+          const nx = -uy,
+            ny = ux;
           const r = 9;
           const nose = { x: pos.x + ux * r, y: pos.y + uy * r };
-          const tailR = { x: pos.x - ux * r * 0.6 + nx * r * 0.55, y: pos.y - uy * r * 0.6 + ny * r * 0.55 };
-          const tailL = { x: pos.x - ux * r * 0.6 - nx * r * 0.55, y: pos.y - uy * r * 0.6 - ny * r * 0.55 };
-          cmds.push({ kind: 'poly', points: [nose, tailR, tailL], fill: sty.fill, stroke: outline, lineWidth: 2, close: true, shadowBlur: 12, shadowColor: sty.glow, composite: 'lighter' });
+          const tailR = {
+            x: pos.x - ux * r * 0.6 + nx * r * 0.55,
+            y: pos.y - uy * r * 0.6 + ny * r * 0.55,
+          };
+          const tailL = {
+            x: pos.x - ux * r * 0.6 - nx * r * 0.55,
+            y: pos.y - uy * r * 0.6 - ny * r * 0.55,
+          };
+          cmds.push({
+            kind: 'poly',
+            points: [nose, tailR, tailL],
+            fill: sty.fill,
+            stroke: outline,
+            lineWidth: 2,
+            close: true,
+            shadowBlur: 12,
+            shadowColor: sty.glow,
+            composite: 'lighter',
+          });
           // engine flare
           const t0 = { x: pos.x - ux * r * 0.6, y: pos.y - uy * r * 0.6 };
           const t1 = { x: pos.x - ux * r * 1.2, y: pos.y - uy * r * 1.2 };
-          cmds.push({ kind: 'line', x1: t0.x, y1: t0.y, x2: t1.x, y2: t1.y, stroke: sty.glow, lineWidth: 3, alpha: 1, composite: 'lighter', lineCap: 'round' });
+          cmds.push({
+            kind: 'line',
+            x1: t0.x,
+            y1: t0.y,
+            x2: t1.x,
+            y2: t1.y,
+            stroke: sty.glow,
+            lineWidth: 3,
+            alpha: 1,
+            composite: 'lighter',
+            lineCap: 'round',
+          });
         } else if (ptype === 'mortar') {
-          cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 6, fill: sty.fill, stroke: outline, lineWidth: 2, shadowBlur: 10, shadowColor: sty.glow, composite: 'lighter' });
-          cmds.push({ kind: 'line', x1: pos.x - 4, y1: pos.y - 4, x2: pos.x + 4, y2: pos.y + 4, stroke: '#FFFFFF', lineWidth: 1.5 });
+          cmds.push({
+            kind: 'circle',
+            x: pos.x,
+            y: pos.y,
+            r: 6,
+            fill: sty.fill,
+            stroke: outline,
+            lineWidth: 2,
+            shadowBlur: 10,
+            shadowColor: sty.glow,
+            composite: 'lighter',
+          });
+          cmds.push({
+            kind: 'line',
+            x1: pos.x - 4,
+            y1: pos.y - 4,
+            x2: pos.x + 4,
+            y2: pos.y + 4,
+            stroke: '#FFFFFF',
+            lineWidth: 1.5,
+          });
         } else if (ptype === 'artillery') {
           const ang = Math.atan2(vel.y, vel.x);
-          const ux = Math.cos(ang), uy = Math.sin(ang);
+          const ux = Math.cos(ang),
+            uy = Math.sin(ang);
           const ny = ux; // perpendicular y-component (nx unused)
           const r = 10;
           const p1 = { x: pos.x + ux * r, y: pos.y + uy * r };
           const p2 = { x: pos.x, y: pos.y + ny * 6 };
           const p3 = { x: pos.x - ux * r, y: pos.y - uy * r };
           const p4 = { x: pos.x, y: pos.y - ny * 6 };
-          cmds.push({ kind: 'poly', points: [p1, p2, p3, p4], fill: sty.fill, stroke: outline, lineWidth: 2, close: true, shadowBlur: 10, shadowColor: sty.glow, composite: 'lighter' });
+          cmds.push({
+            kind: 'poly',
+            points: [p1, p2, p3, p4],
+            fill: sty.fill,
+            stroke: outline,
+            lineWidth: 2,
+            close: true,
+            shadowBlur: 10,
+            shadowColor: sty.glow,
+            composite: 'lighter',
+          });
         } else {
           // cannon
-          cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 5, fill: sty.fill, stroke: outline, lineWidth: 2, shadowBlur: 8, shadowColor: sty.glow, composite: 'lighter' });
+          cmds.push({
+            kind: 'circle',
+            x: pos.x,
+            y: pos.y,
+            r: 5,
+            fill: sty.fill,
+            stroke: outline,
+            lineWidth: 2,
+            shadowBlur: 8,
+            shadowColor: sty.glow,
+            composite: 'lighter',
+          });
         }
       }
     }
@@ -607,7 +722,15 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const life = 1 - Math.max(0, Math.min(1, (now - b.t0) / Math.max(1, b.tEnd - b.t0)));
         const stroke = b.side < 0 ? 'var(--left)' : 'var(--right)';
         // jittered outer glow path
-        const pts = jitterPolyline(b.x1, b.y1, b.x2, b.y2, LASER_FX.segments, LASER_FX.jitterAmp, now);
+        const pts = jitterPolyline(
+          b.x1,
+          b.y1,
+          b.x2,
+          b.y2,
+          LASER_FX.segments,
+          LASER_FX.jitterAmp,
+          now,
+        );
         cmds.push({
           kind: 'path',
           points: pts,
@@ -644,7 +767,15 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const life01 = Math.max(0, Math.min(1, (f.tEnd - now) / LASER_FX.flashMs));
         const color = f.side < 0 ? 'var(--left)' : 'var(--right)';
         const r = 12 * (0.7 + 0.3 * life01);
-        cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: color, lineWidth: 2, alpha: 0.45 + 0.55 * life01 });
+        cmds.push({
+          kind: 'circle',
+          x: f.x,
+          y: f.y,
+          r,
+          stroke: color,
+          lineWidth: 2,
+          alpha: 0.45 + 0.55 * life01,
+        });
       }
     }
   }
@@ -660,7 +791,16 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const alpha = 0.65 * (1 - t) + 0.15;
         const width = 3 + 2 * Math.sin(t * Math.PI);
         const stroke = b.side < 0 ? 'var(--left)' : 'var(--right)';
-        cmds.push({ kind: 'line', x1: b.x0, y1: b.y0, x2: b.x1, y2: b.y1, stroke, lineWidth: width, alpha });
+        cmds.push({
+          kind: 'line',
+          x1: b.x0,
+          y1: b.y0,
+          x2: b.x1,
+          y2: b.y1,
+          stroke,
+          lineWidth: width,
+          alpha,
+        });
       }
     }
   }
@@ -692,7 +832,16 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           });
         } else {
           const r = 10 + 8 * t;
-          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: 2, alpha: 0.55 * (1 - t), composite: 'lighter' });
+          cmds.push({
+            kind: 'circle',
+            x: f.x,
+            y: f.y,
+            r,
+            stroke: f.color,
+            lineWidth: 2,
+            alpha: 0.55 * (1 - t),
+            composite: 'lighter',
+          });
         }
       }
     }
@@ -708,7 +857,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const t = Math.max(0, Math.min(1, age / Math.max(1, s.ms)));
         const color = s.side < 0 ? 'var(--left)' : 'var(--right)';
         // normalize to the minor arc between a0..a1 and remember direction
-        let a0 = s.a0, a1 = s.a1;
+        let a0 = s.a0,
+          a1 = s.a1;
         let d = a1 - a0;
         while (d > Math.PI) {
           a1 -= Math.PI * 2;
@@ -721,9 +871,29 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const a = a0 + t * d;
         const r = 20;
         // arc segment
-        cmds.push({ kind: 'arc', cx: s.x, cy: s.y, r, a0, a1, ccw: d < 0, stroke: color, lineWidth: 2, alpha: 0.55 });
+        cmds.push({
+          kind: 'arc',
+          cx: s.x,
+          cy: s.y,
+          r,
+          a0,
+          a1,
+          ccw: d < 0,
+          stroke: color,
+          lineWidth: 2,
+          alpha: 0.55,
+        });
         // pointer line
-        cmds.push({ kind: 'line', x1: s.x, y1: s.y, x2: s.x + Math.cos(a) * (r + 6), y2: s.y + Math.sin(a) * (r + 6), stroke: color, lineWidth: 2, alpha: 0.55 });
+        cmds.push({
+          kind: 'line',
+          x1: s.x,
+          y1: s.y,
+          x2: s.x + Math.cos(a) * (r + 6),
+          y2: s.y + Math.sin(a) * (r + 6),
+          stroke: color,
+          lineWidth: 2,
+          alpha: 0.55,
+        });
       }
     }
   }
@@ -741,7 +911,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const y = p.y + p.vy * dt + 0.5 * G * dt * dt;
         const fade = 1 - age / p.ms;
         const len = 6 + 8 * fade;
-        const nx = p.vx, ny = p.vy + G * dt;
+        const nx = p.vx,
+          ny = p.vy + G * dt;
         const n = Math.max(0.001, Math.hypot(nx, ny));
         const ux = nx / n,
           uy = ny / n;
@@ -767,14 +938,29 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const list = sim.paddles;
     if (list?.length) {
       for (const p of list) {
-        cmds.push({ kind: 'line', x1: p.bounds.min.x, y1: p.position.y, x2: p.bounds.max.x, y2: p.position.y, stroke: '#2b3a78', lineWidth: 8 });
+        cmds.push({
+          kind: 'line',
+          x1: p.bounds.min.x,
+          y1: p.position.y,
+          x2: p.bounds.max.x,
+          y2: p.position.y,
+          stroke: '#2b3a78',
+          lineWidth: 8,
+        });
       }
     }
   }
 
   // Bins (containers) — outline, background, fill gauge, intake strip, labels
   {
-    type BinStyle = { stroke?: string; box?: string; fill?: string; gauge?: string; text?: string; strokePx?: number };
+    type BinStyle = {
+      stroke?: string;
+      box?: string;
+      fill?: string;
+      gauge?: string;
+      text?: string;
+      strokePx?: number;
+    };
     type Vec2 = { x: number; y: number };
     type BodyLike = { bounds: { min: Vec2; max: Vec2 }; position?: Vec2 };
     type RenderBin = import('../types').Bin & {
@@ -785,7 +971,16 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     };
     const renderBinSet = (bins: import('../types').Bins | null): void => {
       if (!bins) return;
-      const keys: (keyof typeof bins)[] = ['cannon', 'laser', 'missile', 'mortar', 'shield', 'repair', 'buff', 'debuff'];
+      const keys: (keyof typeof bins)[] = [
+        'cannon',
+        'laser',
+        'missile',
+        'mortar',
+        'shield',
+        'repair',
+        'buff',
+        'debuff',
+      ];
       for (const key of keys) {
         const raw = (bins as any)[key] as RenderBin | undefined;
         if (!raw) continue;
@@ -800,34 +995,65 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const s: BinStyle = raw.style ?? {};
         const stroke = s.stroke ?? '#94a8ff';
         const boxBg = s.box ?? 'rgba(14,23,48,0.35)';
-        const fillCol = s.fill ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#8fb0ff');
-        const gaugeCol = s.gauge ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#ffffff');
+        const fillCol =
+          s.fill ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#8fb0ff');
+        const gaugeCol =
+          s.gauge ?? (key === 'buff' ? '#5CFF7A' : key === 'debuff' ? '#FF6B6B' : '#ffffff');
         const textCol = s.text ?? '#cfe1ff';
 
         // Outline
-        cmds.push({ kind: 'poly', points: [
-          { x: cx - w / 2, y: cy - h / 2 },
-          { x: cx + w / 2, y: cy - h / 2 },
-          { x: cx + w / 2, y: cy + h / 2 },
-          { x: cx - w / 2, y: cy + h / 2 },
-        ], stroke, lineWidth: Math.max(2, (sim.W || 800) * 0.0025), close: true });
+        cmds.push({
+          kind: 'poly',
+          points: [
+            { x: cx - w / 2, y: cy - h / 2 },
+            { x: cx + w / 2, y: cy - h / 2 },
+            { x: cx + w / 2, y: cy + h / 2 },
+            { x: cx - w / 2, y: cy + h / 2 },
+          ],
+          stroke,
+          lineWidth: Math.max(2, (sim.W || 800) * 0.0025),
+          close: true,
+        });
 
         // Internal background + fill
         const inset = Math.max(1, (sim.W || 800) * 0.0025 * 0.65);
         const innerW = w - inset * 2;
         const innerH = h - inset * 2;
-        cmds.push({ kind: 'rect', x: cx - innerW / 2, y: cy - innerH / 2, w: innerW, h: innerH, fill: boxBg });
+        cmds.push({
+          kind: 'rect',
+          x: cx - innerW / 2,
+          y: cy - innerH / 2,
+          w: innerW,
+          h: innerH,
+          fill: boxBg,
+        });
         if (typeof raw.fill === 'number' && typeof raw.cap === 'number' && raw.cap > 0) {
           const frac = Math.max(0, Math.min(1, raw.fill / raw.cap));
           const fillH = innerH * frac;
-          cmds.push({ kind: 'rect', x: cx - innerW / 2, y: cy + innerH / 2 - fillH, w: innerW, h: fillH, fill: fillCol, alpha: 0.85 });
+          cmds.push({
+            kind: 'rect',
+            x: cx - innerW / 2,
+            y: cy + innerH / 2 - fillH,
+            w: innerW,
+            h: fillH,
+            fill: fillCol,
+            alpha: 0.85,
+          });
         }
 
         // Intake strip
         if (raw.intake?.bounds) {
           const ib = raw.intake.bounds;
           const iy = (ib.min.y + ib.max.y) * 0.5;
-          cmds.push({ kind: 'line', x1: ib.min.x, y1: iy, x2: ib.max.x, y2: iy, stroke: gaugeCol, lineWidth: Math.max(1, (sim.W || 800) * 0.002) });
+          cmds.push({
+            kind: 'line',
+            x1: ib.min.x,
+            y1: iy,
+            x2: ib.max.x,
+            y2: iy,
+            stroke: gaugeCol,
+            lineWidth: Math.max(1, (sim.W || 800) * 0.002),
+          });
         }
 
         // Labels
@@ -835,9 +1061,28 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const cap = raw.cap | 0;
         const fill = Math.min(raw.fill | 0, cap);
         const stats = `${fill}/${cap}`;
-        const family = "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif";
-        cmds.push({ kind: 'text', x: cx, y: cy + h / 2 + 12, text: nameText, font: `12px ${family}`, fill: textCol, align: 'center', baseline: 'alphabetic' });
-        cmds.push({ kind: 'text', x: cx, y: cy + h / 2 + 24, text: stats, font: `11px ${family}`, fill: textCol, align: 'center', baseline: 'alphabetic' });
+        const family =
+          "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif";
+        cmds.push({
+          kind: 'text',
+          x: cx,
+          y: cy + h / 2 + 12,
+          text: nameText,
+          font: `12px ${family}`,
+          fill: textCol,
+          align: 'center',
+          baseline: 'alphabetic',
+        });
+        cmds.push({
+          kind: 'text',
+          x: cx,
+          y: cy + h / 2 + 24,
+          text: stats,
+          font: `11px ${family}`,
+          fill: textCol,
+          align: 'center',
+          baseline: 'alphabetic',
+        });
       }
     };
     renderBinSet(sim.binsL);
@@ -856,24 +1101,109 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       // Buff badge
       if (nowMs < (m.dmgUntil ?? 0)) {
         const tLeft = Math.max(0, Math.ceil(((m.dmgUntil ?? 0) - nowMs) / 1000));
-        const w = 120, h = 22;
+        const w = 120,
+          h = 22;
         cmds.push({ kind: 'rect', x: x - w / 2, y: y - h / 2, w, h, fill: '#032e12', alpha: 1 });
-        cmds.push({ kind: 'line', x1: x - w / 2, y1: y - h / 2, x2: x + w / 2, y2: y - h / 2, stroke: '#5CFF7A', lineWidth: 2 });
-        cmds.push({ kind: 'line', x1: x + w / 2, y1: y - h / 2, x2: x + w / 2, y2: y + h / 2, stroke: '#5CFF7A', lineWidth: 2 });
-        cmds.push({ kind: 'line', x1: x + w / 2, y1: y + h / 2, x2: x - w / 2, y2: y + h / 2, stroke: '#5CFF7A', lineWidth: 2 });
-        cmds.push({ kind: 'line', x1: x - w / 2, y1: y + h / 2, x2: x - w / 2, y2: y - h / 2, stroke: '#5CFF7A', lineWidth: 2 });
-        cmds.push({ kind: 'text', x, y, text: `DMG x${(m.dmgMul ?? 1).toFixed(1)}  ${tLeft}s`, font: `${fontPx}px var(--mono, monospace)`, fill: '#5CFF7A', align: 'center', baseline: 'middle' });
+        cmds.push({
+          kind: 'line',
+          x1: x - w / 2,
+          y1: y - h / 2,
+          x2: x + w / 2,
+          y2: y - h / 2,
+          stroke: '#5CFF7A',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x + w / 2,
+          y1: y - h / 2,
+          x2: x + w / 2,
+          y2: y + h / 2,
+          stroke: '#5CFF7A',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x + w / 2,
+          y1: y + h / 2,
+          x2: x - w / 2,
+          y2: y + h / 2,
+          stroke: '#5CFF7A',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x - w / 2,
+          y1: y + h / 2,
+          x2: x - w / 2,
+          y2: y - h / 2,
+          stroke: '#5CFF7A',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'text',
+          x,
+          y,
+          text: `DMG x${(m.dmgMul ?? 1).toFixed(1)}  ${tLeft}s`,
+          font: `${fontPx}px var(--mono, monospace)`,
+          fill: '#5CFF7A',
+          align: 'center',
+          baseline: 'middle',
+        });
       }
       // Debuff badge
       if (nowMs < (m.disableUntil ?? 0) && m.disabledType) {
         const tLeft = Math.max(0, Math.ceil(((m.disableUntil ?? 0) - nowMs) / 1000));
-        const w = 140, h = 22, y2 = y + 26;
+        const w = 140,
+          h = 22,
+          y2 = y + 26;
         cmds.push({ kind: 'rect', x: x - w / 2, y: y2 - h / 2, w, h, fill: '#3b0c0c', alpha: 1 });
-        cmds.push({ kind: 'line', x1: x - w / 2, y1: y2 - h / 2, x2: x + w / 2, y2: y2 - h / 2, stroke: '#FF6B6B', lineWidth: 2 });
-        cmds.push({ kind: 'line', x1: x + w / 2, y1: y2 - h / 2, x2: x + w / 2, y2: y2 + h / 2, stroke: '#FF6B6B', lineWidth: 2 });
-        cmds.push({ kind: 'line', x1: x + w / 2, y1: y2 + h / 2, x2: x - w / 2, y2: y2 + h / 2, stroke: '#FF6B6B', lineWidth: 2 });
-        cmds.push({ kind: 'line', x1: x - w / 2, y1: y2 + h / 2, x2: x - w / 2, y2: y2 - h / 2, stroke: '#FF6B6B', lineWidth: 2 });
-        cmds.push({ kind: 'text', x, y: y2, text: `DISABLED ${(m.disabledType as string).toUpperCase()}  ${tLeft}s`, font: `${fontPx}px var(--mono, monospace)`, fill: '#FFB1B1', align: 'center', baseline: 'middle' });
+        cmds.push({
+          kind: 'line',
+          x1: x - w / 2,
+          y1: y2 - h / 2,
+          x2: x + w / 2,
+          y2: y2 - h / 2,
+          stroke: '#FF6B6B',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x + w / 2,
+          y1: y2 - h / 2,
+          x2: x + w / 2,
+          y2: y2 + h / 2,
+          stroke: '#FF6B6B',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x + w / 2,
+          y1: y2 + h / 2,
+          x2: x - w / 2,
+          y2: y2 + h / 2,
+          stroke: '#FF6B6B',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x - w / 2,
+          y1: y2 + h / 2,
+          x2: x - w / 2,
+          y2: y2 - h / 2,
+          stroke: '#FF6B6B',
+          lineWidth: 2,
+        });
+        cmds.push({
+          kind: 'text',
+          x,
+          y: y2,
+          text: `DISABLED ${(m.disabledType as string).toUpperCase()}  ${tLeft}s`,
+          font: `${fontPx}px var(--mono, monospace)`,
+          fill: '#FFB1B1',
+          align: 'center',
+          baseline: 'middle',
+        });
       }
     };
     mk(-1);
@@ -903,26 +1233,82 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
     const drawStats = (core: Core, color: string): void => {
       if (!core?.center) return;
-      const x = core.center.x, y = core.center.y;
+      const x = core.center.x,
+        y = core.center.y;
       // Fill nearly the entire inner core (leave a hairline margin)
       const r = Math.max(12, centerRadius(core) * 0.998);
       cmds.push({ kind: 'circle', x, y, r, fill: '#000', alpha: 0.32 });
       const hp = Math.max(0, Math.round(core.centerHP ?? 0));
       const sh = Math.max(0, Math.round(core.shieldHP ?? 0));
-      // Two-line layout sized to nearly fill the center ring without crossing into segments
-      const fs1 = Math.max(24, Math.min(260, r * 0.95)); // HP ≈ 95% of inner radius
-      const fs2 = Math.max(18, Math.min(180, r * 0.65)); // Shield ≈ 65% of inner radius
-      const gap = r * 0.06; // modest gap between lines
-      // Distance between baselines (symmetric around center). Extents stay within circle when:
-      // (sep + fs1)/2 < r and (sep + fs2)/2 < r — satisfied by the chosen ratios.
-      const sep = 0.5 * fs1 + gap + 0.5 * fs2;
-      const yHP = y - sep * 0.5;
-      const ySH = y + sep * 0.5;
-      const sw1 = Math.max(2, Math.min(12, fs1 * 0.10));
-      const sw2 = Math.max(2, Math.min(10, fs2 * 0.10));
-      const family = "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif";
-      cmds.push({ kind: 'text', x, y: yHP, text: String(hp), font: `bold ${fs1}px ${family}`, fill: '#fff', align: 'center', baseline: 'middle', stroke: '#000', strokeWidth: sw1 });
-      cmds.push({ kind: 'text', x, y: ySH, text: `S:${sh}`, font: `bold ${fs2}px ${family}`, fill: sh > 0 ? color : '#9aa3b2', align: 'center', baseline: 'middle', stroke: '#000', strokeWidth: sw2 });
+      const arm = Math.max(
+        0,
+        Math.round(
+          (core.segHP ?? []).reduce(
+            (a: number, b: number) => a + Math.max(0, (b as number) | 0),
+            0,
+          ),
+        ),
+      );
+
+      // Three-line layout: HP (large), Shield (mid), Armor (mid), centered
+      // Slightly smaller HP so it comfortably fits; avoid maxWidth to prevent stretch
+      const fsHP = Math.max(20, r * 0.45);
+      const fsMid = Math.max(16, Math.min(160, r * 0.36));
+      const gap = Math.max(4, r * 0.06);
+      const ySH = y; // middle line at center
+      const yHP = y - (0.5 * fsMid + 0.5 * fsHP + gap);
+      const yAR = y + (0.5 * fsMid + 0.5 * fsMid + gap);
+      const swHP = Math.max(2, Math.min(12, fsHP * 0.1));
+      const swMid = Math.max(2, Math.min(10, fsMid * 0.1));
+      const family =
+        "system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif";
+
+      // Use icons for compact clarity
+      const hpText = `❤️ ${hp}`;
+      const shText = `🛡 ${sh}`; // shield icon; color reflects availability
+      const arText = `🪖 ${arm}`;
+
+      // Intentionally avoid canvas maxWidth to prevent horizontal scaling (which looks like vertical stretching).
+
+      // Draw HP (top)
+      cmds.push({
+        kind: 'text',
+        x,
+        y: yHP,
+        text: hpText,
+        font: `bold ${fsHP}px ${family}`,
+        fill: '#ffffff',
+        align: 'center',
+        baseline: 'middle',
+        stroke: '#000',
+        strokeWidth: swHP,
+      });
+      // Draw Shield (middle)
+      cmds.push({
+        kind: 'text',
+        x,
+        y: ySH,
+        text: shText,
+        font: `bold ${fsMid}px ${family}`,
+        fill: sh > 0 ? color : '#9aa3b2',
+        align: 'center',
+        baseline: 'middle',
+        stroke: '#000',
+        strokeWidth: swMid,
+      });
+      // Draw Armor (bottom)
+      cmds.push({
+        kind: 'text',
+        x,
+        y: yAR,
+        text: arText,
+        font: `bold ${fsMid}px ${family}`,
+        fill: '#d9e3f0',
+        align: 'center',
+        baseline: 'middle',
+        stroke: '#000',
+        strokeWidth: swMid,
+      });
     };
     if (sim.coreL) drawStats(sim.coreL, 'var(--left)');
     if (sim.coreR) drawStats(sim.coreR, 'var(--right)');
@@ -942,7 +1328,16 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (!pos) continue;
         cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 10, fill: '#0a1227' });
         cmds.push({ kind: 'circle', x: pos.x, y: pos.y, r: 10, stroke: color, lineWidth: 2 });
-        cmds.push({ kind: 'text', x: pos.x, y: pos.y + 3, text: String(label), font: `10px Verdana`, fill: color, align: 'center', baseline: 'middle' });
+        cmds.push({
+          kind: 'text',
+          x: pos.x,
+          y: pos.y + 3,
+          text: String(label),
+          font: `10px Verdana`,
+          fill: color,
+          align: 'center',
+          baseline: 'middle',
+        });
       }
     };
     mk(sim.wepL, 'var(--left)');
@@ -996,7 +1391,16 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const alpha = 0.65 * (1 - t) + 0.15;
         const width = 3 + 2 * Math.sin(t * Math.PI);
         const stroke = b.side < 0 ? 'var(--left)' : 'var(--right)';
-        cmds.push({ kind: 'line', x1: b.x0, y1: b.y0, x2: b.x1, y2: b.y1, stroke, lineWidth: width, alpha });
+        cmds.push({
+          kind: 'line',
+          x1: b.x0,
+          y1: b.y0,
+          x2: b.x1,
+          y2: b.y1,
+          stroke,
+          lineWidth: width,
+          alpha,
+        });
       }
     }
   }
@@ -1012,10 +1416,26 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           const baseR = 8;
           const maxR = 48;
           const r = baseR + (maxR - baseR) * t * 0.82;
-          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: Math.max(1, 6 - 5 * t), alpha: 0.9 * (1 - t) });
+          cmds.push({
+            kind: 'circle',
+            x: f.x,
+            y: f.y,
+            r,
+            stroke: f.color,
+            lineWidth: Math.max(1, 6 - 5 * t),
+            alpha: 0.9 * (1 - t),
+          });
         } else {
           const r = 10 + 8 * t;
-          cmds.push({ kind: 'circle', x: f.x, y: f.y, r, stroke: f.color, lineWidth: 2, alpha: 0.55 * (1 - t) });
+          cmds.push({
+            kind: 'circle',
+            x: f.x,
+            y: f.y,
+            r,
+            stroke: f.color,
+            lineWidth: 2,
+            alpha: 0.55 * (1 - t),
+          });
         }
       }
     }
@@ -1023,7 +1443,14 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Buff/Debuff Banners
   {
-    const list = ((sim as any).fxBanners ?? []) as Array<{ side: number; text: string; sub?: string; color?: string; t0: number; ms: number }>;
+    const list = ((sim as any).fxBanners ?? []) as Array<{
+      side: number;
+      text: string;
+      sub?: string;
+      color?: string;
+      t0: number;
+      ms: number;
+    }>;
     if (list?.length) {
       for (const b of list) {
         const age = now - b.t0;
@@ -1032,7 +1459,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const isLeft = b.side < 0;
         // Make banner larger to accommodate oversized headline text
         const bw = Math.min(W * 0.6, 720);
-        const bh = Math.min(H * 0.30, 200);
+        const bh = Math.min(H * 0.3, 200);
         const pad = 12;
         const targetX = isLeft ? W * 0.23 - bw / 2 : W * 0.77 - bw / 2;
         // Lower on screen to be more noticeable
@@ -1061,26 +1488,105 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const edgeA = alpha * 0.98;
         const lw = 3;
         const glow = 12;
-        cmds.push({ kind: 'line', x1: x + 4, y1: y + 6, x2: x + bw - 4, y2: y + 6, stroke: col, lineWidth: lw, alpha: edgeA, composite: 'lighter', shadowBlur: glow, shadowColor: col });
-        cmds.push({ kind: 'line', x1: x + 4, y1: y + bh - 6, x2: x + bw - 4, y2: y + bh - 6, stroke: col, lineWidth: lw, alpha: edgeA, composite: 'lighter', shadowBlur: glow, shadowColor: col });
-        cmds.push({ kind: 'line', x1: x + 6, y1: y + 4, x2: x + 6, y2: y + bh - 4, stroke: col, lineWidth: lw, alpha: edgeA, composite: 'lighter', shadowBlur: glow, shadowColor: col });
-        cmds.push({ kind: 'line', x1: x + bw - 6, y1: y + 4, x2: x + bw - 6, y2: y + bh - 4, stroke: col, lineWidth: lw, alpha: edgeA, composite: 'lighter', shadowBlur: glow, shadowColor: col });
+        cmds.push({
+          kind: 'line',
+          x1: x + 4,
+          y1: y + 6,
+          x2: x + bw - 4,
+          y2: y + 6,
+          stroke: col,
+          lineWidth: lw,
+          alpha: edgeA,
+          composite: 'lighter',
+          shadowBlur: glow,
+          shadowColor: col,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x + 4,
+          y1: y + bh - 6,
+          x2: x + bw - 4,
+          y2: y + bh - 6,
+          stroke: col,
+          lineWidth: lw,
+          alpha: edgeA,
+          composite: 'lighter',
+          shadowBlur: glow,
+          shadowColor: col,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x + 6,
+          y1: y + 4,
+          x2: x + 6,
+          y2: y + bh - 4,
+          stroke: col,
+          lineWidth: lw,
+          alpha: edgeA,
+          composite: 'lighter',
+          shadowBlur: glow,
+          shadowColor: col,
+        });
+        cmds.push({
+          kind: 'line',
+          x1: x + bw - 6,
+          y1: y + 4,
+          x2: x + bw - 6,
+          y2: y + bh - 4,
+          stroke: col,
+          lineWidth: lw,
+          alpha: edgeA,
+          composite: 'lighter',
+          shadowBlur: glow,
+          shadowColor: col,
+        });
 
         // Main text
         const tx = x + bw / 2;
-        const ty = y + bh * 0.40;
+        const ty = y + bh * 0.4;
         // More pronounced spin on entry (ease-out)
-        const spinDur = 0.30; // seconds fraction of lifetime (relative)
+        const spinDur = 0.3; // seconds fraction of lifetime (relative)
         const spinAmt = 0.28; // radians peak
         const spin = t < spinDur ? (1 - t / spinDur) * (isLeft ? -spinAmt : spinAmt) : 0;
         const headPx = Math.floor(bh * 0.66);
         const maxW = bw - pad * 2;
         // Text with bright glow
-        cmds.push({ kind: 'text', x: tx, y: ty, ox: tx, oy: ty, rot: spin, text: b.text, font: `900 ${headPx}px var(--mono, monospace)`, fill: col, stroke: '#0b0f1a', strokeWidth: 4, maxWidth: maxW, align: 'center', baseline: 'middle', alpha, composite: 'lighter', shadowBlur: 16, shadowColor: col });
+        cmds.push({
+          kind: 'text',
+          x: tx,
+          y: ty,
+          ox: tx,
+          oy: ty,
+          rot: spin,
+          text: b.text,
+          font: `900 ${headPx}px var(--mono, monospace)`,
+          fill: col,
+          stroke: '#0b0f1a',
+          strokeWidth: 4,
+          maxWidth: maxW,
+          align: 'center',
+          baseline: 'middle',
+          alpha,
+          composite: 'lighter',
+          shadowBlur: 16,
+          shadowColor: col,
+        });
         // Subtitle (optional)
         let lineY = ty + bh * 0.18;
         if (b.sub) {
-          cmds.push({ kind: 'text', x: tx, y: lineY, text: b.sub, font: `bold ${Math.floor(bh * 0.20)}px var(--mono, monospace)`, fill: 'var(--text)', stroke: '#000', strokeWidth: 3, maxWidth: maxW, align: 'center', baseline: 'middle' });
+          cmds.push({
+            kind: 'text',
+            x: tx,
+            y: lineY,
+            text: b.sub,
+            font: `bold ${Math.floor(bh * 0.2)}px var(--mono, monospace)`,
+            fill: 'var(--text)',
+            stroke: '#000',
+            strokeWidth: 3,
+            maxWidth: maxW,
+            align: 'center',
+            baseline: 'middle',
+          });
           lineY += bh * 0.18;
         }
         // (no external emblem; keep clean and readable)
@@ -1088,7 +1594,19 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (Array.isArray((b as any).lines)) {
           const lines = (b as any).lines as string[];
           for (const sLine of lines) {
-            cmds.push({ kind: 'text', x: tx, y: lineY, text: sLine, font: `${Math.floor(bh * 0.16)}px var(--mono, monospace)`, fill: '#b7c9ff', stroke: '#000', strokeWidth: 2, maxWidth: maxW, align: 'center', baseline: 'middle' });
+            cmds.push({
+              kind: 'text',
+              x: tx,
+              y: lineY,
+              text: sLine,
+              font: `${Math.floor(bh * 0.16)}px var(--mono, monospace)`,
+              fill: '#b7c9ff',
+              stroke: '#000',
+              strokeWidth: 2,
+              maxWidth: maxW,
+              align: 'center',
+              baseline: 'middle',
+            });
             lineY += bh * 0.16;
           }
         }
