@@ -274,8 +274,8 @@ export const MESMER = {
     count: 70,
     color: '#1a9bff',
     altColor: '#ff00aa',
-    alpha: 0.2, // tiny bump in visibility
-    jitter: 0.002, // twinkle speed factor
+    alpha: 0.3, // tiny bump in visibility
+    jitter: 0.004, // twinkle speed factor
     sizeMin: 1.1,
     sizeMax: 2.2,
   },
@@ -379,7 +379,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'missile',
     accepts: ['heavy', 'volatile'],
-    cap: 35,
+    cap: 15,
     pos: [0.78, 0.75],
     sizeFrac: [0.16, 0.025],
     intake: 'top',
@@ -399,7 +399,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'mortar',
     accepts: ['basic', 'heavy'],
-    cap: 12,
+    cap: 24,
     pos: [0.25, 0.89],
     sizeFrac: [0.16, 0.025],
     intake: 'top',
@@ -429,7 +429,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'debuff',
     accepts: ['basic', 'heavy', 'volatile', 'emp', 'shield'],
-    cap: 60,
+    cap: 45,
     pos: [1.35, 0.74],
     sizeFrac: [0.16, 0.025],
     intake: 'top',
@@ -441,7 +441,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
 // How shields behave (ablative pool)
 export const SHIELD = {
   startHP: 200,
-  maxHP: 200,
+  maxHP: 400,
   onPickup: 60,
   projectileFactor: 1.0,
   laserPenetration: 0.35,
