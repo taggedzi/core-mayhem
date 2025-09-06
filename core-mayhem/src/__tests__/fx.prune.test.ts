@@ -35,6 +35,10 @@ describe('runFXPrune', () => {
       { t0: now - 100, ms: 50 },
       { t0: now - 10, ms: 50 },
     ];
+    (sim as any).fxBanners = [
+      { t0: now - 100, ms: 50 },
+      { t0: now - 10, ms: 50 },
+    ];
 
     runFXPrune(now);
 
@@ -45,6 +49,12 @@ describe('runFXPrune', () => {
     expect(sim.fxImp.length).toBe(1);
     expect(sim.fxSweep.length).toBe(1);
     expect(sim.fxSparks!.length).toBe(1);
+    expect(((sim as any).fxBanners ?? []).length).toBe(1);
+  });
+
+  it('handles missing arrays gracefully (no throws)', () => {
+    resetSimState();
+    // do not set any fx arrays
+    expect(() => runFXPrune(100)).not.toThrow();
   });
 });
-

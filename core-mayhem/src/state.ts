@@ -253,9 +253,9 @@ export function resetSimState(s: SimState = sim): void {
   s.cooldowns.L = { cannon: 0, laser: 0, missile: 0, mortar: 0 };
   s.cooldowns.R = { cannon: 0, laser: 0, missile: 0, mortar: 0 };
 
-  // Reset modifiers to neutral state
-  s.modsL = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
-  s.modsR = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null };
+  // Reset modifiers to neutral state (keep full shape)
+  s.modsL = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null, buffUntil: 0, buffKind: null, cooldownMul: 1, binFillMul: 1 } as any;
+  s.modsR = { dmgUntil: 0, dmgMul: 1, disableUntil: 0, disabledType: null, buffUntil: 0, buffKind: null, cooldownMul: 1, binFillMul: 1 } as any;
 
   // Reset match outcome
   s.gameOver = false;

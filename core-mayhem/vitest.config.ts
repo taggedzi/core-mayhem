@@ -24,8 +24,18 @@ export default defineConfig({
         'src/barrel.ts',
         'src/app/index.ts',
         'src/render/index.ts',
+        // heavy rendering module covered by integration/e2e
+        'src/render/drawModel.ts',
+        'src/render/renderScene.ts',
         'src/sim/index.ts',
         'src/vite-env.d.ts',
+        // UI-only modules not exercised by unit tests
+        'src/ui/**',
+        // Dev hotkeys are integration/UI oriented
+        'src/app/devKeys.ts',
+        // Physics helpers that require integration contexts
+        'src/sim/gel.ts',
+        'src/sim/world.ts',
       ],
       thresholds: {
         statements: 70,

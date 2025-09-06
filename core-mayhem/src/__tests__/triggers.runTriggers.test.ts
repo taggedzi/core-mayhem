@@ -10,6 +10,9 @@ vi.mock('../sim/weapons', () => ({
 vi.mock('../app/mods', () => ({
   applyBuff: vi.fn(),
   applyDebuff: vi.fn(),
+  // new exports referenced by triggers.ts
+  applyRandomBuff: vi.fn(),
+  currentCooldownMul: vi.fn(() => 1),
 }));
 
 vi.mock('../core/repair', () => ({
@@ -75,7 +78,8 @@ describe('runTriggers', () => {
     expect(weapons.queueFireMissiles).toHaveBeenCalled();
     expect(weapons.queueFireMortar).toHaveBeenCalled();
 
-    expect(mods.applyBuff).toHaveBeenCalled();
+    // With current config (buffChooser: 'randomPool'), triggers use applyRandomBuff
+    expect((mods as any).applyRandomBuff).toHaveBeenCalled();
     expect(mods.applyDebuff).toHaveBeenCalled();
     expect(repairMod.repair).toHaveBeenCalled();
 
