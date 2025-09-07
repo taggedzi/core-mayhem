@@ -15,7 +15,7 @@ import { MISSILE_STAGGER_MS } from '../config';
 import { HOMING, HOMING_ENABLED } from '../config';
 import { MORTAR_ANGLE } from '../config';
 import { SHIELD } from '../config';
-import { WEAPONS_LEFT } from '../config';
+import { WEAPON_MOUNTS_LEFT } from '../config';
 import { angleToSeg } from '../sim/core';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
@@ -513,103 +513,26 @@ export function tickHoming(dtMs: number): void {
   }
 }
 
-// --- tweakables ---
-const TOP_Y_FRACTION = 0.13; // unchanged
-const OFFSET_FROM_MID_R = 0.8; // unchanged (your value)
-const SPACING_R = 0.9; // unchanged (your value)
-const EDGE_MARGIN_PX = 24; // unchanged
-
-// NEW: vertical staggering measured in "core radii"
-const LASER_Y_OFFSET_R = 0.45; // laser sits lower than cannon by ~0.45R
-const MISSILE_Y_OFFSET_R = 0.9; // missile sits lower than cannon by ~0.90R
-
-function coreRadiusFor(side: Side): number {
-  const core = side === SIDE.LEFT ? sim.coreL : sim.coreR;
-  // Support multiple possible radius field names; fallback to a sensible guess.
-  const r = (core as any).outerR ?? (core as any).R ?? (core as any).radius ?? (core as any).ringR;
-  return typeof r === 'number' && r > 4 ? r : Math.max(30, sim.H * 0.09);
-}
-
-function clampX(x: number): number {
-  return Math.min(sim.W - EDGE_MARGIN_PX, Math.max(EDGE_MARGIN_PX, x));
-}
-
-// tweakables for bottom artillery
-const BOTTOM_Y_FRACTION = 0.88; // vertical row near bottom
-const ARTY_X_FROM_MID_R = 0.45; // horizontal offset from midline (in core radii)
-
-interface WeapType {
-  pos: {
-    x: number;
-    y: number;
-  };
-  mount: Body;
-}
-
-export interface WeaponsType {
-  cannon: WeapType;
-  laser: WeapType;
-  missile: WeapType;
-  mortar: WeapType;
-}
+interface WeapType { pos: { x: number; y: number }; mount: Body }
+export interface WeaponsType { cannon: WeapType; laser: WeapType; missile: WeapType; mortar: WeapType }
 
 export function makeWeapons(side: Side): WeaponsType {
-  const mid = sim.W * 0.5;
-  const r = coreRadiusFor(side);
-  const sgn = side === SIDE.LEFT ? -1 : +1;
-
-  // Row geometry matches prior hard-coded layout
-  const topY = Math.max(36, sim.H * TOP_Y_FRACTION);
-  const yByRow = {
-    top: (_order: number) => topY,
-    bottom: (_order: number) => Math.min(sim.H - 36, sim.H * BOTTOM_Y_FRACTION),
-  } as const;
-
-  const baseXTop = mid + sgn * (r * OFFSET_FROM_MID_R);
-  const step = r * SPACING_R;
-  const xTopByOrder = (order: number) => clampX(baseXTop + sgn * step * order);
-
-  const baseXBottom = mid + sgn * (r * ARTY_X_FROM_MID_R);
-  const xBottomByOrder = (order: number) => clampX(baseXBottom + sgn * step * order);
-
-  const mk = (x: number, y: number, label: string): WeapType => {
-    const mount = Bodies.circle(x, y, 5, { isStatic: true, isSensor: true });
-    (mount as any).plugin = { kind: 'weaponMount', side, label };
+  const specs = WEAPON_MOUNTS_LEFT.filter((s) => s.enabled !== false);
+  const result: Partial<WeaponsType> = {};
+  for (const s of specs) {
+    const [xBL0, yBL] = s.pos;
+    const r = Math.max(1, Math.floor(s.r));
+    const xBL = side === SIDE.LEFT ? xBL0 : sim.W - xBL0 - 2 * r;
+    const cx = xBL + r;
+    const cy = sim.H - (yBL + r);
+    const mount = Bodies.circle(cx, cy, r, { isStatic: true, isSensor: true });
+    (mount as any).plugin = { kind: 'weaponMount', side, label: s.id };
     {
       const w = sim.world;
       assertWorld(w);
       World.add(w, mount);
     }
-    return { pos: { x, y }, mount };
-  };
-
-  // Build mounts from left-side spec, mirroring horizontally by sign
-  const specs = WEAPONS_LEFT.filter((s) => s.enabled !== false);
-
-  // Using a small accumulator to hold results by id
-  const result: Partial<WeaponsType> = {};
-
-  for (const s of specs) {
-    let x = 0;
-    let y = 0;
-    if (s.row === 'top') {
-      // X by order
-      x = xTopByOrder(s.order);
-      // Y by id-specific stagger to match original visuals
-      if (s.id === 'cannon') y = topY;
-      else if (s.id === 'laser') y = topY + r * LASER_Y_OFFSET_R;
-      else if (s.id === 'missile') y = topY + r * MISSILE_Y_OFFSET_R;
-      else y = topY; // fallback
-    } else {
-      // bottom row (artillery)
-      x = xBottomByOrder(s.order);
-      y = yByRow.bottom(s.order);
-    }
-
-    const placed = mk(x, y, s.id);
-    (result as any)[s.id] = placed;
+    (result as any)[s.id] = { pos: { x: cx, y: cy }, mount };
   }
-
-  // Type-safe return (specs are expected to define all four ids)
   return result as WeaponsType;
 }

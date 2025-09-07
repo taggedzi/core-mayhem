@@ -241,10 +241,8 @@ export const WEAPONS_LEFT: readonly WeaponSpec[] = [
   { id: 'mortar', row: 'bottom', order: 0 },
 ] as const;
 
-// Paddles positioned inside the pins field using fractions of the pin-field width.
-// pos: [xFrac, yFrac] where xFrac=0 at left edge of pins field and 1 at right edge
 interface PaddleSpec {
-  // TODO: convert to absolute integer placement in a later step
+  // Absolute bottom-left position (px) of a fixed 80x8 paddle
   pos: [number, number];
   amp: number;
   spd: number;
@@ -252,17 +250,16 @@ interface PaddleSpec {
   enabled?: boolean;
 }
 
-// Left-side paddle definitions; right mirrors x automatically and flips dir
+// Left-side absolute paddles; right mirrors x automatically and flips dir
 export const PADDLES_LEFT: readonly PaddleSpec[] = [
-  { pos: [0.3, 0.6], amp: 28, spd: 1.2, dir: +1 },
-  { pos: [0.7, 0.6], amp: 28, spd: 1.2, dir: -1 },
+  { pos: [157, 428], amp: 28, spd: 1.2, dir: +1 },
+  { pos: [326, 428], amp: 28, spd: 1.2, dir: -1 },
 ] as const;
 
-// Gel rectangles inside the pins field.
 interface GelSpec {
-  // TODO: convert to absolute integer placement in a later step
-  pos: [number, number]; // center in fractions; x relative to pins field, y relative to canvas height
-  sizeFrac: [number, number]; // [width as fraction of pinsWidth, height as fraction of H]
+  // Absolute bottom-left position and size in px
+  pos: [number, number];
+  size: [number, number];
   dampX?: number;
   dampY?: number;
   enabled?: boolean;
@@ -270,39 +267,32 @@ interface GelSpec {
 
 // Left-side gel definitions; right mirrors x automatically
 export const GELS_LEFT: readonly GelSpec[] = [
-  { pos: [0.5, 0.14], sizeFrac: [0.96, 0.06], dampX: 2.2, dampY: 3.2 },
+  { pos: [79, 896], size: [406, 65], dampX: 2.2, dampY: 3.2 },
 ] as const;
 
 // Subtle ambient visuals to keep attention without distracting from gameplay
 export const MESMER = {
   enabled: true,
-  mode: 'always' as 'off' | 'low' | 'always', // show mesmer regardless of activity
-  fadeMs: 1400, // smoothing time constant for fade in/out
+  mode: 'always' as 'off' | 'low' | 'always',
+  fadeMs: 1400,
   stars: {
     enabled: true,
     count: 70,
     color: '#1a9bff',
     altColor: '#ff00aa',
-    alpha: 0.3, // tiny bump in visibility
-    jitter: 0.004, // twinkle speed factor
-    sizeMin: 1.1,
-    sizeMax: 2.2,
+    alpha: 0.3,
+    jitter: 0.004,
+    sizeMin: 1,
+    sizeMax: 2,
   },
   arcs: {
     enabled: true,
     countPerSide: 2,
-    baseRFrac: 0.18, // of min(W,H)
-    gapRFrac: 0.055,
+    baseR: 194,
+    gapPx: 59,
     width: 10,
     alpha: 0.06,
     blur: 20,
-  },
-  vignette: {
-    enabled: true,
-    innerFrac: 0.55, // radius where effect starts (transparent)
-    outerFrac: 1.0, // radius where it reaches full alpha
-    alpha: 0.35, // strength at outer radius
-    color: 'rgba(0,0,0,1)',
   },
 } as const;
 
@@ -458,3 +448,46 @@ export const SHIELD = {
   laserPenetration: 0.35,
   laserShieldFactor: 1.2,
 } as const;
+
+// Absolute pipe geometry (channel between walls) and intake sensor (left-side only; right mirrors)
+export const PIPES = {
+  channel: {
+    // Bottom-left position and size of the inner channel (between the two vertical walls)
+    pos: [-3, 81] as [number, number],
+    size: [60, 891] as [number, number],
+  },
+  intake: {
+    // Bottom-left position and size of the side intake sensor (off-screen on left)
+    pos: [-115, 85] as [number, number],
+    size: [110, 36] as [number, number],
+  },
+} as const;
+
+// Procedural pins/rotors (absolute integer parameters)
+export const PINS = {
+  width: 450, // pin-field width in px
+  startY: 800, // bottom-left Y to first row center (moved down ~20px)
+  rows: 9,
+  sx: 42, // horizontal spacing
+  sy: 35, // vertical spacing
+  rotorEvery: 3, // every Nth row becomes rotors
+  pinRadius: 4,
+  rotorRadius: 12,
+  edgeMargin: 18, // keep pins/rotors this far from field edges
+} as const;
+
+// Absolute weapon mount points (circular; pos = bottom-left of bounding box, r = radius)
+type WeaponId = 'cannon' | 'laser' | 'missile' | 'mortar';
+export interface WeaponMountSpec {
+  id: WeaponId;
+  pos: [number, number]; // bottom-left of bounding circle
+  r: number; // radius
+  enabled?: boolean;
+}
+
+export const WEAPON_MOUNTS_LEFT: readonly WeaponMountSpec[] = [
+  { id: 'cannon', pos: [859, 935], r: 5 },
+  { id: 'laser', pos: [751, 881], r: 5 },
+  { id: 'missile', pos: [643, 827], r: 5 },
+  { id: 'mortar', pos: [901, 125], r: 5 },
+] as const;

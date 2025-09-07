@@ -258,10 +258,12 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
           return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
         };
+        const sMin = Math.max(1, Math.floor((MESMER as any).stars.sizeMin ?? 1));
+        const sMax = Math.max(sMin, Math.floor((MESMER as any).stars.sizeMax ?? sMin));
         m.stars = Array.from({ length: N }, () => ({
-          x: rnd() * W,
-          y: rnd() * H,
-          r: MESMER.stars.sizeMin + rnd() * (MESMER.stars.sizeMax - MESMER.stars.sizeMin),
+          x: Math.floor(rnd() * W),
+          y: Math.floor(rnd() * H),
+          r: Math.floor(sMin + rnd() * (sMax - sMin + 1)),
           ph: rnd() * Math.PI * 2,
           col: rnd() < 0.5 ? MESMER.stars.color : MESMER.stars.altColor,
         }));
@@ -293,8 +295,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       // flowing arcs around cores
       const addArcs = (cx: number, cy: number, color: string) => {
         const n = MESMER.arcs.countPerSide;
-        const baseR = Math.min(W, H) * MESMER.arcs.baseRFrac;
-        const gap = Math.min(W, H) * MESMER.arcs.gapRFrac;
+        const baseR = Math.max(1, (MESMER as any).arcs.baseR as number);
+        const gap = Math.max(1, (MESMER as any).arcs.gapPx as number);
         for (let i = 0; i < n; i++) {
           const r = baseR + i * gap;
           const w = 0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1));

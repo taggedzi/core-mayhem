@@ -1,6 +1,7 @@
 import { Bodies, Body, World, Composite } from 'matter-js';
 
 import { WALL_T } from '../config';
+import { PIPES } from '../config';
 import { PADDLES_LEFT, GELS_LEFT } from '../config';
 import { sim } from '../state';
 
@@ -13,6 +14,8 @@ export interface Pipe {
   intake: Matter.Body;
   segs: Matter.Body[];
   side: -1 | 1;
+  yTop: number; // canvas y of channel top
+  yBottom: number; // canvas y of channel bottom
 }
 
 // Fail-fast guard + narrowing helper (keeps callers simple)
@@ -22,17 +25,18 @@ function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
 
 export function makePipe(side: -1 | 1): Pipe {
   const { W, H } = sim;
-  const pipeTop = H * 0.1,
-    pipeBottom = H * 0.925;
-  const x = side < 0 ? 24 : W - 24;
-  const pipeW = Math.max(36, W * 0.036);
-  const wallH = pipeBottom - pipeTop;
-  const wallY = pipeTop + wallH / 2;
+  // Channel BL and size (left spec, mirrored for right)
+  const [cx0, cy0] = PIPES.channel.pos;
+  const [cw, ch] = PIPES.channel.size;
+  const xBL = side < 0 ? cx0 : W - cx0 - cw;
+  const yBL = cy0;
+  const xCenter = xBL + cw / 2;
+  const yCenter = H - (yBL + ch / 2);
   // solid walls (visualized in draw)
-  const leftWall = Bodies.rectangle(x - pipeW / 2 - WALL_T / 2, wallY, WALL_T, wallH, {
+  const leftWall = Bodies.rectangle(xBL - WALL_T / 2, yCenter, WALL_T, ch, {
     isStatic: true,
   });
-  const rightWall = Bodies.rectangle(x + pipeW / 2 + WALL_T / 2, wallY, WALL_T, wallH, {
+  const rightWall = Bodies.rectangle(xBL + cw + WALL_T / 2, yCenter, WALL_T, ch, {
     isStatic: true,
   });
   (leftWall as any).plugin = { kind: 'pipeWall', side };
@@ -44,14 +48,15 @@ export function makePipe(side: -1 | 1): Pipe {
   }
 
   // intake
-  const intake = Bodies.rectangle(
-    x + (side < 0 ? -1 : 1) * (pipeW / 2 + 50),
-    pipeBottom - 22,
-    110,
-    36,
-    { isStatic: true, isSensor: true },
-  );
-  (intake as any).plugin = { kind: 'intake', side, x };
+  // Intake BL and size (left spec, mirrored for right)
+  const [ix0, iy0] = PIPES.intake.pos;
+  const [iw, ih] = PIPES.intake.size;
+  const ixBL = side < 0 ? ix0 : W - ix0 - iw;
+  const intake = Bodies.rectangle(ixBL + iw / 2, H - (iy0 + ih / 2), iw, ih, {
+    isStatic: true,
+    isSensor: true,
+  });
+  (intake as any).plugin = { kind: 'intake', side };
   {
     const w = sim.world;
     assertWorld(w);
@@ -60,9 +65,9 @@ export function makePipe(side: -1 | 1): Pipe {
 
   // lift segments (sensors that apply a vertical pull)
   const segs: Matter.Body[] = [];
-  for (let y = pipeBottom; y > pipeTop; y -= 28) {
-    const seg = Bodies.rectangle(x, y, pipeW, 24, { isStatic: true, isSensor: true });
-    (seg as any).plugin = { kind: 'lift', side, x, force: 0.006 };
+  for (let y = yBL + ch; y > yBL; y -= 28) {
+    const seg = Bodies.rectangle(xCenter, H - y, cw, 24, { isStatic: true, isSensor: true });
+    (seg as any).plugin = { kind: 'lift', side, force: 0.006 };
     {
       const w = sim.world;
       assertWorld(w);
@@ -72,9 +77,11 @@ export function makePipe(side: -1 | 1): Pipe {
   }
 
   // NEW: x of the *inner* wall face inside the pipe
-  const innerX = x + (side < 0 ? +pipeW / 2 : -pipeW / 2);
+  const innerX = side < 0 ? xBL + cw : xBL;
 
-  return { x, innerX, pipeW, intake, segs, side };
+  const yTop = H - (yBL + ch);
+  const yBottom = H - yBL;
+  return { x: xCenter, innerX, pipeW: cw, intake, segs, side, yTop, yBottom };
 }
 
 export function applyPipeForces(pipes: Pipe[]): void {
@@ -91,7 +98,7 @@ export function applyPipeForces(pipes: Pipe[]): void {
       // geometry helpers
       const pipeLeft = P.x - P.pipeW * 0.5 + WALL_T; // inside face
       const pipeRight = P.x + P.pipeW * 0.5 - WALL_T;
-      const inY = b.position.y > H * 0.1 && b.position.y < H * 0.925;
+      const inY = b.position.y > P.yTop && b.position.y < P.yBottom;
       const inX = b.position.x > pipeLeft && b.position.x < pipeRight;
       const inVertical = inX && inY;
 
@@ -104,7 +111,11 @@ export function applyPipeForces(pipes: Pipe[]): void {
           b.position.y > m.min.y &&
           b.position.y < m.max.y
         ) {
-          const toward = { x: P.x - b.position.x, y: H * 0.9 - b.position.y };
+          // Pull toward intake center (absolute), no fractional screen math
+          const toward = {
+            x: P.x - b.position.x,
+            y: P.intake.position.y - b.position.y,
+          };
           const d = Math.hypot(toward.x, toward.y) || 1;
           Body.applyForce(b, b.position, {
             x: (toward.x / d) * 0.004 * b.mass,
@@ -203,28 +214,30 @@ function pinsFieldX(side: -1 | 1, pinsMid: number, pinsWidth: number, xFrac: num
   return x0 + xf * (x1 - x0);
 }
 
-export function placeObstaclesFromSpecs(side: -1 | 1, pinsMid: number, pinsWidth: number): void {
-  // Gels
+export function placeObstaclesFromSpecs(side: -1 | 1, _pinsMid: number, _pinsWidth: number): void {
+  // Gels (absolute BL pos + size, mirrored horizontally)
   for (const g of GELS_LEFT) {
     if (g.enabled === false) continue;
-    const x = pinsFieldX(side, pinsMid, pinsWidth, g.pos[0]);
-    const y = g.pos[1] * sim.H;
-    const w = Math.max(4, pinsWidth * g.sizeFrac[0]);
-    const h = Math.max(4, sim.H * g.sizeFrac[1]);
-    // Omit undefined to satisfy exactOptionalPropertyTypes
+    const [xBL0, yBL] = g.pos;
+    const [w, h] = g.size;
+    const xBL = side < 0 ? xBL0 : sim.W - xBL0 - w;
+    const cx = xBL + w / 2;
+    const cy = sim.H - (yBL + h / 2);
     const opts: { dampX?: number; dampY?: number; kx?: number; ky?: number } = {};
     if (g.dampX !== undefined) opts.dampX = g.dampX;
     if (g.dampY !== undefined) opts.dampY = g.dampY;
-    gelRect(x, y, w, h, opts);
+    gelRect(cx, cy, w, h, opts);
   }
 
-  // Paddles
+  // Paddles (absolute BL pos of 80x8 box, mirrored)
   for (const p of PADDLES_LEFT) {
     if (p.enabled === false) continue;
-    const x = pinsFieldX(side, pinsMid, pinsWidth, p.pos[0]);
-    const y = p.pos[1] * sim.H;
-    // Mirror initial direction for the right side so motion is symmetric
+    const [xBL0, yBL] = p.pos;
+    const w = 80, h = 8;
+    const xBL = side < 0 ? xBL0 : sim.W - xBL0 - w;
+    const cx = xBL + w / 2;
+    const cy = sim.H - (yBL + h / 2);
     const dir = side < 0 ? p.dir : (p.dir * -1) as -1 | 1;
-    addPaddle(x, y, p.amp, p.spd, dir);
+    addPaddle(cx, cy, p.amp, p.spd, dir);
   }
 }

@@ -1,6 +1,7 @@
 import { Bodies, World, Constraint, Body } from 'matter-js';
 
 import { sim } from '../state';
+import { PINS } from '../config';
 
 interface PinField {
   mid: number;
@@ -14,36 +15,44 @@ function assertWorld(w: World | null): asserts w is World {
 
 export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number }): PinField {
   const { W, H } = sim;
-  const width = W * 0.22;
+  const width = Math.max(10, Math.floor(PINS.width));
 
-  // tiny breathing room so balls don’t numerically intersect the pipe wall
-  const gap = opts?.gap ?? Math.max(6, W * 0.006);
+  // small breathing room
+  const gap = Math.max(0, Math.floor(opts?.gap ?? 12));
 
-  const mid =
-    opts?.anchor != null
-      ? side < 0
-        ? opts.anchor + gap + width / 2
-        : opts.anchor - gap - width / 2
-      : side < 0
-        ? W * 0.18
-        : W * 0.82;
+  const mid = (() => {
+    if (typeof opts?.anchor === 'number') {
+      return side < 0 ? opts.anchor + gap + width / 2 : opts.anchor - gap - width / 2;
+    }
+    // fallback: symmetric fixed mids
+    const mL = Math.floor(W * 0.18);
+    const mR = W - mL;
+    return side < 0 ? mL : mR;
+  })();
 
-  const startY = H * 0.235 + 30; // 10px below channel bottom (yBot)
-  const rows = 9;
-  const sx = Math.max(W * 0.022, 24) * 1.25;
-  const sy = Math.max(H * 0.028, 22) * 1.25;
+  // Convert bottom-left startY to canvas Y for first row center
+  const startY = Math.max(0, Math.floor(H - PINS.startY));
+  const rows = Math.max(1, Math.floor(PINS.rows));
+  const sx = Math.max(6, Math.floor(PINS.sx));
+  const sy = Math.max(6, Math.floor(PINS.sy));
+
+  const edge = Math.max(0, Math.floor((PINS as any).edgeMargin ?? PINS.pinRadius));
+  const left = mid - width / 2 + edge;
+  const right = mid + width / 2 - edge;
 
   for (let r = 0; r < rows; r++) {
-    if ((r + 1) % 3 === 0) {
-      // rotors (mirror x across the field midline for right side)
-      const cols = Math.max(3, Math.floor(width / (sx * 1.4)));
-      const rad = 12;
+    const y = startY + r * sy;
+    if ((r + 1) % Math.max(1, PINS.rotorEvery) === 0) {
+      // rotors touching both bounds (inclusive spacing)
+      const approx = Math.max(2, Math.floor((right - left) / (sx * 1.4)) + 1);
+      const cols = Math.max(2, approx);
+      const dx = cols > 1 ? (right - left) / (cols - 1) : 0;
+      const rad = Math.max(2, Math.floor(PINS.rotorRadius));
       const world = sim.world; // capture for narrowing
       assertWorld(world);
       for (let c = 0; c < cols; c++) {
-        const xL = mid - width / 2 + (c + 0.5) * (width / cols);
+        const xL = left + c * dx;
         const x = side < 0 ? xL : 2 * mid - xL;
-        const y = startY + r * sy;
         const poly = Bodies.polygon(x, y, r % 2 ? 3 : 4, rad, {
           friction: 0,
           restitution: 0.12,
@@ -58,18 +67,37 @@ export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number })
         sim.rotors.push(poly);
       }
     } else {
-      // pins (compute left-pattern, then mirror around mid for right)
-      const cols = Math.max(6, Math.floor(width / sx));
+      // pins: even rows include both bounds; odd rows offset by half-step
+      const approx = Math.max(2, Math.floor((right - left) / sx) + 1);
+      const colsEven = Math.max(2, approx);
+      const dx = colsEven > 1 ? (right - left) / (colsEven - 1) : 0;
       const world = sim.world; // capture for narrowing
       assertWorld(world);
-      const offsetL = r % 2 ? sx / 2 : 0;
-      for (let c = 0; c < cols; c++) {
-        const xL = mid - width / 2 + c * sx + offsetL;
-        const x = side < 0 ? xL : 2 * mid - xL;
-        const y = startY + r * sy;
-        const p = Bodies.circle(x, y, 4, { isStatic: true, restitution: 0.9 });
-        (p as any).plugin = { kind: 'pin' };
-        World.add(world, p);
+
+      if (r % 2 === 0) {
+        for (let i = 0; i < colsEven; i++) {
+          const xL = left + i * dx;
+          const x = side < 0 ? xL : 2 * mid - xL;
+          const p = Bodies.circle(x, y, Math.max(2, Math.floor(PINS.pinRadius)), {
+            isStatic: true,
+            restitution: 0.9,
+          });
+          (p as any).plugin = { kind: 'pin' };
+          World.add(world, p);
+        }
+      } else {
+        const colsOdd = Math.max(1, colsEven - 1);
+        const xStart = left + dx / 2;
+        for (let i = 0; i < colsOdd; i++) {
+          const xL = xStart + i * dx;
+          const x = side < 0 ? xL : 2 * mid - xL;
+          const p = Bodies.circle(x, y, Math.max(2, Math.floor(PINS.pinRadius)), {
+            isStatic: true,
+            restitution: 0.9,
+          });
+          (p as any).plugin = { kind: 'pin' };
+          World.add(world, p);
+        }
       }
     }
   }
