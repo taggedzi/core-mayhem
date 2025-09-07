@@ -148,7 +148,7 @@ export const CORE_SEGMENTS = 28;
 // pos is bottom-left of the bounding square (not the center)
 export const CORE = {
   // pos is bottom-left (BL) of the bounding square
-  pos: [540, 366] as [number, number],
+  pos: [580, 400] as [number, number],
   radius: 120 as number,
   edgeMarginPx: 40 as number,
 } as const;
@@ -203,6 +203,19 @@ export const ARMOR = {
 export const MATCH_LIMIT = {
   enabled: true,
   ms: 30 * 60 * 1000,
+} as const;
+
+// Absolute overlay badge placement (UI status badges)
+// Positions are specified for the LEFT side; RIGHT is mirrored automatically.
+// Coordinates use the project’s logical system: origin at bottom-left and Y increases upward.
+// Badges are drawn centered on these positions, so variable text width will not affect mirroring.
+export const BADGES = {
+  enabled: true,
+  // Center positions for each badge on the LEFT side
+  left: {
+    buff: [530, 980] as [number, number],
+    debuff: [530, 950] as [number, number],
+  },
 } as const;
 
 export const MODS = {
@@ -311,7 +324,7 @@ export const LIGHT_PANEL = {
   x: 480, // left edge
   // Bottom-left y of main row center
   y: 1042,
-  width: 960, // total width of the panel area
+  width: 900, // total width of the panel area
   cell: 10, // LED diameter/size (px)
   gap: 6, // spacing between LEDs (px)
   baseAlpha: 0.14, // unlit pad visibility (0=black)
@@ -493,5 +506,5 @@ export const WEAPON_MOUNTS_LEFT: readonly WeaponMountSpec[] = [
   { id: 'cannon', pos: [859, 935], r: 5 },
   { id: 'laser', pos: [751, 881], r: 5 },
   { id: 'missile', pos: [643, 827], r: 5 },
-  { id: 'mortar', pos: [901, 125], r: 5 },
+  { id: 'mortar', pos: [901, 275], r: 5 },
 ] as const;

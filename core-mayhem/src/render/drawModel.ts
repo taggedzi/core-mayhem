@@ -10,6 +10,7 @@ import { SHIELD_RING_COLOR, SHIELD_RING_GLOW, SHIELD_VFX } from '../config';
 import { MESMER } from '../config';
 // TOP_BAND removed
 import { LIGHT_PANEL } from '../config';
+import { BADGES } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
@@ -142,6 +143,7 @@ export type DrawCommand =
       lineWidth?: number; // border width
       padX?: number; // horizontal padding in px
       padY?: number; // vertical padding in px
+      anchor?: 'center' | 'bl' | 'br'; // where (x,y) refers to; default center
       alpha?: number;
     }
   | {
@@ -1338,72 +1340,87 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     renderBinSet(sim.binsR);
   }
 
-  // Overlays — side badges (buff/debuff)
+  // Overlays — side badges (buff/debuff) with absolute positions from config (mirrored)
   {
-    const nowMs = now;
-    const fontPx = Math.max(12, sim.H * 0.018);
-    const mk = (side: number): void => {
-      const m = side < 0 ? sim.modsL : sim.modsR;
-      if (!m) return;
-      const x = side < 0 ? sim.W * 0.22 : sim.W * 0.78;
-      const y = 26;
-      // Timed buff badge (generic slot)
-      const until = (m as any).buffUntil ?? (m as any).dmgUntil ?? 0;
-      const active = nowMs < until;
-      if (active) {
-        const tLeft = Math.max(0, Math.ceil((until - nowMs) / 1000));
-        const kind = String((m as any).buffKind ?? (nowMs < ((m as any).dmgUntil ?? 0) ? 'damage' : 'buff'));
-        let text: string;
-        if (kind === 'damage') {
-          const mul = (m as any).dmgMul?.toFixed ? (m as any).dmgMul.toFixed(1) : String((m as any).dmgMul ?? 1);
-          text = `DMG x${mul}  ${tLeft}s`;
-        } else if (kind === 'binBoost') {
-          const mul = (m as any).binFillMul?.toFixed ? (m as any).binFillMul.toFixed(1) : String((m as any).binFillMul ?? 1);
-          text = `BIN x${mul}  ${tLeft}s`;
-        } else if (kind === 'cooldown') {
-          const mul = (m as any).cooldownMul?.toFixed ? (m as any).cooldownMul.toFixed(2) : String((m as any).cooldownMul ?? 1);
-          text = `CD x${mul}  ${tLeft}s`;
-        } else {
-          text = `${kind.toUpperCase()}  ${tLeft}s`;
+    if ((BADGES as any)?.enabled !== false) {
+      const nowMs = now;
+      const fontPx = Math.max(12, sim.H * 0.018);
+      // Config values are in BL coordinates; fall back preserves legacy top offsets
+      const posL_buff = ((BADGES as any)?.left?.buff as [number, number] | undefined) ?? [sim.W * 0.22, sim.H - 26];
+      const posL_debuff = ((BADGES as any)?.left?.debuff as [number, number] | undefined) ?? [sim.W * 0.22, sim.H - 52];
+      const place = (side: number, pBL: [number, number]): { x: number; y: number } => {
+        const x = side < 0 ? pBL[0] : sim.W - pBL[0];
+        const y = sim.H - pBL[1];
+        return { x, y };
+      };
+
+      const mk = (side: number): void => {
+        const m = side < 0 ? sim.modsL : sim.modsR;
+        if (!m) return;
+
+        // Timed buff badge (generic slot)
+        const until = Math.max(Number((m as any).buffUntil || 0), Number((m as any).dmgUntil || 0));
+        const active = nowMs < until;
+        if (active) {
+          const tLeft = Math.max(0, Math.ceil((until - nowMs) / 1000));
+          const kind = String((m as any).buffKind ?? (nowMs < ((m as any).dmgUntil ?? 0) ? 'damage' : 'buff'));
+          let text: string;
+          if (kind === 'damage') {
+            const mul = (m as any).dmgMul?.toFixed ? (m as any).dmgMul.toFixed(1) : String((m as any).dmgMul ?? 1);
+            text = `DMG x${mul}  ${tLeft}s`;
+          } else if (kind === 'binBoost') {
+            const mul = (m as any).binFillMul?.toFixed ? (m as any).binFillMul.toFixed(1) : String((m as any).binFillMul ?? 1);
+            text = `BIN x${mul}  ${tLeft}s`;
+          } else if (kind === 'cooldown') {
+            const mul = (m as any).cooldownMul?.toFixed ? (m as any).cooldownMul.toFixed(2) : String((m as any).cooldownMul ?? 1);
+            text = `CD x${mul}  ${tLeft}s`;
+          } else {
+            text = `${kind.toUpperCase()}  ${tLeft}s`;
+          }
+          const p = place(side, posL_buff);
+          cmds.push({
+            kind: 'textBox',
+            x: p.x,
+            y: p.y,
+            text,
+            font: `${fontPx}px var(--mono, monospace)`,
+            fill: '#032e12',
+            stroke: '#5CFF7A',
+            lineWidth: 2,
+            textFill: '#5CFF7A',
+            anchor: side < 0 ? 'bl' : 'br',
+            alpha: 1,
+            padX: 10,
+            padY: 4,
+          });
         }
-        cmds.push({
-          kind: 'textBox',
-          x,
-          y,
-          text,
-          font: `${fontPx}px var(--mono, monospace)`,
-          fill: '#032e12',
-          stroke: '#5CFF7A',
-          lineWidth: 2,
-          textFill: '#5CFF7A',
-          alpha: 1,
-          padX: 10,
-          padY: 4,
-        });
-      }
-      // Debuff badge
-      if (nowMs < (m.disableUntil ?? 0) && m.disabledType) {
-        const tLeft = Math.max(0, Math.ceil(((m.disableUntil ?? 0) - nowMs) / 1000));
-        const y2 = y + 26;
-        const text = `DISABLED ${(m.disabledType as string).toUpperCase()}  ${tLeft}s`;
-        cmds.push({
-          kind: 'textBox',
-          x,
-          y: y2,
-          text,
-          font: `${fontPx}px var(--mono, monospace)`,
-          fill: '#3b0c0c',
-          stroke: '#FF6B6B',
-          lineWidth: 2,
-          textFill: '#FFB1B1',
-          alpha: 1,
-          padX: 12,
-          padY: 4,
-        });
-      }
-    };
-    mk(-1);
-    mk(1);
+
+        // Debuff badge
+        if (nowMs < (m.disableUntil ?? 0) && m.disabledType) {
+          const tLeft = Math.max(0, Math.ceil(((m.disableUntil ?? 0) - nowMs) / 1000));
+          const text = `DISABLED ${(m.disabledType as string).toUpperCase()}  ${tLeft}s`;
+          const p2 = place(side, posL_debuff);
+          cmds.push({
+            kind: 'textBox',
+            x: p2.x,
+            y: p2.y,
+            text,
+            font: `${fontPx}px var(--mono, monospace)`,
+            fill: '#3b0c0c',
+            stroke: '#FF6B6B',
+            lineWidth: 2,
+            textFill: '#FFB1B1',
+            anchor: side < 0 ? 'bl' : 'br',
+            alpha: 1,
+            padX: 12,
+            padY: 4,
+          });
+        }
+      };
+
+      mk(-1);
+      mk(1);
+    }
   }
 
   // Overlays — core stats disc and text

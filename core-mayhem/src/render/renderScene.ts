@@ -196,8 +196,22 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
       const textH = (mx.actualBoundingBoxAscent ?? fontSize * 0.8) + (mx.actualBoundingBoxDescent ?? fontSize * 0.2);
       const w = textW + padX * 2;
       const h = textH + padY * 2;
-      const x0 = (cmd as any).x - w / 2;
-      const y0 = (cmd as any).y - h / 2;
+      const anchor = ((cmd as any).anchor as 'center' | 'bl' | 'br' | undefined) ?? 'center';
+      let x0: number;
+      let y0: number;
+      if (anchor === 'bl') {
+        // x,y is bottom-left of box in canvas coords
+        x0 = (cmd as any).x;
+        y0 = (cmd as any).y - h;
+      } else if (anchor === 'br') {
+        // x,y is bottom-right of box in canvas coords
+        x0 = (cmd as any).x - w;
+        y0 = (cmd as any).y - h;
+      } else {
+        // default center
+        x0 = (cmd as any).x - w / 2;
+        y0 = (cmd as any).y - h / 2;
+      }
       if ((cmd as any).fill) {
         ctx.fillStyle = cssVar(ctx, (cmd as any).fill as string);
         ctx.fillRect(x0, y0, w, h);
@@ -207,10 +221,13 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
         ctx.strokeStyle = cssVar(ctx, (cmd as any).stroke as string);
         ctx.strokeRect(x0, y0, w, h);
       }
+      // Draw text centered within the box regardless of anchor
+      const cx = (anchor === 'bl' || anchor === 'br') ? x0 + w / 2 : (cmd as any).x;
+      const cy = (anchor === 'bl' || anchor === 'br') ? y0 + h / 2 : (cmd as any).y;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = cssVar(ctx, (cmd as any).textFill ?? '#fff');
-      ctx.fillText(text, (cmd as any).x, (cmd as any).y);
+      ctx.fillText(text, cx, cy);
       ctx.restore();
       break;
     }
