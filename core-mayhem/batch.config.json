@@ -1,5 +1,5 @@
 {
-  "matches": 100,
+  "matches": 6,
   "altOrderMode": "alternateTick",
   "mirrorArena": false,
   "timescale": 3,
@@ -7,6 +7,6 @@
   "spawnRate": 26,
   "targetAmmo": 80,
   "hpScale": 0.5,
-  "fullLength": false,
+  "fullLength": true,
   "primeVolley": true
 }
