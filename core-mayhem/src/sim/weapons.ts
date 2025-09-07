@@ -2,6 +2,7 @@ import { Bodies, World, Body, Vector } from 'matter-js';
 
 import { currentDmgMul } from '../app/mods';
 import { isDisabled } from '../app/mods';
+import { recordShotFired, recordLaserHit, recordMiss } from '../app/stats';
 import { LASER_FX } from '../config';
 import { DAMAGE } from '../config';
 import { WEAPON_WINDUP_MS } from '../config';
@@ -21,7 +22,6 @@ import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { applyCoreDamage } from './damage';
-import { recordShotFired, recordLaserHit, recordMiss } from '../app/stats';
 
 import type { Vec } from '../types';
 import type { World as MatterWorld } from 'matter-js';

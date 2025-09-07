@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { runBatch } from '../tools/simBatch';
 import fs from 'node:fs';
 import path from 'node:path';
+
+import { describe, it, expect } from 'vitest';
+
+import { runBatch } from '../tools/simBatch';
 
 describe('simulate batch (harness)', () => {
   it('runs a configurable number of matches and writes CSVs', async () => {
@@ -31,7 +33,7 @@ describe('simulate batch (harness)', () => {
     const { summary, files } = await runBatch({
       matches: matches > 0 ? matches : 50,
       altOrderMode: alt as any,
-      mirrorArena: mirror === undefined ? undefined : mirror === 'true' || mirror === true,
+      mirrorArena: mirror === undefined ? undefined : mirror === 'true',
       timescale,
       seed: seed === undefined ? undefined : Number(seed),
       spawnRate: spawnRate === undefined ? undefined : Number(spawnRate),

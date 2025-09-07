@@ -477,7 +477,6 @@ export const PINS = {
 } as const;
 
 // Absolute weapon mount points (circular; pos = bottom-left of bounding box, r = radius)
-type WeaponId = 'cannon' | 'laser' | 'missile' | 'mortar';
 export interface WeaponMountSpec {
   id: WeaponId;
   pos: [number, number]; // bottom-left of bounding circle

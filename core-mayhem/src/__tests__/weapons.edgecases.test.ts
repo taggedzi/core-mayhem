@@ -1,8 +1,8 @@
 import Matter, { Bodies, World } from 'matter-js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import * as weapons from '../sim/weapons';
 import * as mods from '../app/mods';
+import * as weapons from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 

@@ -7,6 +7,6 @@
   "spawnRate": 26,
   "targetAmmo": 80,
   "hpScale": 0.5,
-  "fullLength": true,
+  "fullLength": false,
   "primeVolley": true
 }

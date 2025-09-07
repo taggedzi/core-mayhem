@@ -71,7 +71,7 @@ describe('ammo + obstacles behaviors', () => {
     // place left-side obstacles (mirrored paddles handled by game elsewhere)
     placeObstaclesFromSpecs(SIDE.LEFT, sim.W * 0.5, sim.W * 0.4);
     expect(sim.paddles.length).toBeGreaterThan(0);
-    const p = sim.paddles[0];
+    const p = sim.paddles[0]!;
     const x0 = p.position.x;
     tickPaddles(1.0);
     expect(p.position.x).not.toBe(x0);

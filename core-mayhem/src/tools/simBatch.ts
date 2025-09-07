@@ -1,23 +1,23 @@
-import { bootWithCanvas } from '../boot';
-import { sim, resetSimState } from '../state';
-import { DEFAULTS } from '../config';
 import { buildCSVs, resetStats, getSummary, initStats } from '../app/stats';
-import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
-import { SIDE } from '../types';
 import { declareWinner } from '../app/systems/match';
+import { bootWithCanvas } from '../boot';
+import { DEFAULTS } from '../config';
+import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
+import { sim, resetSimState } from '../state';
+import { SIDE } from '../types';
 
 export interface BatchOpts {
   matches: number;
-  altOrderMode?: 'LR' | 'RL' | 'alternateTick' | 'alternateMatch';
-  mirrorArena?: boolean;
-  timescale?: number;
-  seed?: number;
+  altOrderMode?: 'LR' | 'RL' | 'alternateTick' | 'alternateMatch' | undefined;
+  mirrorArena?: boolean | undefined;
+  timescale?: number | undefined;
+  seed?: number | undefined;
   // Optional pacing tweaks for faster runs
-  spawnRate?: number;
-  targetAmmo?: number;
-  hpScale?: number; // 0..1 multiplier to core HP to speed up matches
-  fullLength?: boolean; // if true, do not force early end
-  primeVolley?: boolean; // if true, fire an opening volley and prime bins
+  spawnRate?: number | undefined;
+  targetAmmo?: number | undefined;
+  hpScale?: number | undefined; // 0..1 multiplier to core HP to speed up matches
+  fullLength?: boolean | undefined; // if true, do not force early end
+  primeVolley?: boolean | undefined; // if true, fire an opening volley and prime bins
 }
 
 // very forgiving 2D context stub for canvas

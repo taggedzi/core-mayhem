@@ -9,13 +9,12 @@ vi.mock('../app/systems/match', () => ({ checkTimeLimit: vi.fn(), maybeEndMatch:
 vi.mock('../app/devKeys', () => ({ attachDevHotkeys: () => () => {} }));
 vi.mock('../app/stats', () => ({ startNewMatch: vi.fn() }));
 
-import { runPhysics } from '../app/systems/physics';
+import { startGame } from '../app/game';
 import { runFXPrune } from '../app/systems/fx';
+import { checkTimeLimit, maybeEndMatch } from '../app/systems/match';
+import { runPhysics } from '../app/systems/physics';
 import { runSpawn } from '../app/systems/spawn';
 import { runTriggers } from '../app/systems/triggers';
-import { checkTimeLimit, maybeEndMatch } from '../app/systems/match';
-
-import { startGame } from '../app/game';
 import { sim, resetSimState } from '../state';
 
 // simple 2D context stub

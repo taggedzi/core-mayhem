@@ -19,12 +19,12 @@ import { SIDE } from '../types';
 // import { applyBuff, applyDebuff } from './mods';
 import { registerCollisions } from './collisions';
 import { attachDevHotkeys } from './devKeys';
+import { startNewMatch } from './stats';
 import { runFXPrune } from './systems/fx';
 import { checkTimeLimit, maybeEndMatch } from './systems/match';
 import { runPhysics } from './systems/physics';
 import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
-import { startNewMatch } from './stats';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
 

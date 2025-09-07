@@ -1,5 +1,6 @@
 // Centralized stats collection and CSV export
 import { sim } from '../state';
+
 import type { Side, WeaponKind } from '../types';
 
 type SideKey = 'L' | 'R';
@@ -120,12 +121,7 @@ function scheduleSave(): void {
   }, 500);
 }
 
-function emptyWeaponAgg(): WeaponAgg {
-  return { shots: 0, hits: 0, misses: 0, dmgShield: 0, dmgSeg: 0, dmgCenter: 0 };
-}
-function emptyBinAgg(): BinAggCycle {
-  return { cycles: 0, totalDurationMs: 0, minMs: Number.POSITIVE_INFINITY, maxMs: 0, totalDeposits: 0, totalAmount: 0 };
-}
+// helpers removed (unused)
 
 function ensureSessionShape(s: any): SessionStats {
   s = s || {};
@@ -220,7 +216,7 @@ export function startNewMatch(): void {
   scheduleSave();
 }
 
-function ensure(): asserts session is SessionStats {
+function ensure(): void {
   if (!session) throw new Error('stats not initialized');
 }
 
@@ -296,7 +292,7 @@ export function recordMissileCoreDelay(side: Side, ms: number): void {
   scheduleSave();
 }
 
-export function recordBinDeposit(side: Side, bin: BinId, amount: number, now = performance.now()): void {
+export function recordBinDeposit(side: Side, bin: BinId, amount: number, _now?: number): void {
   ensure();
   const sk = sideKey(side);
   const agg = session!.bins[sk][bin];

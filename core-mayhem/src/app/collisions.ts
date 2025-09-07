@@ -1,12 +1,13 @@
 import { Events, World, Body, Query, Composite } from 'matter-js';
 
 import { EXPLOSION, FX_MS, PROJECTILE_STYLE } from '../config';
-import { currentBinFillMul } from './mods';
 import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from '../sim/damage';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
-import { recordBinDeposit, recordProjectileHit, recordMiss, recordBinCap } from './stats';
+
+import { currentBinFillMul } from './mods';
+import { recordBinDeposit, recordProjectileHit, recordMiss } from './stats';
 import { recordMissileFirstImpact, recordMissileCoreDelay } from './stats';
 
 import type { Engine, IEventCollision, World as MatterWorld } from 'matter-js';

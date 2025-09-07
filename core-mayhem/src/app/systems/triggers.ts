@@ -90,7 +90,6 @@ export function runTriggers(now = performance.now()): void {
   if (mode === 'RL') first = SIDE.RIGHT;
   else if (mode === 'alternateTick') first = tick % 2 === 0 ? SIDE.LEFT : SIDE.RIGHT;
   else if (mode === 'alternateMatch') first = matchIndex % 2 === 1 ? SIDE.LEFT : SIDE.RIGHT;
-  const second: Side = first === SIDE.LEFT ? SIDE.RIGHT : SIDE.LEFT;
   if (first === SIDE.LEFT) {
     doSide(SIDE.LEFT, (sim as any).binsL, (sim as any).wepL);
     doSide(SIDE.RIGHT, (sim as any).binsR, (sim as any).wepR);

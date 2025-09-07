@@ -1,7 +1,7 @@
 import { DEFAULTS } from '../../config';
 import { spawnAmmo } from '../../sim/ammo';
 import { sim } from '../../state';
-import { SIDE } from '../../types';
+import { SIDE, type Side } from '../../types';
 
 export function runSpawn(dtMs: number): void {
   sim.spawnAcc += dtMs;

@@ -1,9 +1,9 @@
 // main.ts
 import { startGame } from './app/game';
 import { initStats } from './app/stats';
-import { initStatsOverlay, openStatsOverlay } from './ui/stats';
-import { initHelpOverlay, openHelpOverlay } from './ui/help';
 import { updateHUD } from './render/hud';
+import { initHelpOverlay, openHelpOverlay } from './ui/help';
+import { initStatsOverlay, openStatsOverlay } from './ui/stats';
 
 // ——— Types ———
 type StopFn = () => void;

@@ -85,7 +85,6 @@ export function makePipe(side: -1 | 1): Pipe {
 }
 
 export function applyPipeForces(pipes: Pipe[]): void {
-  const { H } = sim;
   const w = sim.world;
   assertWorld(w);
   const bodies = Composite.allBodies(w);
@@ -206,14 +205,6 @@ export function conveyorPush(body: Matter.Body): void {
 }
 
 // --- Spec-driven, mirrored placements (modular like bins) ---
-
-function pinsFieldX(side: -1 | 1, pinsMid: number, pinsWidth: number, xFrac: number): number {
-  const x0 = pinsMid - pinsWidth / 2;
-  const x1 = pinsMid + pinsWidth / 2;
-  const xf = side < 0 ? xFrac : 1 - xFrac; // mirror horizontally on right
-  return x0 + xf * (x1 - x0);
-}
-
 export function placeObstaclesFromSpecs(side: -1 | 1, _pinsMid: number, _pinsWidth: number): void {
   // Gels (absolute BL pos + size, mirrored horizontally)
   for (const g of GELS_LEFT) {

@@ -1,7 +1,7 @@
 import { Bodies, World, Constraint, Body } from 'matter-js';
 
-import { sim } from '../state';
 import { PINS } from '../config';
+import { sim } from '../state';
 
 interface PinField {
   mid: number;

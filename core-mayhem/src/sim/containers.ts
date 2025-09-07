@@ -69,9 +69,7 @@ function intakeOffset(intake: IntakeSide, w: number, h: number): Offset {
   }
 }
 
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
+// clamp removed (no longer used)
 
 // Absolute sizes provided directly in config; helper removed
 

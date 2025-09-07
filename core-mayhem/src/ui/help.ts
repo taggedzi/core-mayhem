@@ -1,5 +1,5 @@
-import { DEV_KEYS } from '../config';
 import { DEV_HELP_LINES } from '../app/devKeys';
+import { DEV_KEYS } from '../config';
 
 let overlayEl: HTMLElement | null = null;
 let contentEl: HTMLElement | null = null;

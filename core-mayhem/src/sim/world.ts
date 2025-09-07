@@ -11,27 +11,24 @@ import {
   type Vector,
 } from 'matter-js';
 
-import { sim, resetSimState } from '../state';
 import { CANVAS } from '../config';
+import { sim, resetSimState } from '../state';
 
 // ---------- validators & safe constructors ----------
 function validateWorld(world: MatterWorld): void {
   for (const b of world.bodies) {
     if (!b.vertices || b.vertices.length < 3) {
       console.error('Invalid body: too few vertices', describeBody(b));
-      debugger;
       return;
     }
     for (const v of b.vertices) {
       if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) {
-        console.error('Invalid vertex (NaN/∞):', describeBody(b), v);
-        debugger;
-        return;
+      console.error('Invalid vertex (NaN/∞):', describeBody(b), v);
+      return;
       }
     }
     if (!Number.isFinite(b.area) || b.area <= 0) {
       console.error('Invalid area (<=0 or NaN):', describeBody(b));
-      debugger;
       return;
     }
   }
