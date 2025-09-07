@@ -13,7 +13,7 @@ export const DEFAULTS: Settings = {
   pipeUpSpeed: 22,
   pipeUpGain: 3.2,
   // Slow paddles slightly for clearer interactions
-  paddleSpeedMul: 0.4,
+  paddleSpeedMul: 0.6,
   // Expand paddle sweep width relative to spec
   paddleAmpMul: 6.0,
   altOrderMode: 'alternateTick', // 'LR' | 'RL' | 'alternateTick' | 'alternateMatch'
@@ -256,8 +256,9 @@ interface PaddleSpec {
 
 // Left-side absolute paddles; right mirrors x automatically and flips dir
 export const PADDLES_LEFT: readonly PaddleSpec[] = [
-  { pos: [157, 428], amp: 28, spd: 1.2, dir: +1 },
-  { pos: [326, 428], amp: 28, spd: 1.2, dir: -1 },
+  { pos: [157, 428], amp: 28, spd: 1.4, dir: +1 },
+  { pos: [326, 385], amp: 28, spd: 1.1, dir: -1 },
+  { pos: [250, 975], amp: 28, spd: 1.3, dir: -1 },
 ] as const;
 
 interface GelSpec {
