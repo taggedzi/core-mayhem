@@ -164,6 +164,11 @@ interface SimState {
   mesmerMode?: 'off' | 'low' | 'always';
   mesmerFade?: number; // 0..1 smoothed visibility for mesmer layer
   mesmerLastT?: number; // last timestamp used for fade smoothing
+
+  // Diagnostics / counters
+  tick?: number;
+  matchIndex?: number;
+  projSeq?: number;
 }
 
 // ——— Factory + singleton ———
@@ -224,6 +229,11 @@ function createSimState(): SimState {
     // Leave mesmerMode unset to inherit from config (MESMER.mode)
     mesmerFade: 0,
     mesmerLastT: 0,
+
+    // Diagnostics / counters
+    tick: 0,
+    matchIndex: 0,
+    projSeq: 1,
   };
 }
 

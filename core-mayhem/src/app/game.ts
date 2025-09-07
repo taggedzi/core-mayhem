@@ -1,4 +1,4 @@
-import { Events } from 'matter-js';
+import { Events, Body, Composite } from 'matter-js';
 
 import { DEFAULTS } from '../config';
 // FX and damage handling are now in dedicated modules
@@ -59,6 +59,9 @@ export function startGame(canvas: HTMLCanvasElement) {
   sim.settings ??= { ...DEFAULTS };
 
   sim.started = true;
+  // Diagnostics counters
+  (sim as any).tick = 0;
+  (sim as any).matchIndex = ((sim as any).matchIndex | 0) + 1;
   (sim as any).stats = (sim as any).stats ?? { leftWins: 0, rightWins: 0, ties: 0 };
   updateScoreboard(); // draw initial 0–0
 
@@ -122,6 +125,9 @@ export function startGame(canvas: HTMLCanvasElement) {
   sim.wepL = wepL;
   sim.wepR = wepR;
 
+  // Optional: mirror arena geometry horizontally (diagnostic)
+  try { maybeMirrorArena(); } catch {}
+
   // Dev hotkeys
   const detachHotkeys = attachDevHotkeys(wepL, wepR);
 
@@ -132,6 +138,8 @@ export function startGame(canvas: HTMLCanvasElement) {
 
   // Game update
   Events.on(eng, 'beforeUpdate', () => {
+    // tick counter for alternate order testing
+    (sim as any).tick = ((sim as any).tick | 0) + 1;
     const dtMs = sim.engine?.timing?.lastDelta ?? 16.6;
     // stop all game logic once over
     if ((sim as any).gameOver) return;
@@ -185,3 +193,48 @@ export function startGame(canvas: HTMLCanvasElement) {
 const css = (name: string): string =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 // match helpers moved to app/systems/match.ts
+
+// --- Diagnostics helper: mirror all world bodies and known positions across vertical center ---
+function maybeMirrorArena(): void {
+  const stg = (sim as any).settings ?? DEFAULTS;
+  if (!stg?.mirrorArena) return;
+  const wld = sim.world as any;
+  if (!wld) return;
+  const W = sim.W;
+  const bodies = Composite.allBodies(wld);
+  // Prefer using Matter namespaces if available in this module
+  // Fallback: scan known bodies by hand if Composite is not in scope
+  const all: any[] = Array.isArray(bodies) && bodies.length ? bodies : [];
+  for (const b of all) {
+    const x = b?.position?.x;
+    const y = b?.position?.y;
+    if (typeof x === 'number' && typeof y === 'number') Body.setPosition(b, { x: W - x, y });
+  }
+  // Core centers
+  if (sim.coreL?.center) sim.coreL.center.x = W - sim.coreL.center.x;
+  if (sim.coreR?.center) sim.coreR.center.x = W - sim.coreR.center.x;
+  // Weapon mount positions
+  const fixW = (w: any) => {
+    if (!w) return;
+    if (w.cannon?.pos) w.cannon.pos.x = W - w.cannon.pos.x;
+    if (w.laser?.pos) w.laser.pos.x = W - w.laser.pos.x;
+    if (w.missile?.pos) w.missile.pos.x = W - w.missile.pos.x;
+    if (w.mortar?.pos) w.mortar.pos.x = W - w.mortar.pos.x;
+  };
+  fixW(sim.wepL);
+  fixW(sim.wepR);
+  // Bin model positions (and their bodies)
+  const fixBins = (bins: any) => {
+    if (!bins) return;
+    for (const b of Object.values(bins as Record<string, any>)) {
+      if (!b) continue;
+      if (b.pos) b.pos.x = W - b.pos.x;
+      const by = (b.box?.position?.y ?? 0);
+      const iy = (b.intake?.position?.y ?? 0);
+      if (b.box) Body.setPosition(b.box, { x: W - (b.box.position?.x ?? 0), y: by });
+      if (b.intake) Body.setPosition(b.intake, { x: W - (b.intake.position?.x ?? 0), y: iy });
+    }
+  };
+  fixBins(sim.binsL);
+  fixBins(sim.binsR);
+}

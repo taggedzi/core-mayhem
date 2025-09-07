@@ -38,6 +38,9 @@ export interface Settings {
   // Pipe vertical lift tuning (used by obstacles.applyPipeForces)
   pipeUpSpeed?: number; // px/s toward upward target velocity
   pipeUpGain?: number; // 1/s responsiveness (higher = snappier)
+  // Diagnostics: control side processing order and arena mirroring
+  altOrderMode?: 'LR' | 'RL' | 'alternateTick' | 'alternateMatch';
+  mirrorArena?: boolean;
 }
 
 interface Bin {

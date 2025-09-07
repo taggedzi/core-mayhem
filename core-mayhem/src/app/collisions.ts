@@ -7,6 +7,7 @@ import { applyCoreDamage } from '../sim/damage';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 import { recordBinDeposit, recordProjectileHit, recordMiss, recordBinCap } from './stats';
+import { recordMissileFirstImpact, recordMissileCoreDelay } from './stats';
 
 import type { Engine, IEventCollision, World as MatterWorld } from 'matter-js';
 
@@ -176,6 +177,15 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
       Math.max(0, centerBefore - centerAfter),
     );
     proj.plugin.didDamage = true;
+    // Diagnostics: time from missile spawn to first core damage
+    try {
+      if (proj?.plugin?.ptype === 'missile' && proj?.plugin && !proj?.plugin?._coreHitLogged) {
+        const t0 = Number(proj.plugin.spawnT ?? performance.now());
+        const ms = Math.max(0, Math.round(performance.now() - t0));
+        recordMissileCoreDelay(proj.plugin.side, ms);
+        proj.plugin._coreHitLogged = true;
+      }
+    } catch {}
   } catch {}
 
   const ptype = proj?.plugin?.ptype ?? 'cannon';
@@ -225,11 +235,27 @@ export function registerCollisions(
       }
 
       if (a.kind === 'projectile' && (b.kind === 'coreRing' || b.kind === 'coreCenter')) {
-        hit(A, B, opts?.onPostHit);
+        // First impact kind (diagnostic)
+        try {
+          const plug = (A as any).plugin ?? {};
+          if (plug.ptype === 'missile' && !plug._firstImpactKind) {
+            plug._firstImpactKind = b.kind;
+            recordMissileFirstImpact(plug.side, String(b.kind));
+          }
+        } catch {}
+        // Avoid double-processing the same projectile if already handled
+        if (!(A as any)?.plugin?.didDamage) hit(A, B, opts?.onPostHit);
         continue;
       }
       if (b.kind === 'projectile' && (a.kind === 'coreRing' || a.kind === 'coreCenter')) {
-        hit(B, A, opts?.onPostHit);
+        try {
+          const plug = (B as any).plugin ?? {};
+          if (plug.ptype === 'missile' && !plug._firstImpactKind) {
+            plug._firstImpactKind = a.kind;
+            recordMissileFirstImpact(plug.side, String(a.kind));
+          }
+        } catch {}
+        if (!(B as any)?.plugin?.didDamage) hit(B, A, opts?.onPostHit);
         continue;
       }
 
@@ -238,6 +264,14 @@ export function registerCollisions(
     if (pp.kind !== 'projectile') return;
     if (other?.plugin?.kind === 'weaponMount') return;
     if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
+    // Record first impact kind for missiles if not already recorded
+    try {
+      if (pp.ptype === 'missile' && !pp._firstImpactKind) {
+        const k = String(other?.plugin?.kind ?? 'unknown');
+        pp._firstImpactKind = k;
+        recordMissileFirstImpact(pp.side, k);
+      }
+    } catch {}
         const ptype = String(pp.ptype ?? 'cannon');
         const sty = (PROJECTILE_STYLE as any)[ptype];
         const ringColor = sty?.glow ?? (pp.side === SIDE.LEFT ? css('--left') : css('--right'));

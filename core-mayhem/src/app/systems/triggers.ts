@@ -77,7 +77,26 @@ export function runTriggers(now = performance.now()): void {
     }
   };
 
-  doSide(SIDE.LEFT, (sim as any).binsL, (sim as any).wepL);
-  doSide(SIDE.RIGHT, (sim as any).binsR, (sim as any).wepR);
+  // Determine processing order (diagnostic):
+  //  - LR (default): Left then Right
+  //  - RL: Right then Left
+  //  - alternateTick: flip order every tick
+  //  - alternateMatch: flip order every match
+  const stg = (sim as any).settings ?? {};
+  const mode = (stg.altOrderMode ?? 'LR') as 'LR' | 'RL' | 'alternateTick' | 'alternateMatch';
+  const tick = (sim as any).tick | 0;
+  const matchIndex = (sim as any).matchIndex | 0;
+  let first: Side = SIDE.LEFT;
+  if (mode === 'RL') first = SIDE.RIGHT;
+  else if (mode === 'alternateTick') first = tick % 2 === 0 ? SIDE.LEFT : SIDE.RIGHT;
+  else if (mode === 'alternateMatch') first = matchIndex % 2 === 1 ? SIDE.LEFT : SIDE.RIGHT;
+  const second: Side = first === SIDE.LEFT ? SIDE.RIGHT : SIDE.LEFT;
+  if (first === SIDE.LEFT) {
+    doSide(SIDE.LEFT, (sim as any).binsL, (sim as any).wepL);
+    doSide(SIDE.RIGHT, (sim as any).binsR, (sim as any).wepR);
+  } else {
+    doSide(SIDE.RIGHT, (sim as any).binsR, (sim as any).wepR);
+    doSide(SIDE.LEFT, (sim as any).binsL, (sim as any).wepL);
+  }
 }
 

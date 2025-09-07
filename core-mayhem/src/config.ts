@@ -9,6 +9,8 @@ export const DEFAULTS: Settings = {
   loop: false,
   pipeUpSpeed: 22,
   pipeUpGain: 3.2,
+  altOrderMode: 'LR', // 'LR' | 'RL' | 'alternateTick' | 'alternateMatch'
+  mirrorArena: false,
 };
 
 // Global “line” thickness for physical geometry (px)

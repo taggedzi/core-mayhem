@@ -82,6 +82,9 @@ interface SessionStats {
   nextMatchId: number;
   // Per-match mod counts (flattened)
   modsPerMatch: { matchId: number; type: 'buff' | 'debuff'; side: SideKey; kind: string; count: number }[];
+  // Diagnostics: per-missile first impact kind and time-to-first-core-hit
+  missileFirstImpacts: { matchId: number; side: SideKey; kind: string }[];
+  missileCoreDelays: { matchId: number; side: SideKey; ms: number }[];
 }
 
 interface InMatchState {
@@ -172,6 +175,8 @@ function ensureSessionShape(s: any): SessionStats {
   s.debuffCounts.R = s.debuffCounts.R ?? {};
   s.nextMatchId = s.nextMatchId ?? 1;
   s.modsPerMatch = Array.isArray(s.modsPerMatch) ? s.modsPerMatch : [];
+  s.missileFirstImpacts = Array.isArray(s.missileFirstImpacts) ? s.missileFirstImpacts : [];
+  s.missileCoreDelays = Array.isArray(s.missileCoreDelays) ? s.missileCoreDelays : [];
   return s as SessionStats;
 }
 
@@ -274,6 +279,21 @@ export function recordMiss(side: Side, weapon: WeaponKind): void {
   ensure();
   const sk = sideKey(side);
   session!.weapon[sk][weapon].misses++;
+}
+
+// --- Diagnostics ---
+export function recordMissileFirstImpact(side: Side, kind: string): void {
+  ensure();
+  if (!inMatch) return;
+  session!.missileFirstImpacts.push({ matchId: inMatch.matchId, side: sideKey(side), kind });
+  scheduleSave();
+}
+
+export function recordMissileCoreDelay(side: Side, ms: number): void {
+  ensure();
+  if (!inMatch) return;
+  session!.missileCoreDelays.push({ matchId: inMatch.matchId, side: sideKey(side), ms: Math.max(0, ms | 0) });
+  scheduleSave();
 }
 
 export function recordBinDeposit(side: Side, bin: BinId, amount: number, now = performance.now()): void {
