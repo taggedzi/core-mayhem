@@ -12,6 +12,7 @@ import {
 } from 'matter-js';
 
 import { sim, resetSimState } from '../state';
+import { CANVAS } from '../config';
 
 // ---------- validators & safe constructors ----------
 function validateWorld(world: MatterWorld): void {
@@ -73,33 +74,23 @@ function safeRect(
 }
 
 // ---------- sizing ----------
-function fit16x9(canvas: HTMLCanvasElement): { w: number; h: number } {
+function scaleToFit(canvas: HTMLCanvasElement): { cssW: number; cssH: number; scale: number } {
   const stage = canvas.parentElement as HTMLElement | null;
   const rect = stage?.getBoundingClientRect();
-
-  // Prefer real layout box; fall back to window if stage not laid out yet
   let availW = Math.floor(rect?.width ?? 0);
   let availH = Math.floor(rect?.height ?? 0);
   if (availW < 1 || availH < 1) {
     availW = Math.floor(window.innerWidth || 1280);
     availH = Math.floor(window.innerHeight || 720);
   }
-
-  const target = 16 / 9;
-  let w = Math.floor(availW);
-  let h = Math.floor(w / target);
-  if (h > availH) {
-    h = Math.floor(availH);
-    w = Math.floor(h * target);
-  }
-
-  // clamp to ≥1px to avoid zero-sized bodies
-  w = Math.max(1, w);
-  h = Math.max(1, h);
-
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
-  return { w, h };
+  const W0 = CANVAS.width;
+  const H0 = CANVAS.height;
+  const s = Math.max(1e-3, Math.min(availW / W0, availH / H0));
+  const cssW = Math.max(1, Math.floor(W0 * s));
+  const cssH = Math.max(1, Math.floor(H0 * s));
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+  return { cssW, cssH, scale: s };
 }
 
 // ---------- world init ----------
@@ -107,15 +98,18 @@ export function initWorld(canvas: HTMLCanvasElement): void {
   resetSimState(sim);
 
   // Size canvas first (with DPR), then create physics
-  const { w: cssW, h: cssH } = fit16x9(canvas);
+  const { cssW, cssH, scale } = scaleToFit(canvas);
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  // Backing store size in physical pixels
   canvas.width = Math.max(1, Math.floor(cssW * dpr));
   canvas.height = Math.max(1, Math.floor(cssH * dpr));
   const ctx = canvas.getContext('2d')!;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Logical coordinates are in CANVAS units; apply DPR and scale
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
 
-  sim.W = cssW;
-  sim.H = cssH;
+  // Fixed logical world size
+  sim.W = CANVAS.width;
+  sim.H = CANVAS.height;
   sim.dpr = dpr;
 
   // Create ONE engine, store it, then configure

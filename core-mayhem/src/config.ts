@@ -1,5 +1,8 @@
 import type { Settings } from './types';
 
+// Logical canvas size (world units); rendering scales to fit screen
+export const CANVAS = { width: 1920, height: 1080 } as const;
+
 export const DEFAULTS: Settings = {
   seed: Date.now() | 0,
   chaos: 0.7,
@@ -137,12 +140,14 @@ export const CORE_HP = {
 } as const;
 
 export const CORE_SEGMENTS = 28;
-
-export const CORE_POS = {
-  xOffsetFrac: 0.16,
-  yFrac: 0.55,
-  edgeMarginPx: 40,
-};
+// Absolute core geometry for LEFT side; RIGHT is mirrored automatically
+// pos is bottom-left of the bounding square (not the center)
+export const CORE = {
+  // pos is bottom-left (BL) of the bounding square
+  pos: [540, 366] as [number, number],
+  radius: 120 as number,
+  edgeMarginPx: 40 as number,
+} as const;
 
 export const GAMEOVER = {
   bannerMs: 10000,
@@ -239,6 +244,7 @@ export const WEAPONS_LEFT: readonly WeaponSpec[] = [
 // Paddles positioned inside the pins field using fractions of the pin-field width.
 // pos: [xFrac, yFrac] where xFrac=0 at left edge of pins field and 1 at right edge
 interface PaddleSpec {
+  // TODO: convert to absolute integer placement in a later step
   pos: [number, number];
   amp: number;
   spd: number;
@@ -254,6 +260,7 @@ export const PADDLES_LEFT: readonly PaddleSpec[] = [
 
 // Gel rectangles inside the pins field.
 interface GelSpec {
+  // TODO: convert to absolute integer placement in a later step
   pos: [number, number]; // center in fractions; x relative to pins field, y relative to canvas height
   sizeFrac: [number, number]; // [width as fraction of pinsWidth, height as fraction of H]
   dampX?: number;
@@ -303,13 +310,15 @@ export const MESMER = {
 // (TOP_BAND removed)
 
 // Arcade-style mirrored LED panel centered at top
+// Absolute light panel placement; drawn using integer pixels (refactor in renderer later)
 export const LIGHT_PANEL = {
   enabled: true,
-  y: 38, // vertical position of the main row center
+  x: 480, // left edge
+  // Bottom-left y of main row center
+  y: 1042,
+  width: 960, // total width of the panel area
   cell: 10, // LED diameter/size (px)
   gap: 6, // spacing between LEDs (px)
-  margin: 8, // inset from the inner pipe walls
-  widthFrac: 0.5, // max width as a fraction of screen (centered)
   baseAlpha: 0.14, // unlit pad visibility (0=black)
   litAlpha: 0.7, // lit LED alpha (combined with additive glow)
   glow: 10, // blur/glow radius for lit LEDs
@@ -321,11 +330,9 @@ export const LIGHT_PANEL = {
   damageScale: 0.15, // scales raw activity before curve (lower = each hit counts less)
   damageCurveK: 3.0, // asymptotic growth (higher = faster overall approach to 1)
   damageGamma: 3.0, // >1 makes early growth slower; try 1.4–1.8 for conservative start
-  // Dynamic asymptote: renormalize by the largest recent activity so far (upward-only).
   damageDynamicMax: true,
-  damagePeakDecayMs: 10000, // 0 = no decay; try 15000 for a very slow relaxation over time
-  damageHeadroom: 1.0, // >1 keeps headroom so even current peak won't max out
-  // second row (damage reaction)
+  damagePeakDecayMs: 10000,
+  damageHeadroom: 1.0,
   damageRow: { enabled: true, dy: 14, color: '#ff4b4b', baseAlpha: 0.06, glow: 14 } as const,
 } as const;
 
@@ -347,8 +354,9 @@ export interface BinSpec {
   id: BinId;
   accepts: AmmoKind[];
   cap: number;
+  // Absolute integer bottom-left position and size (px)
   pos: [number, number];
-  sizeFrac: [number, number];
+  size: [number, number];
   intake: IntakeSide;
   rotation?: number;
   label?: string;
@@ -362,8 +370,9 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'cannon',
     accepts: ['basic', 'heavy', 'volatile'],
     cap: 40,
-    pos: [0, 0.8],
-    sizeFrac: [0.16, 0.025],
+    // bottom-left position
+    pos: [35, 202],
+    size: [70, 27],
     intake: 'top',
     label: 'Cannon',
     style: { fill: '#480072' },
@@ -372,8 +381,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'laser',
     accepts: ['basic', 'emp'],
     cap: 25,
-    pos: [0.45, 0.8],
-    sizeFrac: [0.16, 0.025],
+    pos: [225, 202],
+    size: [70, 27],
     intake: 'top',
     label: 'Laser',
     style: { fill: '#ff5d5d' },
@@ -382,8 +391,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'missile',
     accepts: ['heavy', 'volatile'],
     cap: 15,
-    pos: [0.78, 0.75],
-    sizeFrac: [0.16, 0.025],
+    pos: [365, 256],
+    size: [70, 27],
     intake: 'top',
     label: 'Missile',
     style: { fill: '#ffb84d' },
@@ -392,8 +401,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'buff',
     accepts: ['basic', 'heavy', 'emp', 'shield', 'repair'],
     cap: 50,
-    pos: [1.1, 0.72],
-    sizeFrac: [0.16, 0.025],
+    pos: [500, 289],
+    size: [70, 27],
     intake: 'top',
     label: 'Buff',
     style: { fill: '#5CFF7A' },
@@ -402,8 +411,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'mortar',
     accepts: ['basic', 'heavy'],
     cap: 24,
-    pos: [0.25, 0.89],
-    sizeFrac: [0.16, 0.025],
+    pos: [141, 105],
+    size: [70, 27],
     intake: 'top',
     label: 'Mortar',
     style: { fill: '#bd9cff' },
@@ -412,8 +421,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'shield',
     accepts: ['emp', 'shield'],
     cap: 45,
-    pos: [0.6, 0.89],
-    sizeFrac: [0.16, 0.025],
+    pos: [289, 105],
+    size: [70, 27],
     intake: 'top',
     label: 'Shield',
     style: { fill: '#72f0ff' },
@@ -422,8 +431,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'repair',
     accepts: ['repair', 'heavy'],
     cap: 30,
-    pos: [0.95, 0.82],
-    sizeFrac: [0.16, 0.025],
+    pos: [436, 181],
+    size: [70, 27],
     intake: 'top',
     label: 'Repair',
     style: { fill: '#9cff72' },
@@ -432,8 +441,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
     id: 'debuff',
     accepts: ['basic', 'heavy', 'volatile', 'emp', 'shield'],
     cap: 45,
-    pos: [1.35, 0.74],
-    sizeFrac: [0.16, 0.025],
+    pos: [605, 267],
+    size: [70, 27],
     intake: 'top',
     label: 'Debuff',
     style: { fill: '#FF6B6B' },

@@ -334,28 +334,17 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Former TOP_BAND effect removed per request
 
-  // LED Light Panel (mirrored from center, bounded by inner pipe walls)
+  // LED Light Panel (mirrored from center, absolute rectangle)
   if ((LIGHT_PANEL as any).enabled) {
     const cfg = LIGHT_PANEL as any;
-
-    // Determine inner bounds from pipes; fallback to 6% inset each side
-    const pipes: any[] = ((sim as any).pipes as any[]) || [];
-    const xs: number[] = [];
-    for (const p of pipes) {
-      if (typeof p?.innerX === 'number') xs.push(p.innerX as number);
-    }
-    let xL = Math.max(20, W * 0.06);
-    let xR = Math.min(W - 20, W * 0.94);
-    if (xs.length >= 2) {
-      xL = Math.min(xs[0], xs[1]) + cfg.margin;
-      xR = Math.max(xs[0], xs[1]) - cfg.margin;
-    }
+    // Absolute bounds for the panel area
+    let xL = Math.max(0, Math.floor(cfg.x ?? 0));
+    let xR = Math.min(W, Math.floor((cfg.x ?? 0) + (cfg.width ?? 0)));
     const mid = W * 0.5;
     const halfL = Math.max(0, mid - xL);
     const halfR = Math.max(0, xR - mid);
-    // Apply centered width cap from config (percentage of screen width)
-    const halfCap = Math.max(0, (W * (cfg.widthFrac ?? 1)) * 0.5);
-    const half = Math.min(halfL, halfR, halfCap);
+    // Use symmetric half-width so left/right counts match exactly
+    const half = Math.min(halfL, halfR);
     // Effective bounds after width cap
     xL = mid - half;
     xR = mid + half;
@@ -363,7 +352,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const step = Math.max(2, cfg.cell + cfg.gap);
     const maxN_L = Math.max(0, Math.floor(half / step));
     const maxN_R = Math.max(0, Math.floor(half / step));
-    const y = Math.max(10, cfg.y);
+    // Convert bottom-left config Y to canvas Y (top-left origin)
+    const y = Math.max(10, Math.floor(H - (cfg.y ?? 0)));
 
     // Advantage measurement (same as mesmer, but re-used here)
     const score = (core: any) => {

@@ -44,13 +44,7 @@ export function nudgeBinsFromPipes(side: Side, bins: any, margin = 5): void {
   Object.values(bins as Record<string, any>).forEach(shiftIfNeeded);
 }
 
-function sidePanelX(side: Side, pinsMid: number, pinsWidth: number, xFrac: number): number {
-  const x0 = pinsMid - pinsWidth / 2; // outer wall
-  const x1 = pinsMid + pinsWidth / 2; // near midline
-  if (side === SIDE.LEFT) return x0 + xFrac * (x1 - x0);
-  const mirrored = 1 - xFrac; // mirror on right
-  return x0 + mirrored * (x1 - x0);
-}
+// No longer used (absolute placement model)
 
 interface Offset {
   dx: number;
@@ -60,18 +54,18 @@ interface Offset {
 }
 
 function intakeOffset(intake: IntakeSide, w: number, h: number): Offset {
-  const ih = BIN_INTAKE_H;
-  const iwTB = Math.max(12, w * 0.92);
-  const iwLR = Math.max(6, h * 0.8);
+  const ih = Math.round(BIN_INTAKE_H);
+  const iwTB = Math.max(12, Math.round(w * 0.92));
+  const iwLR = Math.max(6, Math.round(h * 0.8));
   switch (intake) {
     case 'top':
-      return { dx: 0, dy: -h / 2 - ih / 2 - 1, iw: iwTB, ih };
+      return { dx: 0, dy: Math.round(-h / 2 - ih / 2 - 1), iw: iwTB, ih };
     case 'bottom':
-      return { dx: 0, dy: +h / 2 + ih / 2 + 1, iw: iwTB, ih };
+      return { dx: 0, dy: Math.round(+h / 2 + ih / 2 + 1), iw: iwTB, ih };
     case 'left':
-      return { dx: -w / 2 - iwLR / 2 - 1, dy: 0, iw: iwLR, ih };
+      return { dx: Math.round(-w / 2 - iwLR / 2 - 1), dy: 0, iw: iwLR, ih };
     case 'right':
-      return { dx: +w / 2 + iwLR / 2 + 1, dy: 0, iw: iwLR, ih };
+      return { dx: Math.round(+w / 2 + iwLR / 2 + 1), dy: 0, iw: iwLR, ih };
   }
 }
 
@@ -79,22 +73,7 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-interface pxRatio {
-  w: number;
-  h: number;
-}
-
-function sizePxFromFrac(sizeFrac: [number, number], pinsWidth: number): pxRatio {
-  // Width scales with channel width; height with canvas height
-  const minW = Math.max(40, pinsWidth * 0.06);
-  const maxW = Math.max(minW + 1, pinsWidth * 0.45);
-  const minH = Math.max(22, sim.H * 0.02);
-  const maxH = Math.max(minH + 1, sim.H * 0.09);
-
-  const w = clamp(sizeFrac[0] * pinsWidth, minW, maxW);
-  const h = clamp(sizeFrac[1] * sim.H, minH, maxH);
-  return { w, h };
-}
+// Absolute sizes provided directly in config; helper removed
 
 // Local assertion so callers don't need to remember to pre-check.
 function assertWorld(w: World | null): asserts w is World {
@@ -113,19 +92,25 @@ interface BinModel {
   intakeSide: BinSpec['intake'];
 }
 
-function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number): BinModel {
-  const [xFrac, yFrac] = spec.pos;
-  const { w, h } = sizePxFromFrac(spec.sizeFrac, pinsWidth);
+function mkOneBin(side: Side, spec: BinSpec): BinModel {
+  const [x0, y0] = spec.pos; // bottom-left in canvas coords
+  const [w, h] = spec.size;
   const angle = ((spec.rotation ?? 0) * Math.PI) / 180;
 
-  const x = sidePanelX(side, pinsMid, pinsWidth, xFrac);
-  const y = yFrac * sim.H;
+  // Mirror LEFT spec across canvas width for RIGHT side
+  const xBL = side === SIDE.LEFT ? x0 : sim.W - x0 - w;
+  const yBL = y0;
 
-  const box = Bodies.rectangle(x, y, w, h, { isStatic: true, isSensor: true, angle });
+  // Convert bottom-left box to Matter center coordinates
+  const cx = xBL + w / 2;
+  // Convert bottom-left config Y to canvas/Matter Y (top-left origin)
+  const cy = sim.H - (yBL + h / 2);
+
+  const box = Bodies.rectangle(cx, cy, w, h, { isStatic: true, isSensor: true, angle });
   (box as any).plugin = { kind: 'containerWall', side, label: spec.id };
 
   const o = intakeOffset(spec.intake, w, h);
-  const intake = Bodies.rectangle(x + o.dx, y + o.dy, o.iw, o.ih, {
+  const intake = Bodies.rectangle(cx + o.dx, cy + o.dy, o.iw, o.ih, {
     isStatic: true,
     isSensor: true,
     angle,
@@ -138,7 +123,7 @@ function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number)
 
   return {
     key: spec.id,
-    pos: { x, y },
+    pos: { x: cx, y: cy },
     box,
     intake,
     cap: spec.cap,
@@ -149,9 +134,9 @@ function mkOneBin(side: Side, spec: BinSpec, pinsMid: number, pinsWidth: number)
   };
 }
 
-export function makeBins(side: Side, pinsMid: number, pinsWidth: number): any {
+export function makeBins(side: Side, _pinsMid: number, _pinsWidth: number): any {
   const specs = BINS_LEFT.filter((s) => s.enabled !== false);
   const out: any = {};
-  for (const spec of specs) out[spec.id] = mkOneBin(side, spec, pinsMid, pinsWidth);
+  for (const spec of specs) out[spec.id] = mkOneBin(side, spec);
   return out;
 }

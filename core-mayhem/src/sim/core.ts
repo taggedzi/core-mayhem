@@ -1,6 +1,6 @@
 import { Bodies, World } from 'matter-js';
 
-import { CORE_HP, CORE_SEGMENTS, CORE_POS } from '../config';
+import { CORE_HP, CORE_SEGMENTS, CORE } from '../config';
 import { SHIELD } from '../config';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
@@ -52,19 +52,20 @@ export function makeCore(world: World, side: Side, teamColor: string): Core {
     H = sim.H;
 
   // --- geometry (position + size) ---
-  const sgn = side === SIDE.LEFT ? -1 : 1;
-
-  // pull cores closer to the midline using config
-  const offX = CORE_POS.xOffsetFrac * W;
-  let cx = W * 0.5 + sgn * offX;
-  const cy = H * CORE_POS.yFrac;
-
-  // clamp away from extreme edges (does not change relative midline offset)
-  const margin = CORE_POS.edgeMarginPx;
-  cx = Math.max(margin, Math.min(W - margin, cx));
+  // Absolute placement: LEFT defined in config; RIGHT is exact mirror
+  const r = Math.max(1, Math.floor(CORE.radius));
+  const [xBL, yBL] = CORE.pos;
+  const cLx = xBL + r;
+  // Convert bottom-left config Y to canvas/Matter Y (top-left origin)
+  const cyCanvas = H - (yBL + r);
+  const cx = side === SIDE.LEFT ? cLx : W - cLx;
+  const margin = CORE.edgeMarginPx;
+  // Clamp center within margins (safety)
+  const cxClamped = Math.max(margin, Math.min(W - margin, cx));
+  const cyClamped = Math.max(margin, Math.min(H - margin, cyCanvas));
 
   // visual radius (also used by draw)
-  const R = Math.min(H * 0.11, W * 0.09);
+  const R = r;
 
   // collision sensors (slightly inset ring; small center)
   const ringR = R * 0.82;
@@ -74,10 +75,10 @@ export function makeCore(world: World, side: Side, teamColor: string): Core {
   const nSeg = Math.max(6, Math.floor((sim as any)?.settings?.coreSegments ?? CORE_SEGMENTS));
 
   // --- physics bodies (sensors) ---
-  const ringBody = Bodies.circle(cx, cy, ringR, { isStatic: true, isSensor: true });
+  const ringBody = Bodies.circle(cxClamped, cyClamped, ringR, { isStatic: true, isSensor: true });
   (ringBody as any).plugin = { kind: 'coreRing', side };
 
-  const centerBody = Bodies.circle(cx, cy, centerR, { isStatic: true, isSensor: true });
+  const centerBody = Bodies.circle(cxClamped, cyClamped, centerR, { isStatic: true, isSensor: true });
   (centerBody as any).plugin = { kind: 'coreCenter', side };
 
   World.add(w, [ringBody, centerBody]);
@@ -85,7 +86,7 @@ export function makeCore(world: World, side: Side, teamColor: string): Core {
   // --- core model (ABLATIVE SHIELD fields added) ---
   const core: any = {
     side,
-    center: { x: cx, y: cy },
+    center: { x: cxClamped, y: cyClamped },
     R,
     radius: R,
     outerR: R,
