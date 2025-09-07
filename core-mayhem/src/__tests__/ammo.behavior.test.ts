@@ -6,7 +6,7 @@ import { makePipe, applyPipeForces, tickPaddles, placeObstaclesFromSpecs } from 
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
-function add(body: Matter.Body) {
+function add(body: Matter.Body): Matter.Body {
   World.add(sim.world as any, body);
   return body;
 }

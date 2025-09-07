@@ -114,7 +114,7 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
         fireLaser(SIDE.RIGHT as any, wepR.laser.pos, cL as any);
         fireMissiles(SIDE.RIGHT as any, wepR.missile.pos, 5);
         fireMortar(SIDE.RIGHT as any, wepR.mortar.pos, 1);
-      } catch {}
+      } catch { /* ignore */ void 0; }
     }
     // Prime bins to trigger next volleys quickly (optional)
     if (opts.primeVolley ?? !opts.fullLength) {

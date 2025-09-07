@@ -16,8 +16,8 @@ describe('simulate batch (harness)', () => {
       cfg = {};
     }
 
-    const pick = <T>(env: string | undefined, cfgVal: T | undefined, fallback: T): T =>
-      (env !== undefined ? (env as any) : (cfgVal !== undefined ? cfgVal : fallback)) as T;
+    const pick = <T>(env: unknown, cfgVal: T | undefined, fallback: T): T =>
+      ((env ?? (cfgVal ?? fallback)) as T);
 
     const matches = Number(pick(process.env.MATCHES, cfg.matches, 10)) | 0;
     const alt = pick<string | undefined>(process.env.ALT_ORDER, cfg.altOrderMode, undefined) as any; // 'LR' | 'RL' | 'alternateTick' | 'alternateMatch'

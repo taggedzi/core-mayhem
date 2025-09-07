@@ -57,8 +57,8 @@ export function initHelpOverlay(): void {
   grid.className = 'help-grid';
   for (const line of DEV_HELP_LINES) {
     const [keysRaw, descRaw] = line.split(':');
-    const keys = (keysRaw || '').trim();
-    const desc = (descRaw || '').trim();
+    const keys = (keysRaw ?? '').trim();
+    const desc = (descRaw ?? '').trim();
 
     const item = document.createElement('div');
     item.className = 'help-item';

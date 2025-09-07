@@ -56,7 +56,7 @@ function explodeAt(
   (sim as any).shakeT0 = now;
   (sim as any).shakeMs = 220;
   (sim as any).shakeAmp = Math.max(2, Math.min(8, (sim as any).shakeAmp ?? 0 + 3));
-  const sparks = (sim as any).fxSparks || ((sim as any).fxSparks = []);
+  const sparks = (sim as any).fxSparks ?? ((sim as any).fxSparks = []);
   for (let i = 0; i < 24; i++) {
     const a = Math.random() * Math.PI * 2;
     const s = 1.6 + Math.random() * 3.2;

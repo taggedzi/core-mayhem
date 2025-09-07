@@ -5,7 +5,7 @@ import { registerCollisions } from '../app/collisions';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
-function add(body: Matter.Body) {
+function add(body: Matter.Body): Matter.Body {
   const w = sim.world as Matter.World;
   World.add(w, body);
   return body;
@@ -97,4 +97,3 @@ describe('collisions edge cases', () => {
     det();
   });
 });
-

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import { angleToSeg } from '../sim/core';
 
-function makeCore(nSeg: number, rot = 0) {
+function makeCore(nSeg: number, rot = 0): any {
   return {
     center: { x: 0, y: 0 },
     segHP: new Array(nSeg).fill(100),
@@ -39,4 +39,3 @@ describe('angleToSeg', () => {
     expect(s.i1).toBe((s.i0 + 1) % 8);
   });
 });
-

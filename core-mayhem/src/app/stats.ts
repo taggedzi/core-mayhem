@@ -124,7 +124,7 @@ function scheduleSave(): void {
 // helpers removed (unused)
 
 function ensureSessionShape(s: any): SessionStats {
-  s = s || {};
+  s = s ?? {};
   s.version = 1;
   s.sessionId = s.sessionId ?? (Date.now() | 0);
   s.createdAt = s.createdAt ?? performance.now();
@@ -239,7 +239,7 @@ function bumpHit(side: Side, weapon: WeaponKind, dmgShield: number, dmgSeg: numb
   // First-hit timing (ms since match start)
   if (inMatch) {
     const tRel = Math.max(0, Math.round(now - inMatch.startT));
-    if (inMatch.firstHitMs[sk][weapon] == null) inMatch.firstHitMs[sk][weapon] = tRel;
+    inMatch.firstHitMs[sk][weapon] ??= tRel;
 
     // Damage timeline bucket by second
     const tSec = Math.floor(tRel / 1000);
@@ -299,8 +299,8 @@ export function recordBinDeposit(side: Side, bin: BinId, amount: number, _now?: 
   agg.totalDeposits++;
   agg.totalAmount += Math.max(0, amount | 0);
   if (inMatch) {
-    inMatch.cycleDeposits[sk][bin] = (inMatch.cycleDeposits[sk][bin] || 0) + 1;
-    inMatch.cycleAmount[sk][bin] = (inMatch.cycleAmount[sk][bin] || 0) + Math.max(0, amount | 0);
+    inMatch.cycleDeposits[sk][bin] = (inMatch.cycleDeposits[sk][bin] ?? 0) + 1;
+    inMatch.cycleAmount[sk][bin] = (inMatch.cycleAmount[sk][bin] ?? 0) + Math.max(0, amount | 0);
   }
 }
 
@@ -332,7 +332,7 @@ export function recordMatchEnd(): void {
 
   const coreL = (sim as any).coreL;
   const coreR = (sim as any).coreR;
-  const sumSeg = (arr: number[] | null | undefined) => (Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0);
+  const sumSeg = (arr: number[] | null | undefined): number => (Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0);
   const leftSegHP = sumSeg(coreL?.segHP);
   const leftCenterHP = coreL?.centerHP | 0;
   const leftShieldHP = coreL?.shieldHP | 0;
@@ -611,7 +611,7 @@ export function exportAllCSVs(): void {
 
 export function resetStats(): void {
   // Clear localStorage and start a fresh session
-  try { localStorage.removeItem(LS_KEY); } catch {}
+  try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ void 0; }
   session = null;
   inMatch = null;
   initStats();
@@ -663,7 +663,7 @@ export function getSummary(): {
       else ties++;
     }
   }
-  const sumVals = (o: Record<string, number> | undefined) => o ? Object.values(o).reduce((a, b) => a + (b | 0), 0) : 0;
+  const sumVals = (o: Record<string, number> | undefined): number => (o ? Object.values(o).reduce((a, b) => a + (b | 0), 0) : 0);
   const buffsL = sumVals(session!.buffCounts?.L);
   const buffsR = sumVals(session!.buffCounts?.R);
   const debuffsL = sumVals(session!.debuffCounts?.L);

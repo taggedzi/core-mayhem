@@ -185,7 +185,7 @@ export function fireCannon(
         World.add(w, b);
       }
       // stats: shot fired
-      try { recordShotFired(from, 'cannon'); } catch {}
+      try { recordShotFired(from, 'cannon'); } catch { /* ignore */ void 0; }
       const jitter = 3; // small spread
       Body.setVelocity(b, {
         x: dir.x * speed + (Math.random() - 0.5) * jitter,
@@ -211,7 +211,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
   const aim: Vec2 = target && !(target as any).center ? (target as Vec2) : enemyCore.center;
 
   // stats: count a laser shot at fire time
-  try { recordShotFired(side, 'laser'); } catch {}
+  try { recordShotFired(side, 'laser'); } catch { /* ignore */ void 0; }
 
   // --- Laser damage with ablative shield ---
   // Base damage for this laser pulse, scaled by side's buff
@@ -251,7 +251,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     const segAfter = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
       : 0;
-    try { recordLaserHit(side, shieldDelta, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch {}
+    try { recordLaserHit(side, shieldDelta, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch { /* ignore */ void 0; }
   } else {
     // No shield pool: all to core
     const centerBefore = (enemyCore as any).centerHP | 0;
@@ -263,7 +263,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     const segAfter = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
       : 0;
-    try { recordLaserHit(side, 0, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch {}
+    try { recordLaserHit(side, 0, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch { /* ignore */ void 0; }
   }
 
   // --- FX (kept as you had it) ---
@@ -346,7 +346,7 @@ export function fireMissiles(
         assertWorld(w);
         World.add(w, m);
       }
-      try { recordShotFired(from, 'missile'); } catch {}
+      try { recordShotFired(from, 'missile'); } catch { /* ignore */ void 0; }
 
       const t = count === 1 ? 0 : i / (count - 1) - 0.5;
       const ang = center + t * spread + (Math.random() - 0.5) * jitter;
@@ -405,7 +405,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
       const vy = -Math.sin(ang) * spd; // negative = up (canvas Y-down)
 
       Body.setVelocity(shell, { x: vx, y: vy });
-      try { recordShotFired(from, 'mortar'); } catch {}
+      try { recordShotFired(from, 'mortar'); } catch { /* ignore */ void 0; }
     }, i * 220);
   }
 }
@@ -440,7 +440,7 @@ export function tickHoming(dtMs: number): void {
         World.remove(w, m);
       }
       sim.homing.splice(i, 1);
-      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch {}
+      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch { /* ignore */ void 0; }
       continue;
     }
 
@@ -508,7 +508,7 @@ export function tickHoming(dtMs: number): void {
         color: '#ffb700',
         kind: 'burst',
       });
-      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch {}
+      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch { /* ignore */ void 0; }
     }
   }
 }

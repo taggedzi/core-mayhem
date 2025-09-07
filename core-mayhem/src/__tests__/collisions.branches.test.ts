@@ -6,7 +6,7 @@ import { EXPLOSION } from '../config';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
-function add(body: Matter.Body) {
+function add(body: Matter.Body): Matter.Body {
   World.add(sim.world as any, body);
   return body;
 }
@@ -64,7 +64,7 @@ describe('collisions branches', () => {
     (EXPLOSION as any).enabled = true;
     (EXPLOSION as any).maxPerSec = 0;
     const det = registerCollisions(sim.engine!);
-    const makeProj = () => {
+    const makeProj = (): Matter.Body => {
       const p = add(Bodies.circle(310, 120, 5));
       (p as any).plugin = { kind: 'projectile', ptype: 'cannon', side: SIDE.LEFT, dmg: 5, spawnT: performance.now() - 1000 };
       return p;
@@ -100,4 +100,3 @@ describe('collisions branches', () => {
     det();
   });
 });
-

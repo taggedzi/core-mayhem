@@ -58,7 +58,7 @@ function init(): void {
 
   // Keep stage inset aligned with the actual header height
   const updateHeaderInset = () => {
-    const h = Math.ceil(header?.getBoundingClientRect().height || 0);
+    const h = Math.ceil(header?.getBoundingClientRect().height ?? 0);
     if (h > 0) document.documentElement.style.setProperty('--header-h', `${h}px`);
   };
   updateHeaderInset();

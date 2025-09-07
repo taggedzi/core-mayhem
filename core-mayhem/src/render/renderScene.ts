@@ -342,9 +342,10 @@ function resolveFontVars(font: string): string {
   const css = getComputedStyle(document.documentElement);
   return font.replace(/var\(([^)]+)\)/g, (_, body: string) => {
     const parts = body.split(',');
-    const name = (parts.shift() || '').trim();
-    const fallback = parts.join(',').trim() || 'monospace';
+    const name = (parts.shift() ?? '').trim();
+    const joined = parts.join(',').trim();
+    const fallback = joined !== '' ? joined : 'monospace';
     const val = css.getPropertyValue(name).trim();
-    return val || fallback;
+    return val !== '' ? val : fallback;
   });
 }

@@ -8,7 +8,7 @@ describe('toDrawCommands: FX and Game Over banner', () => {
     resetSimState();
     sim.W = 640 as any;
     sim.H = 360 as any;
-    const eng = (globalThis as any).__dmEng || ( (globalThis as any).__dmEng = require('matter-js').Engine.create());
+    const eng = (globalThis as any).__dmEng ?? ((globalThis as any).__dmEng = require('matter-js').Engine.create());
     sim.world = eng.world;
     // CSS variables used by renderer
     document.documentElement.style.setProperty('--left', '#5cf');
