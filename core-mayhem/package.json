@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "sim": "vitest run --coverage=false src/__tests__/simulate.batch.test.ts",
     "ci": "npm run typecheck && npm run lint && npm run test:coverage && npm run build"
   },
   "dependencies": {

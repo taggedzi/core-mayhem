@@ -1,0 +1,12 @@
+{
+  "matches": 100,
+  "altOrderMode": "alternateTick",
+  "mirrorArena": false,
+  "timescale": 3,
+  "seed": 12345,
+  "spawnRate": 26,
+  "targetAmmo": 80,
+  "hpScale": 0.5,
+  "fullLength": false,
+  "primeVolley": true
+}

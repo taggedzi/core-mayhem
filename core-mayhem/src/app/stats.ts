@@ -569,6 +569,28 @@ export function buildCSVs(): Record<string, string> {
     files['mods_per_match.csv'] = rows.join('\n');
   }
 
+  // missile_first_impacts.csv (per missile: first impacted collider kind)
+  {
+    const rows: string[] = [];
+    rows.push(toCsvRow(['matchId', 'side', 'kind']));
+    const arr = Array.isArray((session as any).missileFirstImpacts)
+      ? ((session as any).missileFirstImpacts as { matchId: number; side: 'L' | 'R'; kind: string }[])
+      : [];
+    for (const r of arr) rows.push(toCsvRow([r.matchId, r.side, r.kind]));
+    files['missile_first_impacts.csv'] = rows.join('\n');
+  }
+
+  // missile_core_delays.csv (per missile that damaged core: ms from spawn to first core damage)
+  {
+    const rows: string[] = [];
+    rows.push(toCsvRow(['matchId', 'side', 'msToCoreHit']));
+    const arr = Array.isArray((session as any).missileCoreDelays)
+      ? ((session as any).missileCoreDelays as { matchId: number; side: 'L' | 'R'; ms: number }[])
+      : [];
+    for (const r of arr) rows.push(toCsvRow([r.matchId, r.side, r.ms]));
+    files['missile_core_delays.csv'] = rows.join('\n');
+  }
+
   return files;
 }
 
