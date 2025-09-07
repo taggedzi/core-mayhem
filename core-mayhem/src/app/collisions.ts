@@ -103,7 +103,9 @@ function deposit(ammo: any, container: any): void {
     // stats: deposit event
     try {
       recordBinDeposit(container.plugin.side, key as any, add);
-    } catch {}
+    } catch {
+      /* ignore */ void 0;
+    }
     if (add > 1) {
       (bins[key] as any)._fxLastAdd = add;
       (bins[key] as any)._fxT0 = performance.now();
@@ -153,7 +155,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
       try {
         recordProjectileHit(proj?.plugin?.side, proj?.plugin?.ptype ?? 'cannon', shieldBefore - core.shieldHP, 0, 0);
         proj.plugin.didDamage = true;
-      } catch {}
+      } catch { /* ignore */ void 0; }
       World.remove(w, proj);
       onPostHit?.();
       return;
@@ -186,8 +188,12 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
         recordMissileCoreDelay(proj.plugin.side, ms);
         proj.plugin._coreHitLogged = true;
       }
-    } catch {}
-  } catch {}
+    } catch {
+      /* ignore */ void 0;
+    }
+  } catch {
+    /* ignore */ void 0;
+  }
 
   const ptype = proj?.plugin?.ptype ?? 'cannon';
   const shooterSide = proj?.plugin?.side;
@@ -243,7 +249,9 @@ export function registerCollisions(
             plug._firstImpactKind = b.kind;
             recordMissileFirstImpact(plug.side, String(b.kind));
           }
-        } catch {}
+        } catch {
+          /* ignore */ void 0;
+        }
         // Avoid double-processing the same projectile if already handled
         if (!(A as any)?.plugin?.didDamage) hit(A, B, opts?.onPostHit);
         continue;
@@ -255,7 +263,9 @@ export function registerCollisions(
             plug._firstImpactKind = a.kind;
             recordMissileFirstImpact(plug.side, String(a.kind));
           }
-        } catch {}
+        } catch {
+          /* ignore */ void 0;
+        }
         if (!(B as any)?.plugin?.didDamage) hit(B, A, opts?.onPostHit);
         continue;
       }
@@ -272,7 +282,9 @@ export function registerCollisions(
         pp._firstImpactKind = k;
         recordMissileFirstImpact(pp.side, k);
       }
-    } catch {}
+    } catch {
+      /* ignore */ void 0;
+    }
         const ptype = String(pp.ptype ?? 'cannon');
         const sty = (PROJECTILE_STYLE as any)[ptype];
         const ringColor = sty?.glow ?? (pp.side === SIDE.LEFT ? css('--left') : css('--right'));
@@ -283,7 +295,9 @@ export function registerCollisions(
     // count miss if no damage was recorded
     try {
       if (!pp.didDamage) recordMiss(pp.side, pp.ptype ?? 'cannon');
-    } catch {}
+    } catch {
+      /* ignore */ void 0;
+    }
   };
 
       explodeIf(A, B);

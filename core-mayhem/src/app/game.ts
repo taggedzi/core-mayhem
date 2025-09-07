@@ -126,7 +126,7 @@ export function startGame(canvas: HTMLCanvasElement) {
   sim.wepR = wepR;
 
   // Optional: mirror arena geometry horizontally (diagnostic)
-  try { maybeMirrorArena(); } catch {}
+  try { maybeMirrorArena(); } catch { /* ignore */ void 0; }
 
   // Dev hotkeys
   const detachHotkeys = attachDevHotkeys(wepL, wepR);

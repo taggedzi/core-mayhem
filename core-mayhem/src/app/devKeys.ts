@@ -157,7 +157,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.buff.fill = bins.buff.cap;
             runTriggers();
           }
-        } catch {}
+        } catch { /* ignore */ void 0; }
         break;
       case 'B':
         try {
@@ -166,7 +166,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.buff.fill = bins.buff.cap;
             runTriggers();
           }
-        } catch {}
+        } catch { /* ignore */ void 0; }
         break;
       // d/D → simulate filling the DEBUFF bin on left/right
       case 'd':
@@ -176,7 +176,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.debuff.fill = bins.debuff.cap;
             runTriggers();
           }
-        } catch {}
+        } catch { /* ignore */ void 0; }
         break;
       case 'D':
         try {
@@ -185,7 +185,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.debuff.fill = bins.debuff.cap;
             runTriggers();
           }
-        } catch {}
+        } catch { /* ignore */ void 0; }
         break;
       // 'h' is handled globally by the help overlay (src/ui/help.ts)
     }

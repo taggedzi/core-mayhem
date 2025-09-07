@@ -130,12 +130,12 @@ export function closeHelpOverlay(): void {
     (contentEl as HTMLElement | null)?.blur?.();
     const active = document.activeElement as HTMLElement | null;
     if (active && overlayEl.contains(active)) active.blur();
-  } catch {}
+  } catch { /* ignore */ void 0; }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
   // Restore focus back to the opener if possible
   if (lastFocusEl && (lastFocusEl as HTMLElement).focus) {
-    try { (lastFocusEl as HTMLElement).focus(); } catch {}
+    try { (lastFocusEl as HTMLElement).focus(); } catch { /* ignore */ void 0; }
   }
 }
 

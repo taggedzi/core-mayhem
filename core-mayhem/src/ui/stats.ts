@@ -179,7 +179,7 @@ export function openStatsOverlay(): void {
   if (!overlayEl) initStatsOverlay();
   if (!overlayEl) return;
   // Refresh contents on each open in case stats changed
-  try { (overlayEl as any)._statsRender?.(); } catch {}
+  try { (overlayEl as any)._statsRender?.(); } catch { /* ignore */ void 0; }
   lastFocusEl = document.activeElement;
   overlayEl.style.display = 'block';
   overlayEl.setAttribute('aria-hidden', 'false');
@@ -193,11 +193,11 @@ export function closeStatsOverlay(): void {
     (panelEl as HTMLElement | null)?.blur?.();
     const active = document.activeElement as HTMLElement | null;
     if (active && overlayEl.contains(active)) active.blur();
-  } catch {}
+  } catch { /* ignore */ void 0; }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
   // Restore focus to the trigger if possible
   if (lastFocusEl && (lastFocusEl as HTMLElement).focus) {
-    try { (lastFocusEl as HTMLElement).focus(); } catch {}
+    try { (lastFocusEl as HTMLElement).focus(); } catch { /* ignore */ void 0; }
   }
 }

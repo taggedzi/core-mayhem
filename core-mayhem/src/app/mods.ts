@@ -41,7 +41,7 @@ export function applyBuff(side: Side): void {
   m.buffUntil = performance.now() + MODS.buffDurationMs;
   m.dmgMul = MODS.buffMultiplier;
   m.dmgUntil = m.buffUntil; // keep existing UI badge behavior
-  try { recordBuff(side, 'damage'); } catch {}
+  try { recordBuff(side, 'damage'); } catch { /* ignore */ void 0; }
   // banner FX
   pushBanner(side, 'BUFF!', {
     sub: `Damage x${MODS.buffMultiplier}`,
@@ -61,7 +61,7 @@ export function applyShieldBuff(side: Side, points?: number): void {
   const before = Math.max(0, Number(core.shieldHP ?? 0));
   const after = Math.min(max, before + add);
   core.shieldHP = after;
-  try { recordBuff(side, 'shield'); } catch {}
+  try { recordBuff(side, 'shield'); } catch { /* ignore */ void 0; }
   // banner FX
   pushBanner(side, 'BUFF!', {
     sub: `Shield +${add}`,
@@ -90,7 +90,7 @@ export function applyCooldownBuff(side: Side, mult?: number): void {
   m.buffKind = 'cooldown';
   m.buffUntil = performance.now() + MODS.buffDurationMs;
   m.cooldownMul = Math.max(0.2, Math.min(1, Number(mult ?? (MODS as any).cooldownBuffMultiplier ?? 0.6)));
-  try { recordBuff(side, 'cooldown'); } catch {}
+  try { recordBuff(side, 'cooldown'); } catch { /* ignore */ void 0; }
   pushBanner(side, 'BUFF!', {
     sub: 'Cooldown Haste',
     lines: [
@@ -121,7 +121,7 @@ export function applyBinBoostBuff(side: Side, mult?: number, durationMs?: number
   const dur = Math.max(1000, Math.round(durationMs ?? (MODS as any).binBoostDurationMs ?? MODS.buffDurationMs));
   m.buffUntil = performance.now() + dur;
   m.binFillMul = Math.max(1, Number(mult ?? (MODS as any).binBoostMultiplier ?? 2));
-  try { recordBuff(side, 'binBoost'); } catch {}
+  try { recordBuff(side, 'binBoost'); } catch { /* ignore */ void 0; }
   pushBanner(side, 'BUFF!', {
     sub: 'Bin Boost',
     lines: [
@@ -152,7 +152,7 @@ export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): v
   }
   m.disabledType = k;
   m.disableUntil = performance.now() + MODS.debuffDurationMs;
-  try { recordDebuff(targetSide, k); } catch {}
+  try { recordDebuff(targetSide, k); } catch { /* ignore */ void 0; }
   const txt = 'DEBUFF';
   const sub = k ? `${String(k).toUpperCase()} DISABLED` : 'SYSTEMS OFFLINE';
   pushBanner(targetSide, txt, {

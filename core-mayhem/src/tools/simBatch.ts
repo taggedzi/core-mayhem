@@ -22,7 +22,7 @@ export interface BatchOpts {
 
 // very forgiving 2D context stub for canvas
 function ctxStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const NOOP: (...args: unknown[]) => void = () => {};
+  const NOOP: (..._args: unknown[]) => void = () => { return; };
   return new Proxy(
     { canvas, measureText: () => ({ width: 0 }) },
     { get: (t, p) => (p in t ? (t as any)[p] : NOOP) },
@@ -53,7 +53,7 @@ function ensureDOM(): HTMLCanvasElement {
 
   // ensure HUD ids resolve if queried later
   const realGetEl = document.getElementById.bind(document);
-  (document as any)._getElPatched || ((document as any)._getElPatched = (() => {
+  if (!(document as any)._getElPatched) {
     (document as any).getElementById = (id: string) => {
       const found = realGetEl(id);
       if (found) return found;
@@ -63,8 +63,8 @@ function ensureDOM(): HTMLCanvasElement {
       hud.appendChild(span);
       return span;
     };
-    return true;
-  })());
+    (document as any)._getElPatched = true;
+  }
 
   // css var colors used by game code
   document.documentElement.style.setProperty('--left', '#5cf');
@@ -128,7 +128,7 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
       prime((sim as any).binsR);
     }
   } catch {
-    // ignore
+    /* ignore */ void 0;
   }
 
   // Poll until gameOver
@@ -148,7 +148,9 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
               else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
               else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
               else declareWinner(lhs > rhs ? (SIDE.LEFT as any) : (rhs > lhs ? (SIDE.RIGHT as any) : (0 as any)));
-            } catch {}
+            } catch {
+              /* ignore */ void 0;
+            }
             resolve();
           }, 2000);
     const deadline = startDeadline();
@@ -162,9 +164,13 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
   });
 
   // Stop and cleanup
-  try { stop(); } catch {}
+  try { stop(); } catch { /* ignore */ void 0; }
   // Clear any pending auto-restart timeout
-  try { if ((sim as any).restartTO) clearTimeout((sim as any).restartTO); } catch {}
+  try {
+    if ((sim as any).restartTO) clearTimeout((sim as any).restartTO);
+  } catch {
+    /* ignore */ void 0;
+  }
 }
 
 export async function runBatch(opts: BatchOpts): Promise<{ summary: ReturnType<typeof getSummary> } & { files: Record<string, string> }> {
