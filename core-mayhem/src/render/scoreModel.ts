@@ -14,13 +14,12 @@ export function getScoreData(): ScoreData {
   const rightWins = s.rightWins | 0;
   const ties = s.ties | 0;
 
-  const lLoss = rightWins;
-  const rLoss = leftWins;
-
+  // New compact scoreboard: show only wins per side and total ties
   const html = `
-    <span class="left tag">LEFT</span> ${leftWins}–${lLoss}
-    ${ties ? `<span class="sep">|</span> T:${ties} <span class="sep">|</span>` : `<span class="sep">|</span>`}
-    <span class="right tag">RIGHT</span> ${rightWins}–${rLoss}
+    <span class="left tag">LEFT</span> ${leftWins}
+    <span class="sep">|</span> T:${ties}
+    <span class="sep">|</span>
+    <span class="right tag">RIGHT</span> ${rightWins}
   `;
 
   return { leftWins, rightWins, ties, html };

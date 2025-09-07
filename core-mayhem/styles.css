@@ -20,7 +20,9 @@ body {
   font-family: Verdana, Tahoma, Geneva, sans-serif;
 }
 header {
-  display: flex;
+  /* Grid to center the middle area (scoreboard) between left and right */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* left | center | right */
   align-items: center;
   gap: 12px;
   background: linear-gradient(90deg, #0d1942, #13234f);
@@ -49,9 +51,12 @@ header .brand {
   text-shadow: 0 0 6px #00ffd588;
 }
 header .right {
-  margin-left: auto;
+  justify-self: end; /* align to right grid edge */
   display: flex;
   gap: 8px;
+}
+header .left {
+  justify-self: start; /* align to left grid edge */
 }
 /* Header state pill styled to match buttons */
 .pill-state {
@@ -236,55 +241,6 @@ button:disabled {
   font: 12px/1 var(--mono, monospace, Verdana);
   text-align: center;
 }
-#hud {
-  position: absolute;
-  left: 10px;
-  bottom: 8px;
-  display: flex;
-  gap: 8px;
-}
-.chip {
-  background: #0e1730cc;
-  border: 1px solid #2b3a78;
-  border-radius: 6px;
-  padding: 4px 6px;
-  font-size: 12px;
-}
-/* footer{position:fixed;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#bcd;border-top:2px solid #20336e;background:#0d1733;display:flex;justify-content:space-between} */
-.hud-inline {
-  display: inline-flex;
-  gap: 6px;
-  align-items: baseline;
-  font: 12px/1 var(--mono, monospace, Verdana);
-  background: #0e1730cc;
-  border: 1px solid #2b3a78;
-  border-radius: 6px;
-  padding: 4px 6px;
-}
-.hud-inline .tag {
-  opacity: 0.75;
-}
-footer {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  right: 8px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr; /* left | center | right */
-  align-items: center;
-  font: 12px/1 var(--mono, monospace, Verdana);
-  color: #cfe1ff;
-}
-
-footer .made {
-  justify-self: start;
-  opacity: 0.85;
-}
-
-footer .hud-inline {
-  justify-self: end;
-}
-
 .scoreboard {
   justify-self: center;
   display: inline-flex;

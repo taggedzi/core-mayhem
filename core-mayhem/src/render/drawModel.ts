@@ -14,7 +14,6 @@ import { BADGES } from '../config';
 import { sim } from '../state';
 
 import { colorForAmmo } from './colors';
-import { getScoreData } from './scoreModel';
 
 import type { Core } from '../sim/core';
 import type { WeaponsType } from '../sim/weapons';
@@ -1842,38 +1841,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     });
   }
 
-  // Scoreboard: permanent box centered at bottom inside the canvas
-  {
-    const s = getScoreData();
-    const leftWins = s.leftWins | 0;
-    const rightWins = s.rightWins | 0;
-    const ties = s.ties | 0;
-    const lLoss = rightWins;
-    const rLoss = leftWins;
-    const fontPx = Math.max(12, Math.floor(H * 0.022));
-    const segs: { text: string; fill?: string; opacity?: number }[] = [];
-    segs.push({ text: 'LEFT ', fill: 'var(--left)' });
-    segs.push({ text: `${leftWins}–${lLoss}` });
-    segs.push({ text: '  |  ', opacity: 0.6 });
-    if (ties) {
-      segs.push({ text: `T:${ties}` });
-      segs.push({ text: '  |  ', opacity: 0.6 });
-    }
-    segs.push({ text: 'RIGHT ', fill: 'var(--right)' });
-    segs.push({ text: `${rightWins}–${rLoss}` });
-    cmds.push({
-      kind: 'richTextBox',
-      x: W * 0.5,
-      y: H - Math.max(14, Math.floor(H * 0.02)),
-      font: `${fontPx}px var(--mono, monospace)`,
-      segments: segs,
-      fill: 'rgba(14,23,48,0.85)',
-      stroke: '#2b3a78',
-      lineWidth: 1,
-      padX: 12,
-      padY: 6,
-    });
-  }
+  // Old in-canvas scoreboard removed; scoreboard now lives in header DOM
 
   return { width: W, height: H, commands: cmds, tx, ty };
 }

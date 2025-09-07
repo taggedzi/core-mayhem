@@ -138,12 +138,12 @@ export const SHIELD_VFX = {
 } as const;
 
 export const CORE_HP = {
-  segments: 100,
+  segments: 200,
   center: 500,
   shieldMax: 50,
 } as const;
 
-export const CORE_SEGMENTS = 28;
+export const CORE_SEGMENTS = 12;
 // Absolute core geometry for LEFT side; RIGHT is mirrored automatically
 // pos is bottom-left of the bounding square (not the center)
 export const CORE = {
