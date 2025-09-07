@@ -48,9 +48,9 @@ export function initStatsOverlay(): void {
   summary.style.gridTemplateColumns = 'repeat(4, minmax(120px, 1fr))';
   summary.style.gap = '8px';
   summary.style.margin = '8px 0 14px 0';
-  function renderSummary() {
+  function renderSummary(): void {
     const s = getSummary();
-    const chip = (label: string, value: string) => {
+    const chip = (label: string, value: string): HTMLDivElement => {
       const el = document.createElement('div');
       el.style.background = '#0e1730cc';
       el.style.border = '1px solid #2b3a78';
@@ -80,11 +80,11 @@ export function initStatsOverlay(): void {
 
   const btnAll = document.createElement('button');
   btnAll.textContent = 'Download All CSVs';
-  btnAll.onclick = () => exportAllCSVs();
+  btnAll.onclick = (): void => { exportAllCSVs(); };
 
   const btnReset = document.createElement('button');
   btnReset.textContent = 'Reset Stats';
-  btnReset.onclick = () => {
+  btnReset.onclick = (): void => {
     const ok = confirm('Reset all collected stats for this session? This clears localStorage.');
     if (!ok) return;
     resetStats();
@@ -161,7 +161,7 @@ export function initStatsOverlay(): void {
   panelEl = panel;
 
   // Expose a refresh hook so we can re-render on open
-  (overlayEl as any)._statsRender = () => {
+  (overlayEl as any)._statsRender = (): void => {
     renderLinks(list);
     renderSummary();
   };

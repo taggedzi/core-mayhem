@@ -15,15 +15,15 @@ let lastDpr = window.devicePixelRatio;
 let dprIntervalId: number | null = null;
 
 // Debounce helper with cancel()
-function debounce<F extends (...args: any[]) => void>(
-  fn: F,
-  wait: number,
-): F & { cancel: () => void } {
-  let t: number | null = null;
-  const debounced = (...args: Parameters<F>) => {
-    if (t !== null) window.clearTimeout(t);
-    t = window.setTimeout(() => fn(...args), wait);
-  };
+  function debounce<F extends (...args: any[]) => void>(
+    fn: F,
+    wait: number,
+  ): F & { cancel: () => void } {
+    let t: number | null = null;
+    const debounced: (...args: Parameters<F>) => void = (...args: Parameters<F>) => {
+      if (t !== null) window.clearTimeout(t);
+      t = window.setTimeout(() => fn(...args), wait);
+    };
   (debounced as any).cancel = () => {
     if (t !== null) {
       window.clearTimeout(t);
@@ -57,7 +57,7 @@ function init(): void {
   const safeBtnStop = btnStop!;
 
   // Keep stage inset aligned with the actual header height
-  const updateHeaderInset = () => {
+  const updateHeaderInset = (): void => {
     const h = Math.ceil(header?.getBoundingClientRect().height ?? 0);
     if (h > 0) document.documentElement.style.setProperty('--header-h', `${h}px`);
   };

@@ -252,7 +252,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const seed = ((sim.settings?.seed ?? 1) | 0) >>> 0;
         // tiny PRNG (mulberry32)
         let t = seed;
-        const rnd = () => {
+        const rnd = (): number => {
           t += 0x6d2b79f5;
           let r = Math.imul(t ^ (t >>> 15), t | 1);
           r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
@@ -293,7 +293,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       }
 
       // flowing arcs around cores
-      const addArcs = (cx: number, cy: number, color: string) => {
+      const addArcs = (cx: number, cy: number, color: string): void => {
         const n = MESMER.arcs.countPerSide;
         const baseR = Math.max(1, (MESMER as any).arcs.baseR as number);
         const gap = Math.max(1, (MESMER as any).arcs.gapPx as number);
@@ -358,7 +358,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const y = Math.max(10, Math.floor(H - (cfg.y ?? 0)));
 
     // Advantage measurement (same as mesmer, but re-used here)
-    const score = (core: any) => {
+    const score = (core: any): number => {
       if (!core) return 0;
       const seg = (core.segHP as number[] | undefined) ?? [];
       let s = 0;
@@ -525,7 +525,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     lineDash: [6, 6],
   });
 
-  const addCore = (core: Core, colorVar: string) => {
+  const addCore = (core: Core, colorVar: string): void => {
     if (!core?.center) return;
 
     const cx = core.center.x,
@@ -627,13 +627,13 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const len = Math.max(4, SHIELD_VFX.sparks.len ?? 10);
         const baseAlpha = SHIELD_VFX.sparks.alpha ?? 0.5;
         // simple deterministic pseudo-random from time + index
-        const rand = (s: number) => {
-          let t = Math.imul(s ^ 0x9e3779b9, 0x85ebca6b);
-          t ^= t >>> 13;
-          t = Math.imul(t, 0xc2b2ae35);
-          t ^= t >>> 16;
-          return (t >>> 0) / 4294967296;
-        };
+      const rand = (s: number): number => {
+        let t = Math.imul(s ^ 0x9e3779b9, 0x85ebca6b);
+        t ^= t >>> 13;
+        t = Math.imul(t, 0xc2b2ae35);
+        t ^= t >>> 16;
+        return (t >>> 0) / 4294967296;
+      };
         for (let i = 0; i < count; i++) {
           const seed = ((now * 33) | 0) + i * 9173 + (core.side < 0 ? 37 : 61);
           const u = rand(seed);
@@ -1662,7 +1662,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const y = H * 0.32 - bh / 2;
 
         // slide in/out along X
-        const ease = (x: number) => 1 - Math.pow(1 - x, 3);
+        const ease = (x: number): number => 1 - Math.pow(1 - x, 3);
         let x = targetX;
         let alpha = 1;
         if (t < 0.2) {

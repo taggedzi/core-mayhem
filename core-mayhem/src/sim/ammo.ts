@@ -12,7 +12,7 @@ function assertWorld(w: MatterWorld | null): asserts w is MatterWorld {
   if (!w) throw new Error('World not initialized');
 }
 
-export function spawnAmmo(side: Side) {
+export function spawnAmmo(side: Side): void {
   const { W, H } = sim;
   const x = side === SIDE.LEFT ? 30 + Math.random() * 40 : W - 30 - Math.random() * 40;
   const y = H * 0.92 + Math.random() * 10;
@@ -39,7 +39,7 @@ export function spawnAmmo(side: Side) {
   else sim.ammoR++;
 }
 
-export function beforeUpdateAmmo() {
+export function beforeUpdateAmmo(): void {
   const dt = (sim.engine?.timing?.lastDelta ?? 16) / 1000;
   const world = sim.world;
   assertWorld(world);
@@ -54,7 +54,7 @@ export function beforeUpdateAmmo() {
       // bottom conveyors push outwards to pipes
       if (b.position.y > sim.H * 0.915) conveyorPush(b);
       // cleanup so supply refills
-      const speed = Math.hypot(b.velocity.x || 0, b.velocity.y || 0);
+      const speed = Math.hypot(b.velocity.x ?? 0, b.velocity.y ?? 0);
       plug.age = (plug.age ?? 0) + dt;
       plug.idle = speed < 0.15 ? (plug.idle ?? 0) + dt : 0;
 

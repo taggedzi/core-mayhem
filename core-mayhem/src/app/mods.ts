@@ -20,7 +20,7 @@ export function isDisabled(side: Side, kind: WeaponKind): boolean {
 
 export function pushBanner(side: Side, title: string, opts?: { sub?: string; lines?: string[]; color?: string; ms?: number }): void {
   const color = opts?.color ?? (side === SIDE.LEFT ? 'var(--left)' : 'var(--right)');
-  (sim as any).fxBanners = (sim as any).fxBanners || [];
+  (sim as any).fxBanners ??= [];
   (sim as any).fxBanners.push({ side, text: title, sub: opts?.sub, lines: opts?.lines, color, t0: performance.now(), ms: opts?.ms ?? 2600 });
 }
 

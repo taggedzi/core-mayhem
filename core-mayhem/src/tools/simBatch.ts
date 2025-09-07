@@ -118,7 +118,7 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
     }
     // Prime bins to trigger next volleys quickly (optional)
     if (opts.primeVolley ?? !opts.fullLength) {
-      const prime = (bins: any) => {
+      const prime = (bins: any): void => {
         if (!bins) return;
         for (const k of ['cannon','laser','missile','mortar']) {
           if (bins[k]) bins[k].fill = bins[k].cap;
@@ -141,7 +141,7 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
             try {
               const cL: any = (sim as any).coreL;
               const cR: any = (sim as any).coreR;
-              const sumSeg = (arr: number[] | null | undefined) => (Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0);
+              const sumSeg = (arr: number[] | null | undefined): number => (Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0);
               const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
               const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
               if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);

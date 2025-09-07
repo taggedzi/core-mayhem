@@ -1,8 +1,8 @@
 // Polyfill ResizeObserver (no-ops for tests)
 class RO {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
 }
 (globalThis as any).ResizeObserver = RO;
 

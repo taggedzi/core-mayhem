@@ -15,7 +15,7 @@ describe('applyCoreDamage with chipChance path (mocked config)', () => {
   it('chips center by 1 when spillover is off and chipChance=1', () => {
     const core: any = { segHP: [100, 100], centerHP: 10 };
     // Aim all damage to seg1 with plenty of HP so no spillover occurs
-    const aim = () => ({ i0: 0, i1: 1, w0: 0, w1: 1 });
+    const aim = (): any => ({ i0: 0, i1: 1, w0: 0, w1: 1 });
     // Math.random is irrelevant since chipChance=1
     const before = core.centerHP;
     applyCoreDamage(core, { x: 0, y: 0 }, 5, aim as any);

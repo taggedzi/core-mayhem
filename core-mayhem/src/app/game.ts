@@ -40,7 +40,7 @@ function assertEngine(e: Engine | null): asserts e is Engine {
 
 // explodeAt moved to app/collisions.ts
 
-export function startGame(canvas: HTMLCanvasElement) {
+export function startGame(canvas: HTMLCanvasElement): () => void {
   clearWorld();
   initWorld(canvas);
   const eng = sim.engine;
@@ -137,7 +137,7 @@ export function startGame(canvas: HTMLCanvasElement) {
   // deposit() and hit() moved to app/collisions.ts
 
   // Game update
-  Events.on(eng, 'beforeUpdate', () => {
+  Events.on(eng, 'beforeUpdate', (): void => {
     // tick counter for alternate order testing
     (sim as any).tick = ((sim as any).tick | 0) + 1;
     const dtMs = sim.engine?.timing?.lastDelta ?? 16.6;
@@ -180,7 +180,7 @@ export function startGame(canvas: HTMLCanvasElement) {
   };
   raf = requestAnimationFrame(loop);
 
-  return function stop() {
+  return function stop(): void {
     sim.started = false;
     cancelAnimationFrame(raf);
     detachHotkeys?.();
@@ -214,7 +214,7 @@ function maybeMirrorArena(): void {
   if (sim.coreL?.center) sim.coreL.center.x = W - sim.coreL.center.x;
   if (sim.coreR?.center) sim.coreR.center.x = W - sim.coreR.center.x;
   // Weapon mount positions
-  const fixW = (w: any) => {
+  const fixW = (w: any): void => {
     if (!w) return;
     if (w.cannon?.pos) w.cannon.pos.x = W - w.cannon.pos.x;
     if (w.laser?.pos) w.laser.pos.x = W - w.laser.pos.x;
@@ -224,7 +224,7 @@ function maybeMirrorArena(): void {
   fixW(sim.wepL);
   fixW(sim.wepR);
   // Bin model positions (and their bodies)
-  const fixBins = (bins: any) => {
+  const fixBins = (bins: any): void => {
     if (!bins) return;
     for (const b of Object.values(bins as Record<string, any>)) {
       if (!b) continue;
