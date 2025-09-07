@@ -174,7 +174,7 @@ function gelRect(
 
 function addPaddle(x: number, y: number, amp: number, spd: number, dir: number): Body {
   const p = Bodies.rectangle(x, y, 80, 8, { isStatic: true, isSensor: true });
-  (p as any).plugin = { kind: 'paddle', t: Math.random() * 6, amp, spd, dir };
+  (p as any).plugin = { kind: 'paddle', t: Math.random() * 6, amp, spd, dir, x0: x };
   {
     const w = sim.world;
     assertWorld(w);
@@ -187,9 +187,26 @@ function addPaddle(x: number, y: number, amp: number, spd: number, dir: number):
 export function tickPaddles(dt: number): void {
   for (const p of sim.paddles) {
     const plug = (p as any).plugin;
-    plug.t += dt * plug.spd;
+    const spdMul = (sim as any)?.settings?.paddleSpeedMul ?? 1.0;
+    const ampMul = (sim as any)?.settings?.paddleAmpMul ?? 1.0;
+    plug.t += dt * plug.spd * spdMul;
     const phase = Math.sin(plug.t);
-    const nx = p.position.x + phase * plug.amp * plug.dir;
+    // Oscillate around original center (no drift) with expanded amplitude
+    const x0 = plug.x0 ?? p.position.x;
+    const halfW = (p.bounds.max.x - p.bounds.min.x) / 2 || 40;
+    const minX = halfW + 4; // soft margin inside edges
+    const maxX = sim.W - halfW - 4;
+    const maxAmp = Math.max(0, Math.min(x0 - minX, maxX - x0));
+    const baseAmp = Math.abs(Number(plug.amp ?? 0)) * ampMul;
+    const amp = Math.min(baseAmp, maxAmp);
+    let nx = x0 + phase * amp * plug.dir;
+    // Bounce at soft margins: flip direction if we would leave the canvas
+    if (nx < minX || nx > maxX) {
+      plug.dir = (plug.dir * -1) as -1 | 1;
+      nx = x0 + phase * amp * plug.dir;
+      // Ensure we don't stick just outside; clamp lightly after flip
+      nx = Math.max(minX, Math.min(maxX, nx));
+    }
     Body.setPosition(p, { x: nx, y: p.position.y });
   }
 }

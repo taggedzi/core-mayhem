@@ -12,7 +12,11 @@ export const DEFAULTS: Settings = {
   loop: false,
   pipeUpSpeed: 22,
   pipeUpGain: 3.2,
-  altOrderMode: 'LR', // 'LR' | 'RL' | 'alternateTick' | 'alternateMatch'
+  // Slow paddles slightly for clearer interactions
+  paddleSpeedMul: 0.4,
+  // Expand paddle sweep width relative to spec
+  paddleAmpMul: 6.0,
+  altOrderMode: 'alternateTick', // 'LR' | 'RL' | 'alternateTick' | 'alternateMatch'
   mirrorArena: false,
 };
 

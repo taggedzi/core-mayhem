@@ -232,6 +232,50 @@ export function registerCollisions(
       const a = A.plugin ?? {},
         b = B.plugin ?? {};
 
+      // Ammo interacts with paddles: bounce off top or underside and add sideways shove
+      const batAmmo = (ammo: any, paddle: any): void => {
+        try {
+          const plugP = paddle?.plugin ?? {};
+          const t = Number(plugP.t ?? 0);
+          const dir = Math.sign(Number(plugP.dir ?? 1)) || 1;
+          const spd = Number(plugP.spd ?? 1);
+          const amp = Number(plugP.amp ?? 0);
+          // Instantaneous paddle velocity sign (approx from phase derivative)
+          const vSign = Math.sign(Math.cos(t) * spd * amp) || 1;
+          const shove = dir * vSign;
+          // Read current ammo velocity
+          const vx0 = (ammo.velocity?.x ?? 0) as number;
+          const vy0 = (ammo.velocity?.y ?? 0) as number;
+          // Determine side of contact (above vs below paddle)
+          const isBelow = (ammo.position?.y ?? 0) > (paddle.position?.y ?? 0);
+          const minBounce = 1.4;
+          // Bounce rules:
+          //  - If ammo is above and moving down (vy0>0), bounce up (negative)
+          //  - If ammo is below and moving up (vy0<0), bounce down (positive)
+          let vy = vy0;
+          if (vy0 > 0 && !isBelow) vy = -Math.max(minBounce, Math.abs(vy0) * 0.85);
+          else if (vy0 < 0 && isBelow) vy = +Math.max(minBounce, Math.abs(vy0) * 0.85);
+          const addSide = shove * 2.2; // tune lateral impart
+          const vx = vx0 + addSide;
+          Body.setVelocity(ammo, { x: vx, y: vy });
+          // Nudge position slightly away from the paddle to avoid re-trigger jitter
+          const r = (ammo as any).circleRadius ?? 4;
+          if (vy < 0) Body.setPosition(ammo, { x: ammo.position.x, y: paddle.position.y - r - 1 });
+          else if (vy > 0) Body.setPosition(ammo, { x: ammo.position.x, y: paddle.position.y + r + 1 });
+        } catch {
+          /* ignore */ void 0;
+        }
+      };
+
+      if (a.kind === 'ammo' && b.kind === 'paddle') {
+        batAmmo(A, B);
+        continue;
+      }
+      if (b.kind === 'ammo' && a.kind === 'paddle') {
+        batAmmo(B, A);
+        continue;
+      }
+
       if (a.kind === 'ammo' && b.kind === 'container') {
         deposit(A, B);
         continue;
