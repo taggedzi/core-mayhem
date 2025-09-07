@@ -160,15 +160,6 @@ export type DrawCommand =
       alpha?: number;
     }
   | {
-      kind: 'vignette';
-      cx: number;
-      cy: number;
-      r0: number; // inner radius (transparent)
-      r1: number; // outer radius (full alpha)
-      color?: string; // base color (default black)
-      alpha?: number; // max alpha at r1
-    }
-  | {
       kind: 'gradLine';
       x1: number;
       y1: number;
@@ -1826,20 +1817,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     }
   }
 
-  // Vignette overlay (drawn near the end)
-  if ((MESMER as any)?.vignette?.enabled) {
-    const inner = Math.min(W, H) * 0.5 * ((MESMER as any).vignette.innerFrac ?? 0.55);
-    const outer = Math.hypot(W, H) * 0.5 * ((MESMER as any).vignette.outerFrac ?? 1.0);
-    cmds.push({
-      kind: 'vignette',
-      cx: W / 2,
-      cy: H / 2,
-      r0: inner,
-      r1: outer,
-      color: (MESMER as any).vignette.color ?? 'rgba(0,0,0,1)',
-      alpha: (MESMER as any).vignette.alpha ?? 0.5,
-    });
-  }
+  // Vignette effect removed
 
   // Old in-canvas scoreboard removed; scoreboard now lives in header DOM
 

@@ -123,7 +123,7 @@ export function openHelpOverlay(): void {
   (contentEl as HTMLElement | null)?.focus?.();
 }
 
-export function closeHelpOverlay(): void {
+function closeHelpOverlay(): void {
   if (!overlayEl) return;
   // Move focus off hidden subtree to avoid aria-hidden warning
   try {

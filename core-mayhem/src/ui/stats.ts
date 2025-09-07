@@ -186,7 +186,7 @@ export function openStatsOverlay(): void {
   (panelEl as HTMLElement | null)?.focus?.();
 }
 
-export function closeStatsOverlay(): void {
+function closeStatsOverlay(): void {
   if (!overlayEl) return;
   // Move focus off hidden subtree to avoid aria-hidden warning
   try {

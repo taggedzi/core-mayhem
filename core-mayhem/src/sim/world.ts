@@ -90,24 +90,30 @@ function scaleToFit(canvas: HTMLCanvasElement): { cssW: number; cssH: number; sc
   return { cssW, cssH, scale: s };
 }
 
+// Recompute canvas CSS size, backing store, and context transform without
+// touching the physics world. Safe to call at any time (even before init).
+export function resizeCanvas(canvas: HTMLCanvasElement): void {
+  const { cssW, cssH, scale } = scaleToFit(canvas);
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  canvas.width = Math.max(1, Math.floor(cssW * dpr));
+  canvas.height = Math.max(1, Math.floor(cssH * dpr));
+  const ctx = canvas.getContext('2d');
+  if (ctx) ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  // Keep sim metadata in sync (logical W/H remain fixed)
+  sim.dpr = dpr;
+}
+
 // ---------- world init ----------
 export function initWorld(canvas: HTMLCanvasElement): void {
   resetSimState(sim);
 
   // Size canvas first (with DPR), then create physics
-  const { cssW, cssH, scale } = scaleToFit(canvas);
-  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  // Backing store size in physical pixels
-  canvas.width = Math.max(1, Math.floor(cssW * dpr));
-  canvas.height = Math.max(1, Math.floor(cssH * dpr));
-  const ctx = canvas.getContext('2d')!;
-  // Logical coordinates are in CANVAS units; apply DPR and scale
-  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  resizeCanvas(canvas);
 
   // Fixed logical world size
   sim.W = CANVAS.width;
   sim.H = CANVAS.height;
-  sim.dpr = dpr;
+  // sim.dpr was set in resizeCanvas
 
   // Create ONE engine, store it, then configure
   const engine = Engine.create({ enableSleeping: false });

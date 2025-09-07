@@ -1,5 +1,6 @@
 // main.ts
 import { startGame } from './app/game';
+import { resizeCanvas } from './sim/world';
 import { initStats } from './app/stats';
 import { updateHUD } from './render/hud';
 import { initHelpOverlay, openHelpOverlay } from './ui/help';
@@ -10,7 +11,6 @@ type StopFn = () => void;
 
 // ——— State ———
 let stopGame: StopFn | null = null;
-let restarting = false;
 let lastDpr = window.devicePixelRatio;
 let dprIntervalId: number | null = null;
 
@@ -62,15 +62,15 @@ function init(): void {
     if (h > 0) document.documentElement.style.setProperty('--header-h', `${h}px`);
   };
   updateHeaderInset();
+  // Ensure canvas initially matches stage before any start
+  try { resizeCanvas(safeCanvas); } catch { /* ignore */ }
 
-  const scheduleRestart = debounce(() => {
-    // Only restart if currently running; ignore if mid-restart
-    if (!stopGame || restarting) return;
-    restarting = true;
+  // Debounced canvas-only resize (no sim restart)
+  const scheduleResize = debounce(() => {
     try {
-      start(); // re-reads current DPR, size, etc.
-    } finally {
-      restarting = false;
+      resizeCanvas(safeCanvas);
+    } catch {
+      /* ignore resize errors */
     }
   }, 120);
 
@@ -94,7 +94,7 @@ function init(): void {
       const dpr = window.devicePixelRatio;
       if (dpr !== lastDpr) {
         lastDpr = dpr;
-        scheduleRestart();
+        scheduleResize();
       }
     }, 300);
 
@@ -119,7 +119,7 @@ function init(): void {
       dprIntervalId = null;
     }
     // Cancel any queued restart so we don't "surprise start"
-    scheduleRestart.cancel();
+    scheduleResize.cancel();
 
     updateHUD(); // keep HUD label in sync even if game.ts changes later
     safeBtnStart.disabled = false;
@@ -137,12 +137,12 @@ function init(): void {
   // Window resize (debounced)
   window.addEventListener('resize', () => {
     updateHeaderInset();
-    scheduleRestart();
+    scheduleResize();
   }, { passive: true });
 
   // Stage resize (letterboxing / flex changes)
   if (stage) {
-    const ro = new ResizeObserver(() => scheduleRestart());
+    const ro = new ResizeObserver(() => scheduleResize());
     ro.observe(stage);
   }
 
@@ -150,7 +150,7 @@ function init(): void {
   if (header) {
     const roHeader = new ResizeObserver(() => {
       updateHeaderInset();
-      scheduleRestart();
+      scheduleResize();
     });
     roHeader.observe(header);
   }

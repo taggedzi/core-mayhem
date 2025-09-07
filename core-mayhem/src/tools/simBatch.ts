@@ -6,7 +6,7 @@ import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons'
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
-export interface BatchOpts {
+interface BatchOpts {
   matches: number;
   altOrderMode?: 'LR' | 'RL' | 'alternateTick' | 'alternateMatch' | undefined;
   mirrorArena?: boolean | undefined;
