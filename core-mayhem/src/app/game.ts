@@ -80,8 +80,33 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
 
   // Preload audio assets (safe no-op in tests/non-browser)
   try { audio.preloadAll(); } catch { /* ignore */ void 0; }
-  // Start background music
-  try { audio.startLoop('bgm', 'music_main'); } catch { /* ignore */ void 0; }
+  // Load playlist from public assets if present and start music
+  (async () => {
+    try {
+      const res = await fetch('/assets/music/playlist.json', { cache: 'no-cache' });
+      if (res.ok) {
+        const files = (await res.json()) as string[];
+        const urls = Array.isArray(files)
+          ? files
+              .filter((f) => typeof f === 'string' && /\.(mp3|ogg)$/i.test(f))
+              .map((f) => `/assets/music/${f}`)
+          : [];
+        if (urls.length) {
+          audio.setMusicPlaylist(urls);
+          audio.playMusic();
+          return;
+        }
+      }
+    } catch { /* ignore */ }
+    // Fallback: try a default track
+    try {
+      const probe = await fetch('/assets/music/main_theme.mp3', { method: 'HEAD' });
+      if (probe.ok) {
+        audio.setMusicPlaylist(['/assets/music/main_theme.mp3']);
+        audio.playMusic();
+      }
+    } catch { /* ignore */ }
+  })();
 
   // Edge pipes
   const pipeL = makePipe(SIDE.LEFT);
@@ -196,7 +221,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     clearWorld();
     updateHUD();
     try { audio.stopLoop('alarm_L'); audio.stopLoop('alarm_R'); } catch { /* ignore */ void 0; }
-    try { audio.stopLoop('bgm'); } catch { /* ignore */ void 0; }
+    try { audio.stopMusic(); } catch { /* ignore */ void 0; }
   };
 }
 

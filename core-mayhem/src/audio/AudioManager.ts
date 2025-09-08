@@ -21,6 +21,11 @@ export class AudioManager {
   private musicDuckTarget = 1.0; // 0..1
   private musicBaseGain = 1.0;
   private enabled = true;
+  // Streaming music via media element for large files
+  private musicEl: HTMLAudioElement | null = null;
+  private musicNode: MediaElementAudioSourceNode | null = null;
+  private playlist: string[] = [];
+  private plIndex = 0;
 
   constructor(
     private sounds: Record<SoundKey, SoundSpec>,
@@ -114,6 +119,49 @@ export class AudioManager {
     music.gain.linearRampToValueAtTime(this.musicBaseGain, now + rel / 1000);
   }
 
+  // ------- Music playlist (public/assets) using media element -------
+  setMusicPlaylist(urls: string[]): void {
+    this.ensure();
+    this.playlist = Array.isArray(urls) ? urls.slice() : [];
+    this.plIndex = 0;
+  }
+
+  async playMusic(): Promise<void> {
+    this.ensure();
+    if (!this.ctx || !this.bus.music || this.playlist.length === 0) return;
+    const url = this.playlist[this.plIndex % this.playlist.length];
+    if (!this.musicEl) {
+      this.musicEl = new Audio();
+      this.musicEl.preload = 'auto';
+      this.musicEl.crossOrigin = 'anonymous';
+      this.musicEl.loop = false;
+      this.musicEl.addEventListener('ended', () => this.nextTrack());
+      try { this.musicNode = this.ctx.createMediaElementSource(this.musicEl); } catch { /* ignore */ }
+      if (this.musicNode) this.musicNode.connect(this.bus.music);
+    }
+    this.musicEl!.src = url;
+    try { await this.musicEl!.play(); } catch { /* will resume on user gesture */ }
+  }
+
+  stopMusic(): void {
+    if (this.musicEl) {
+      try { this.musicEl.pause(); } catch { /* ignore */ }
+      this.musicEl.currentTime = 0;
+    }
+  }
+
+  nextTrack(): void {
+    if (this.playlist.length === 0) return;
+    this.plIndex = (this.plIndex + 1) % this.playlist.length;
+    void this.playMusic();
+  }
+
+  prevTrack(): void {
+    if (this.playlist.length === 0) return;
+    this.plIndex = (this.plIndex - 1 + this.playlist.length) % this.playlist.length;
+    void this.playMusic();
+  }
+
   async play(key: SoundKey, overrides?: PlayOpts): Promise<void> {
     if (!this.enabled) return;
     this.ensure();
@@ -201,4 +249,3 @@ export class AudioManager {
     this.loops.clear();
   }
 }
-

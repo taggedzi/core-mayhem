@@ -41,9 +41,12 @@ Lightweight 2D canvas arena powered by Matter.js with a fixed logical canvas (19
 - Low-HP alarms are monitored in `core-mayhem/src/app/systems/audioMonitors.ts` and toggle per-side loops.
 
 ### Background Music
-- Add a track at `core-mayhem/src/assets/audio/music/main_theme.mp3` (or `.ogg`).
-- The key `music_main` is configured in `audio/config.ts` with `channel: 'music'` and `loop: true`.
-- It auto-starts at game launch and stops on teardown. Volume is controlled via `audio.setMusicVolume(v)` and is ducked automatically during loud SFX.
+- Place tracks under `core-mayhem/public/assets/music/` (mp3 or ogg). These are served statically and not bundled into JS.
+- Create `core-mayhem/public/assets/music/playlist.json` with an array of filenames, for example:
+  - `["main_theme.mp3", "battle_loop.ogg", "ambient.ogg"]`
+- On startup, the game loads the playlist and streams via an HTMLAudioElement → WebAudio graph (so ducking still works). When a track ends, it advances to the next and loops the list.
+- Fallback: if `playlist.json` is missing, it probes `/assets/music/main_theme.mp3`.
+- Control music volume via `audio.setMusicVolume(v)` and SFX ducking works as before.
 
 To change which sound plays for an event or tweak volumes/pitch, edit `core-mayhem/src/audio/config.ts` (no code changes required).
 

@@ -22,7 +22,12 @@ class AudioFacade {
   setMasterVolume(v: number): void { this.get()?.setMasterVolume(v); }
   setSfxVolume(v: number): void { this.get()?.setBusVolume('sfx', v); }
   setMusicVolume(v: number): void { this.get()?.setBusVolume('music', v); }
+  // Music playlist helpers (public assets)
+  setMusicPlaylist(urls: string[]): void { this.get()?.setMusicPlaylist(urls); }
+  playMusic(): void { void this.get()?.playMusic(); }
+  stopMusic(): void { this.get()?.stopMusic(); }
+  nextTrack(): void { this.get()?.nextTrack(); }
+  prevTrack(): void { this.get()?.prevTrack(); }
 }
 
 export const audio = new AudioFacade();
-

@@ -14,7 +14,6 @@ export type SoundKey =
   | 'core_low_hp_alarm'
   | 'core_shield_up'
   | 'core_shield_down'
-  | 'armor_increase'
-  | 'music_main';
+  | 'armor_increase';
 
 export type Channel = 'sfx' | 'music';

@@ -17,7 +17,6 @@ import core_alarm_url from '../assets/audio/core_alarm.ogg';
 import core_shield_up_url from '../assets/audio/core_sheilf_up.ogg';
 import core_shield_down_url from '../assets/audio/core_sheilf_down.ogg';
 import core_repair_url from '../assets/audio/core_repair.ogg';
-import main_theme_url from '../assets/audio/music/main_theme.mp3';
 
 export interface SoundSpec {
   src: string; // URL resolved by bundler
@@ -52,7 +51,6 @@ export const SOUNDS: SoundConfig = {
   core_shield_up: { src: core_shield_up_url, volume: 0.7, cooldownMs: 300 },
   core_shield_down: { src: core_shield_down_url, volume: 0.8, cooldownMs: 300, duckMusic: 0.6 },
   armor_increase: { src: core_repair_url, volume: 0.7, cooldownMs: 300 },
-  music_main: { src: main_theme_url, channel: 'music', volume: 0.6, loop: true },
 };
 
 // Global-level audio defaults/toggles
