@@ -1,5 +1,5 @@
-import type { Channel, SoundKey } from './keys';
 import type { SoundSpec } from './config';
+import type { Channel, SoundKey } from './keys';
 
 interface PlayOpts {
   volume?: number;
@@ -47,7 +47,7 @@ export class AudioManager {
     if (!this.enabled) return;
     if (this.ctx || !this.hasWebAudio()) return;
     try {
-      const CtxCtor = (window as any).AudioContext as { new (): Ctx };
+      const CtxCtor = (window as any).AudioContext as new () => Ctx;
       this.ctx = new CtxCtor();
       this.master = this.ctx.createGain();
       this.bus.sfx = this.ctx.createGain();
@@ -237,7 +237,7 @@ export class AudioManager {
     const rate = opts?.rate ?? 1.0;
     const detune = opts?.detune ?? 0;
     try { src.playbackRate.value = rate; } catch { /* ignore */ }
-    try { (src as any).detune && ((src as any).detune.value = detune); } catch { /* ignore */ }
+    try { if ((src as any).detune) { ((src as any).detune.value = detune); } } catch { /* ignore */ }
     const gain = this.ctx.createGain();
     const vol = Math.max(0, Math.min(1, opts?.volume ?? 1.0));
     gain.gain.value = vol;
@@ -295,7 +295,7 @@ export class AudioManager {
     const rate = overrides?.rate ?? spec.rate ?? 1.0;
     const detune = overrides?.detune ?? spec.detune ?? 0;
     try { src.playbackRate.value = rate; } catch { /* ignore */ }
-    try { (src as any).detune && ((src as any).detune.value = detune); } catch { /* ignore */ }
+    try { if ((src as any).detune) { ((src as any).detune.value = detune); } } catch { /* ignore */ }
 
     const gain = this.ctx.createGain();
     const vol = overrides?.volume ?? spec.volume ?? 1.0;

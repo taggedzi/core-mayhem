@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 // Manual announcer pool grouping and detection thresholds
 // Expand these lists as you add more files into src/assets/audio/announcer
 

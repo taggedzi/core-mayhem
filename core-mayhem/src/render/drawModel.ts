@@ -209,7 +209,12 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const getFeatures = (): { bass: number; mid: number; treble: number; flux: number } => {
       const n = audio.getMusicBinCount();
       if (n <= 0) return { bass: 0, mid: 0, treble: 0, flux: 0 };
-      const buf = ((sim as any)._musicFFT as Uint8Array) ?? ((sim as any)._musicFFT = new Uint8Array(n));
+      let fft = (sim as any)._musicFFT as Uint8Array | undefined;
+      if (!fft || fft.length !== n) {
+        fft = new Uint8Array(n);
+        (sim as any)._musicFFT = fft;
+      }
+      const buf: Uint8Array = fft;
       const lastSpec = Number((sim as any)._musicFFTLastT ?? 0);
       let updated = false;
       if (now - lastSpec > 33) { // throttle ~30Hz
@@ -226,19 +231,24 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const t0 = idx(0.55), t1 = idx(0.90);
       const avg = (a: number, b: number): number => {
         const span = Math.max(1, b - a);
-        let s = 0; for (let i = a; i < b; i++) s += buf[i] | 0;
+        let s = 0; for (let i = a; i < b; i++) { const v = buf[i] ?? 0; s += v | 0; }
         return (s / span) / 255;
       };
       // Spectral flux (positive change only), normalized
       let flux = Number((sim as any)._musicFlux ?? 0);
       if (updated) {
-        const prev = ((sim as any)._musicPrev as Uint8Array) ?? ((sim as any)._musicPrev = new Uint8Array(L));
+        let prev0 = (sim as any)._musicPrev as Uint8Array | undefined;
+        if (!prev0 || prev0.length !== L) {
+          prev0 = new Uint8Array(L);
+          (sim as any)._musicPrev = prev0;
+        }
+        const prev: Uint8Array = prev0;
         // Compute two flux measures: low (kick-ish) and chip (mid/high onset)
         const lf0 = idx(0.03), lf1 = idx(0.25);
         const cf0 = m0, cf1 = t1;
         let fLow = 0, fChip = 0;
-        for (let i = lf0; i < lf1; i++) { const d = (buf[i] | 0) - (prev[i] | 0); if (d > 0) fLow += d; }
-        for (let i = cf0; i < cf1; i++) { const d = (buf[i] | 0) - (prev[i] | 0); if (d > 0) fChip += d; }
+        for (let i = lf0; i < lf1; i++) { const d = ((buf[i] ?? 0) | 0) - ((prev[i] ?? 0) | 0); if (d > 0) fLow += d; }
+        for (let i = cf0; i < cf1; i++) { const d = ((buf[i] ?? 0) | 0) - ((prev[i] ?? 0) | 0); if (d > 0) fChip += d; }
         fLow /= Math.max(1, (lf1 - lf0)) * 255;
         fChip /= Math.max(1, (cf1 - cf0)) * 255;
         // Weight toward chiptune if mids/highs dominate over bass

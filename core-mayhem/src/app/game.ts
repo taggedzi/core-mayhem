@@ -82,7 +82,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // Preload audio assets (safe no-op in tests/non-browser)
   try { audio.preloadAll(); } catch { /* ignore */ void 0; }
   // Initialize music playlist only once; keep music playing across matches
-  (async () => {
+  void (async () => {
     try {
       if (!audio.hasPlaylist()) {
         const res = await fetch('/assets/music/playlist.json', { cache: 'no-cache' });
