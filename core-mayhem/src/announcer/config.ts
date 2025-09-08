@@ -34,17 +34,17 @@ export const ANNOUNCER_THRESHOLDS = {
   lowHPpct: 0.15, // announce danger when core <= 15% center HP
   // Absolute per-tick swing thresholds (difference in damage between sides this tick)
   // Use your analyzed stats as defaults
-  swingHigh: 80,   // top ~10%
-  swingMajor: 100, // top ~5%
-  swingExtreme: 135, // rarest ~1%
+  swingHigh: 50, // top ~10%
+  swingMajor: 60, // top ~5%
+  swingExtreme: 85, // rarest ~1%
   // Comeback thresholds (HP recovered from worst deficit so far)
-  comebackNoticeable: 3500,
-  comebackMajor: 4500,
-  comebackEpic: 5000,
+  comebackNoticeable: 200,
+  comebackMajor: 450,
+  comebackEpic: 500,
   // Legacy option if you want to also trigger on drop as fraction of center HP
   highDamagePctOfCenter: 0.12,
-  momentumShiftPctOfCenter: 0.20, // advantage sign flip where post-flip magnitude >= 20%
-  momentumWindowMs: 5000,
+  momentumShiftPctOfCenter: 0.2, // advantage sign flip where post-flip magnitude >= 20%
+  momentumWindowMs: 500,
   countdownSecs: [10, 3] as const,
 } as const;
 
@@ -122,7 +122,10 @@ export const POOLS = {
 } as const;
 
 // Event mapping to pools with priorities and per-event cooldowns
-export const EVENTS: Record<AnnounceEvent, { pools: readonly (keyof typeof POOLS)[]; priority: number; cooldownMs?: number }> = {
+export const EVENTS: Record<
+  AnnounceEvent,
+  { pools: readonly (keyof typeof POOLS)[]; priority: number; cooldownMs?: number }
+> = {
   pre_game: { pools: ['pre_game'], priority: 3, cooldownMs: 6000 },
   match_start_ready: { pools: ['ready'], priority: 5, cooldownMs: 4000 },
   match_start_go: { pools: ['go'], priority: 6, cooldownMs: 4000 },

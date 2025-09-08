@@ -101,7 +101,7 @@ export const DAMAGE = {
   cannon: 3,
   missile: 27,
   mortar: 18,
-  laserDps: 40,
+  laserDps: 45,
 } as const;
 
 // SHIELD_EFFECT (unused)
@@ -377,7 +377,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'cannon',
     accepts: ['basic', 'heavy', 'volatile'],
-    cap: 40,
+    cap: 12,
     // bottom-left position
     pos: [35, 202],
     size: [70, 27],
@@ -398,7 +398,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'missile',
     accepts: ['heavy', 'volatile'],
-    cap: 15,
+    cap: 45,
     pos: [365, 256],
     size: [70, 27],
     intake: 'top',
@@ -418,7 +418,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'mortar',
     accepts: ['basic', 'heavy'],
-    cap: 24,
+    cap: 18,
     pos: [141, 105],
     size: [70, 27],
     intake: 'top',
@@ -448,7 +448,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'debuff',
     accepts: ['basic', 'heavy', 'volatile', 'emp', 'shield'],
-    cap: 45,
+    cap: 35,
     pos: [605, 267],
     size: [70, 27],
     intake: 'top',
