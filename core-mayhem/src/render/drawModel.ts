@@ -402,6 +402,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           widths[i] = w;
           const a0 = aC - span * 0.5;
           const a1 = aC + span * 0.5;
+          const glow = pulse > 0.85 ? '#ffffff' : color;
           cmds.push({
             kind: 'arc',
             cx,
@@ -415,7 +416,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
             alpha: MESMER.arcs.alpha * fade * quiet * Math.min(2.0, (0.35 + 1.1 * bMid + 1.6 * pulse + 0.5 * bTreble + 0.3 * env) * (1 - 0.28 * busy)),
             composite: 'lighter',
             shadowBlur: MESMER.arcs.blur * (1 + 1.2 * env) * (1 - 0.5 * busy),
-            shadowColor: color,
+            shadowColor: glow,
           });
         }
       };

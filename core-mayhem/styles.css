@@ -288,3 +288,15 @@ button:disabled {
 .audio-popover input[type="range"] {
   width: 140px;
 }
+.audio-popover .audio-row.buttons {
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.audio-popover .audio-row select {
+  width: 140px;
+  padding: 4px;
+  background: #0f1e3f;
+  border: 1px solid #2b3f72;
+  color: #e6f0ff;
+  border-radius: 4px;
+}

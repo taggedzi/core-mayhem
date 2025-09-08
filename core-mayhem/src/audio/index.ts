@@ -28,6 +28,8 @@ class AudioFacade {
   stopMusic(): void { this.get()?.stopMusic(); }
   nextTrack(): void { this.get()?.nextTrack(); }
   prevTrack(): void { this.get()?.prevTrack(); }
+  hasPlaylist(): boolean { return this.get()?.hasPlaylist() ?? false; }
+  isMusicPlaying(): boolean { return this.get()?.isMusicPlaying() ?? false; }
   getMusicBinCount(): number { return this.get()?.getMusicBinCount() ?? 0; }
   getMusicSpectrum(out: Uint8Array): boolean { return this.get()?.getMusicSpectrum(out) ?? false; }
 }

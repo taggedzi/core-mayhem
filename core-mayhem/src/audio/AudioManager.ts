@@ -178,6 +178,14 @@ export class AudioManager {
     void this.playMusic();
   }
 
+  hasPlaylist(): boolean {
+    return this.playlist.length > 0;
+  }
+
+  isMusicPlaying(): boolean {
+    return !!this.musicEl && !this.musicEl.paused;
+  }
+
   getMusicBinCount(): number {
     return this.musicAnalyser?.frequencyBinCount ?? 0;
   }
