@@ -5,6 +5,7 @@ import { initStats } from './app/stats';
 import { updateHUD } from './render/hud';
 import { initHelpOverlay, openHelpOverlay } from './ui/help';
 import { initStatsOverlay, openStatsOverlay } from './ui/stats';
+import { initAudioControls } from './ui/audioControls';
 
 // ——— Types ———
 type StopFn = () => void;
@@ -169,6 +170,7 @@ function init(): void {
   // Initialize help overlay after DOM is ready
   initHelpOverlay();
   initStatsOverlay();
+  initAudioControls();
 }
 
 // Ensure DOM elements exist before wiring
