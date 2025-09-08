@@ -51,7 +51,7 @@ export class AudioManager {
       // music analyser for visualizers
       try {
         this.musicAnalyser = this.ctx.createAnalyser();
-        this.musicAnalyser.fftSize = 2048;
+        this.musicAnalyser.fftSize = 1024;
         this.musicAnalyser.smoothingTimeConstant = 0.85;
         this.musicAnalyser.minDecibels = -90;
         this.musicAnalyser.maxDecibels = -10;

@@ -210,7 +210,11 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const n = audio.getMusicBinCount();
       if (n <= 0) return { bass: 0, mid: 0, treble: 0 };
       const buf = ((sim as any)._musicFFT as Uint8Array) ?? ((sim as any)._musicFFT = new Uint8Array(n));
-      audio.getMusicSpectrum(buf);
+      const lastSpec = Number((sim as any)._musicFFTLastT ?? 0);
+      if (now - lastSpec > 33) { // throttle ~30Hz
+        audio.getMusicSpectrum(buf);
+        (sim as any)._musicFFTLastT = now;
+      }
       const L = buf.length;
       // Fractional ranges (approximate): bass 0..8%, mid 8..40%, treble 50..90%
       const i0 = 0, i1 = Math.max(1, Math.floor(L * 0.08));
@@ -301,7 +305,11 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       if ((MESMER as any).stars?.enabled !== false) {
         const J = MESMER.stars.jitter;
         const baseA = MESMER.stars.alpha;
+        const busy = 1 - quiet;
+        const step = busy > 0.66 ? 3 : busy > 0.33 ? 2 : 1; // draw fewer stars when busy
+        let idx = 0;
         for (const s of m.stars as any[]) {
+          if ((idx++ % step) !== 0) continue;
           const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
           const boost = Math.min(2.5, 0.6 + 1.6 * bTreble + 0.8 * env);
           const aS = baseA * tw * fade * boost;
@@ -314,7 +322,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
               fill: s.col,
               alpha: aS,
               composite: 'lighter',
-              shadowBlur: Math.max(6, 8 + Math.floor(16 * bTreble + 24 * env)),
+              shadowBlur: Math.max(4, (8 + Math.floor(16 * bTreble + 24 * env)) * (1 - 0.6 * busy)),
               shadowColor: s.col,
             });
         }
@@ -325,15 +333,16 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const n = MESMER.arcs.countPerSide;
         const baseR = Math.max(1, (MESMER as any).arcs.baseR as number);
         const gap = Math.max(1, (MESMER as any).arcs.gapPx as number);
+        const busy = 1 - quiet;
         for (let i = 0; i < n; i++) {
           const r = baseR + i * gap;
-          const w = (0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1))) * (1.0 + 2.2 * bBass + 1.0 * env);
+          const w = (0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1))) * (1.0 + (2.2 * bBass + 1.0 * env) * (1 - 0.35 * busy));
           // Aim arc toward the midline for both sides so visuals mirror.
           const base = cx < W * 0.5 ? 0 : Math.PI; // left→right or right→left
           const drift = 0.6 * Math.sin(now * 0.00025 + i * 0.7);
           const aC = base + drift;
           // Stronger music-driven span: favor mid-range with some bass + overall energy
-          let musicSpan = 1.2 * bMid + 0.6 * bBass + 0.5 * env; // up to ~2.3 at peaks (pre-clamp)
+          let musicSpan = (1.2 * bMid + 0.6 * bBass + 0.5 * env) * (1 - 0.4 * busy); // reduce span inflation when busy
           musicSpan = Math.min(1.8, musicSpan); // cap to avoid full circles
           let span = 0.8 + 0.6 * Math.sin(now * 0.0003 + i * 1.2) + musicSpan;
           span = Math.min(3.0, span); // hard cap to keep arcs readable
@@ -349,9 +358,9 @@ export function toDrawCommands(now: number = performance.now()): Scene {
             stroke: color,
             lineWidth: MESMER.arcs.width * w,
             // Arcs fade with global fade, current quietness, and music energy
-            alpha: MESMER.arcs.alpha * fade * quiet * Math.min(2.0, 0.6 + 1.4 * bMid + 0.8 * env),
+            alpha: MESMER.arcs.alpha * fade * quiet * Math.min(2.0, (0.6 + 1.4 * bMid + 0.8 * env) * (1 - 0.25 * busy)),
             composite: 'lighter',
-            shadowBlur: MESMER.arcs.blur * (1 + 1.2 * env),
+            shadowBlur: MESMER.arcs.blur * (1 + 1.2 * env) * (1 - 0.5 * busy),
             shadowColor: color,
           });
         }

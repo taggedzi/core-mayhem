@@ -305,12 +305,12 @@ export const MESMER = {
   },
   arcs: {
     enabled: true,
-    countPerSide: 3,
-    baseR: 120,
-    gapPx: 32,
+    countPerSide: 2,
+    baseR: 193,
+    gapPx: 48,
     width: 5,
     alpha: 0.1,
-    blur: 10,
+    blur: 0,
   },
 } as const;
 
