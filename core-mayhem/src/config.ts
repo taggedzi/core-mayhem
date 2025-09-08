@@ -138,9 +138,9 @@ export const SHIELD_VFX = {
 } as const;
 
 export const CORE_HP = {
-  segments: 200,
+  segments: 100,
   center: 500,
-  shieldMax: 50,
+  shieldMax: 1200,
 } as const;
 
 export const CORE_SEGMENTS = 12;
@@ -378,7 +378,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'cannon',
     accepts: ['basic', 'heavy', 'volatile'],
-    cap: 18,
+    cap: 28,
     // bottom-left position
     pos: [35, 202],
     size: [70, 27],
@@ -389,7 +389,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'laser',
     accepts: ['basic', 'emp'],
-    cap: 25,
+    cap: 35,
     pos: [225, 202],
     size: [70, 27],
     intake: 'top',
@@ -399,7 +399,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'missile',
     accepts: ['heavy', 'volatile'],
-    cap: 35,
+    cap: 45,
     pos: [365, 256],
     size: [70, 27],
     intake: 'top',
@@ -409,7 +409,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'buff',
     accepts: ['basic', 'heavy', 'emp', 'shield', 'repair'],
-    cap: 40,
+    cap: 50,
     pos: [500, 289],
     size: [70, 27],
     intake: 'top',
@@ -419,7 +419,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'mortar',
     accepts: ['basic', 'heavy'],
-    cap: 20,
+    cap: 30,
     pos: [141, 105],
     size: [70, 27],
     intake: 'top',
@@ -429,7 +429,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'shield',
     accepts: ['emp', 'shield'],
-    cap: 35,
+    cap: 40,
     pos: [289, 105],
     size: [70, 27],
     intake: 'top',
@@ -439,7 +439,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'repair',
     accepts: ['repair', 'heavy'],
-    cap: 30,
+    cap: 40,
     pos: [436, 181],
     size: [70, 27],
     intake: 'top',
@@ -449,7 +449,7 @@ export const BINS_LEFT: readonly BinSpec[] = [
   {
     id: 'debuff',
     accepts: ['basic', 'heavy', 'volatile', 'emp', 'shield'],
-    cap: 35,
+    cap: 45,
     pos: [605, 267],
     size: [70, 27],
     intake: 'top',
@@ -460,8 +460,8 @@ export const BINS_LEFT: readonly BinSpec[] = [
 
 // How shields behave (ablative pool)
 export const SHIELD = {
-  startHP: 200,
-  maxHP: 400,
+  startHP: 1200,
+  maxHP: 1200,
   onPickup: 60,
   projectileFactor: 1.0,
   laserPenetration: 0.35,
@@ -485,7 +485,7 @@ export const PIPES = {
 // Procedural pins/rotors (absolute integer parameters)
 export const PINS = {
   width: 450, // pin-field width in px
-  startY: 800, // bottom-left Y to first row center (moved down ~20px)
+  startY: 780, // bottom-left Y to first row center (moved down ~20px)
   rows: 9,
   sx: 42, // horizontal spacing
   sy: 35, // vertical spacing
