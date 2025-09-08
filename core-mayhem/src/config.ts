@@ -1,7 +1,7 @@
 import type { Settings } from './types';
 
 // Logical canvas size (world units); rendering scales to fit screen
-export const CANVAS = { width: 1920, height: 1080 } as const;
+export const CANVAS = { width: 1920, height: 1039 } as const;
 
 export const DEFAULTS: Settings = {
   seed: Date.now() | 0,
