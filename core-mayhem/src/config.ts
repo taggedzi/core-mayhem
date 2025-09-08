@@ -301,16 +301,16 @@ export const MESMER = {
     alpha: 0.3,
     jitter: 0.004,
     sizeMin: 1,
-    sizeMax: 2,
+    sizeMax: 3,
   },
   arcs: {
     enabled: true,
-    countPerSide: 2,
-    baseR: 194,
-    gapPx: 59,
-    width: 10,
-    alpha: 0.06,
-    blur: 20,
+    countPerSide: 3,
+    baseR: 120,
+    gapPx: 32,
+    width: 5,
+    alpha: 0.1,
+    blur: 10,
   },
 } as const;
 

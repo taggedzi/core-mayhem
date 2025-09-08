@@ -12,6 +12,7 @@ import { MESMER } from '../config';
 import { LIGHT_PANEL } from '../config';
 import { BADGES } from '../config';
 import { sim } from '../state';
+import { audio } from '../audio';
 
 import { colorForAmmo } from './colors';
 
@@ -204,6 +205,40 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Mesmer background (subtle, additive)
   if ((MESMER as any).enabled) {
+    // Music-reactive bands (lazy-inited)
+    const getBands = (): { bass: number; mid: number; treble: number } => {
+      const n = audio.getMusicBinCount();
+      if (n <= 0) return { bass: 0, mid: 0, treble: 0 };
+      const buf = ((sim as any)._musicFFT as Uint8Array) ?? ((sim as any)._musicFFT = new Uint8Array(n));
+      audio.getMusicSpectrum(buf);
+      const L = buf.length;
+      // Fractional ranges (approximate): bass 0..8%, mid 8..40%, treble 50..90%
+      const i0 = 0, i1 = Math.max(1, Math.floor(L * 0.08));
+      const j0 = Math.max(i1, Math.floor(L * 0.08)), j1 = Math.max(j0 + 1, Math.floor(L * 0.4));
+      const k0 = Math.max(j1, Math.floor(L * 0.5)), k1 = Math.max(k0 + 1, Math.floor(L * 0.9));
+      const avg = (a: number, b: number): number => {
+        const span = Math.max(1, b - a);
+        let s = 0; for (let i = a; i < b; i++) s += buf[i] | 0;
+        return (s / span) / 255;
+      };
+      return { bass: avg(i0, i1), mid: avg(j0, j1), treble: avg(k0, k1) };
+    };
+    const bands = getBands();
+    const sens = Math.max(0, Math.min(2, (sim as any).vizSens ?? 1));
+    const bBass = Math.min(1.5, bands.bass * sens);
+    const bMid = Math.min(1.5, bands.mid * sens);
+    const bTreble = Math.min(1.5, bands.treble * sens);
+    // Weighted overall energy with fast attack / slower decay envelope for visible pulses
+    const energyRaw = Math.min(1, 0.5 * bBass + 0.35 * bMid + 0.15 * bTreble);
+    const eLastT = ((sim as any).musicEnvLastT as number) || now;
+    const eDt = Math.max(1, now - eLastT);
+    const atk = 1 - Math.exp(-eDt / 60);   // ~60ms attack
+    const dec = 1 - Math.exp(-eDt / 420);  // ~420ms decay
+    let env = ((sim as any).musicEnv as number) ?? 0;
+    if (energyRaw > env) env += (energyRaw - env) * atk; else env += (energyRaw - env) * dec;
+    env = Math.max(0, Math.min(1.5, env));
+    (sim as any).musicEnv = env;
+    (sim as any).musicEnvLastT = now;
     const mode =
       ((sim as any).mesmerMode as 'off' | 'low' | 'always' | undefined) ??
       (MESMER as any).mode ??
@@ -262,23 +297,24 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         m._w = W;
         m._h = H;
       }
-      // draw stars (twinkle)
+      // draw stars (twinkle, react to treble)
       if ((MESMER as any).stars?.enabled !== false) {
         const J = MESMER.stars.jitter;
         const baseA = MESMER.stars.alpha;
         for (const s of m.stars as any[]) {
           const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
-          const aS = baseA * tw * fade;
+          const boost = Math.min(2.5, 0.6 + 1.6 * bTreble + 0.8 * env);
+          const aS = baseA * tw * fade * boost;
           if (aS > 0.002)
             cmds.push({
               kind: 'circle',
               x: s.x,
               y: s.y,
-              r: s.r,
+              r: s.r + Math.floor(1 + 2 * env),
               fill: s.col,
               alpha: aS,
               composite: 'lighter',
-              shadowBlur: 8,
+              shadowBlur: Math.max(6, 8 + Math.floor(16 * bTreble + 24 * env)),
               shadowColor: s.col,
             });
         }
@@ -291,12 +327,16 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const gap = Math.max(1, (MESMER as any).arcs.gapPx as number);
         for (let i = 0; i < n; i++) {
           const r = baseR + i * gap;
-          const w = 0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1));
+          const w = (0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1))) * (1.0 + 2.2 * bBass + 1.0 * env);
           // Aim arc toward the midline for both sides so visuals mirror.
           const base = cx < W * 0.5 ? 0 : Math.PI; // left→right or right→left
           const drift = 0.6 * Math.sin(now * 0.00025 + i * 0.7);
           const aC = base + drift;
-          const span = 0.9 + 0.5 * Math.sin(now * 0.0003 + i * 1.2);
+          // Stronger music-driven span: favor mid-range with some bass + overall energy
+          let musicSpan = 1.2 * bMid + 0.6 * bBass + 0.5 * env; // up to ~2.3 at peaks (pre-clamp)
+          musicSpan = Math.min(1.8, musicSpan); // cap to avoid full circles
+          let span = 0.8 + 0.6 * Math.sin(now * 0.0003 + i * 1.2) + musicSpan;
+          span = Math.min(3.0, span); // hard cap to keep arcs readable
           const a0 = aC - span * 0.5;
           const a1 = aC + span * 0.5;
           cmds.push({
@@ -308,10 +348,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
             a1,
             stroke: color,
             lineWidth: MESMER.arcs.width * w,
-            // Arcs fade with both global fade and current quietness (less visible when busy)
-            alpha: MESMER.arcs.alpha * fade * quiet,
+            // Arcs fade with global fade, current quietness, and music energy
+            alpha: MESMER.arcs.alpha * fade * quiet * Math.min(2.0, 0.6 + 1.4 * bMid + 0.8 * env),
             composite: 'lighter',
-            shadowBlur: MESMER.arcs.blur,
+            shadowBlur: MESMER.arcs.blur * (1 + 1.2 * env),
             shadowColor: color,
           });
         }

@@ -24,6 +24,7 @@ export class AudioManager {
   // Streaming music via media element for large files
   private musicEl: HTMLAudioElement | null = null;
   private musicNode: MediaElementAudioSourceNode | null = null;
+  private musicAnalyser: AnalyserNode | null = null;
   private playlist: string[] = [];
   private plIndex = 0;
 
@@ -47,6 +48,14 @@ export class AudioManager {
       this.master = this.ctx.createGain();
       this.bus.sfx = this.ctx.createGain();
       this.bus.music = this.ctx.createGain();
+      // music analyser for visualizers
+      try {
+        this.musicAnalyser = this.ctx.createAnalyser();
+        this.musicAnalyser.fftSize = 2048;
+        this.musicAnalyser.smoothingTimeConstant = 0.85;
+        this.musicAnalyser.minDecibels = -90;
+        this.musicAnalyser.maxDecibels = -10;
+      } catch { /* ignore */ }
       this.master.gain.value = this.defaults.masterVolume;
       (this.bus.sfx as GainNode).gain.value = this.defaults.sfxVolume;
       (this.bus.music as GainNode).gain.value = this.defaults.musicVolume;
@@ -137,7 +146,14 @@ export class AudioManager {
       this.musicEl.loop = false;
       this.musicEl.addEventListener('ended', () => this.nextTrack());
       try { this.musicNode = this.ctx.createMediaElementSource(this.musicEl); } catch { /* ignore */ }
-      if (this.musicNode) this.musicNode.connect(this.bus.music);
+      if (this.musicNode) {
+        if (this.musicAnalyser) {
+          this.musicNode.connect(this.musicAnalyser);
+          this.musicAnalyser.connect(this.bus.music);
+        } else {
+          this.musicNode.connect(this.bus.music);
+        }
+      }
     }
     this.musicEl!.src = url;
     try { await this.musicEl!.play(); } catch { /* will resume on user gesture */ }
@@ -160,6 +176,20 @@ export class AudioManager {
     if (this.playlist.length === 0) return;
     this.plIndex = (this.plIndex - 1 + this.playlist.length) % this.playlist.length;
     void this.playMusic();
+  }
+
+  getMusicBinCount(): number {
+    return this.musicAnalyser?.frequencyBinCount ?? 0;
+  }
+
+  getMusicSpectrum(out: Uint8Array): boolean {
+    if (!this.musicAnalyser) return false;
+    try {
+      this.musicAnalyser.getByteFrequencyData(out);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async play(key: SoundKey, overrides?: PlayOpts): Promise<void> {
