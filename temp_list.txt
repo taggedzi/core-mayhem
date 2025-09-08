@@ -1,0 +1,77 @@
+
+
+Pre-match
+* Welcome…
+* The battle of the century…
+
+Game start
+* Ready (two variations)
+* Engage (2)
+* Get ready
+* Who will win?
+* Triumph or die
+* Let’s rock…
+* Go for broke…
+* This should be good…
+* May the best fighter win
+
+Start
+* Go! (3)
+* Fight! (3)
+* Showtime!
+* En garde!
+
+Stop
+* Game (3)
+* Finished (2)
+* Round over
+* Round complete
+* Round set
+* Times up (2)
+* Times over
+* Match complete
+* Match over
+
+Continue, Countdown, and Game Over
+* Countdown from 3 (two variations)
+* Game Over (2)
+
+Match dialogue
+* Wow!
+* Amazing!
+* You’re incredible!
+* I’ve never seen moves like this
+* Sick
+* Alright…
+* Not bad
+* Danger! (3)
+
+Combo
+* First blood (2)
+* Untouchable
+
+Rounds (two variations for each round)
+* Round 1
+* Round 2
+* Round 3
+* Round 4
+* Round 5
+* Round 6
+* Round 7
+* Final round
+* Final match
+
+* You win!(2)
+* Perfect! (2) 
+* Excellent! (2)
+* Great! (2)
+* That was close…
+
+
+New challenger (For when character/champions are added -> Future work)
+* Get ready for a new challenger
+* A new challenger approaches
+* Here comes a new challenger
+* A new challenger
+* Get ready for the next fight
+* Here comes a clown

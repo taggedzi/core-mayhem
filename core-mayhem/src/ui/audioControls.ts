@@ -1,9 +1,10 @@
 import { audio } from '../audio';
 import { AUDIO_DEFAULTS } from '../audio/config';
 import { sim } from '../state';
-import { audio } from '../audio';
+import { announcerControls } from '../announcer';
 
-const K = { sfx: 'cm_sfxVolume', music: 'cm_musicVolume', viz: 'cm_vizSens', beat: 'cm_beatSens', chip: 'cm_chipMode' } as const;
+const K = { sfx: 'cm_sfxVolume', music: 'cm_musicVolume', viz: 'cm_vizSens', beat: 'cm_beatSens', chip: 'cm_chipMode',
+  annVol: 'cm_announcerVol', annDuckM: 'cm_annDuckMusic', annDuckS: 'cm_annDuckSfx', annRel: 'cm_annDuckRelease', annGap: 'cm_annMinGap', annOn: 'cm_annEnabled' } as const;
 
 function load(key: string, fallback: number): number {
   try {
@@ -76,6 +77,13 @@ export function initAudioControls(): void {
 
   const sfx0 = load(K.sfx, (AUDIO_DEFAULTS as any).sfxVolume ?? 1);
   const music0 = load(K.music, (AUDIO_DEFAULTS as any).musicVolume ?? 0.6);
+  const annSettings = announcerControls.getSettings();
+  const annVol0 = load(K.annVol, Math.min(1, Math.max(0, Number(annSettings.announcerVolume ?? 0.9))));
+  const annDuckM0 = load(K.annDuckM, Math.min(1, Math.max(0, Number(annSettings.duckMusic ?? 0.7))));
+  const annDuckS0 = load(K.annDuckS, Math.min(1, Math.max(0, Number(annSettings.duckSfx ?? 0.6))));
+  const annRel0 = load(K.annRel, Math.min(2, Math.max(0.1, Number((annSettings.duckReleaseMs ?? 600) / 1000))));
+  const annGap0 = load(K.annGap, Math.min(8, Math.max(2, Number((annSettings.minGapMs ?? 5000) / 1000))));
+  const annOn0 = ((): boolean => { try { return (localStorage.getItem(K.annOn) ?? '1') === '1'; } catch { return true; } })();
   const viz0 = load(K.viz, 1);
   const beat0 = load(K.beat, 1);
   const chip0 = ((): string => {
@@ -92,11 +100,29 @@ export function initAudioControls(): void {
   ], chip0);
   const btns = buttonRow();
 
+  // Announcer controls
+  const elAnnToggleWrap = document.createElement('label');
+  elAnnToggleWrap.className = 'audio-row';
+  elAnnToggleWrap.textContent = 'Announcer ';
+  const elAnnToggle = document.createElement('input');
+  elAnnToggle.type = 'checkbox'; elAnnToggle.checked = annOn0;
+  elAnnToggle.id = 'annEnabled';
+  elAnnToggleWrap.appendChild(elAnnToggle);
+  pop.appendChild(elAnnToggleWrap);
+  const elAnnVol = row('Announcer Vol', 'annVol', annVol0, { min: 0, max: 1, step: 0.05 });
+  const elAnnDuckM = row('Duck Music', 'annDuckM', annDuckM0, { min: 0, max: 1, step: 0.05 });
+  const elAnnDuckS = row('Duck SFX', 'annDuckS', annDuckS0, { min: 0, max: 1, step: 0.05 });
+  const elAnnRel = row('Duck Release (s)', 'annRel', annRel0, { min: 0.1, max: 2, step: 0.05 });
+  const elAnnGap = row('VO Min Gap (s)', 'annGap', annGap0, { min: 2, max: 8, step: 0.5 });
+
   document.body.appendChild(pop);
 
   // Apply initial volumes
   try { audio.setSfxVolume(sfx0); } catch { /* ignore */ }
   try { audio.setMusicVolume(music0); } catch { /* ignore */ }
+  try { audio.setAnnouncerVolume(annVol0); } catch { /* ignore */ }
+  try { announcerControls.updateSettings({ duckMusic: annDuckM0, duckSfx: annDuckS0, duckReleaseMs: Math.round(annRel0 * 1000), minGapMs: Math.round(annGap0 * 1000), announcerVolume: annVol0 }); } catch { /* ignore */ }
+  try { announcerControls.setEnabled(annOn0); } catch { /* ignore */ }
   // Apply initial visualizer sensitivity
   (sim as any).vizSens = viz0;
   (sim as any).beatSens = beat0;
@@ -114,6 +140,30 @@ export function initAudioControls(): void {
   };
   elSfx.addEventListener('input', onSfx);
   elMusic.addEventListener('input', onMusic);
+  const onAnnVol = (): void => {
+    const v = Math.min(1, Math.max(0, Number(elAnnVol.value)));
+    try { audio.setAnnouncerVolume(v); } catch { /* ignore */ }
+    announcerControls.updateSettings({ announcerVolume: v });
+    save(K.annVol, v);
+  };
+  elAnnVol.addEventListener('input', onAnnVol);
+  const onAnnCommon = (): void => {
+    const dM = Math.min(1, Math.max(0, Number(elAnnDuckM.value)));
+    const dS = Math.min(1, Math.max(0, Number(elAnnDuckS.value)));
+    const rel = Math.round(Math.min(2, Math.max(0.1, Number(elAnnRel.value))) * 1000);
+    const gap = Math.round(Math.min(8, Math.max(2, Number(elAnnGap.value))) * 1000);
+    announcerControls.updateSettings({ duckMusic: dM, duckSfx: dS, duckReleaseMs: rel, minGapMs: gap });
+    save(K.annDuckM, dM); save(K.annDuckS, dS); save(K.annRel, rel / 1000); save(K.annGap, gap / 1000);
+  };
+  elAnnDuckM.addEventListener('input', onAnnCommon);
+  elAnnDuckS.addEventListener('input', onAnnCommon);
+  elAnnRel.addEventListener('input', onAnnCommon);
+  elAnnGap.addEventListener('input', onAnnCommon);
+  elAnnToggle.addEventListener('change', () => {
+    const on = !!(elAnnToggle as HTMLInputElement).checked;
+    announcerControls.setEnabled(on);
+    try { localStorage.setItem(K.annOn, on ? '1' : '0'); } catch { /* ignore */ }
+  });
   elViz.addEventListener('input', () => {
     const v = Math.min(2, Math.max(0, Number(elViz.value)));
     (sim as any).vizSens = v;

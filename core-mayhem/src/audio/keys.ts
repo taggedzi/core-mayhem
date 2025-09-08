@@ -16,4 +16,4 @@ export type SoundKey =
   | 'core_shield_down'
   | 'armor_increase';
 
-export type Channel = 'sfx' | 'music';
+export type Channel = 'sfx' | 'music' | 'announcer';

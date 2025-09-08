@@ -3,6 +3,7 @@ import { updateScoreboard } from '../../render/score';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
 import { recordMatchEnd } from '../stats';
+import { announcer } from '../../announcer';
 
 function isDead(core: any): boolean {
   return (core?.centerHP | 0) <= 0;
@@ -25,6 +26,14 @@ export function declareWinner(winner: Side | 0): void {
     recordMatchEnd();
   } catch {
     // ignore stats errors
+  }
+
+  // Announcer: end of match
+  try {
+    if (winner === 0) announcer.trigger('match_end_generic');
+    else announcer.trigger('match_end_win');
+  } catch {
+    // ignore announcer errors
   }
 
   if (GAMEOVER.autoRestart && !(sim as any).restartTO) {

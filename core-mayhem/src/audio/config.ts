@@ -59,6 +59,7 @@ export const AUDIO_DEFAULTS = {
   masterVolume: 0.9,
   sfxVolume: 1.0,
   musicVolume: 0.6,
+  announcerVolume: 0.9,
   duckReleaseMs: 600, // recovery time back to full music volume
   lowHPThresholdPct: 0.15, // alarm threshold of center HP
 } as const;

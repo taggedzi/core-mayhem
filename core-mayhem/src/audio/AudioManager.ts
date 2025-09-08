@@ -13,13 +13,17 @@ type Ctx = AudioContext;
 export class AudioManager {
   private ctx: Ctx | null = null;
   private master: GainNode | null = null;
-  private bus: Record<Channel, GainNode | null> = { sfx: null, music: null };
+  private bus: Record<Channel, GainNode | null> = { sfx: null, music: null, announcer: null };
   private buffers = new Map<string, AudioBuffer>();
   private lastPlayAt = new Map<SoundKey, number>();
   private instances = new Map<SoundKey, number>();
   private loops = new Map<string, { src: AudioBufferSourceNode; gain: GainNode }>();
-  private musicDuckTarget = 1.0; // 0..1
-  private musicBaseGain = 1.0;
+  private baseGain: Record<Channel, number> = { sfx: 1.0, music: 1.0, announcer: 1.0 };
+  private chanNodes: Record<Channel, Set<{ src: AudioBufferSourceNode; gain: GainNode }>> = {
+    sfx: new Set(),
+    music: new Set(),
+    announcer: new Set(),
+  };
   private enabled = true;
   // Streaming music via media element for large files
   private musicEl: HTMLAudioElement | null = null;
@@ -30,7 +34,7 @@ export class AudioManager {
 
   constructor(
     private sounds: Record<SoundKey, SoundSpec>,
-    private defaults: { masterVolume: number; sfxVolume: number; musicVolume: number; duckReleaseMs: number; enabled: boolean },
+    private defaults: { masterVolume: number; sfxVolume: number; musicVolume: number; announcerVolume: number; duckReleaseMs: number; enabled: boolean },
   ) {
     this.enabled = !!defaults.enabled;
   }
@@ -48,6 +52,7 @@ export class AudioManager {
       this.master = this.ctx.createGain();
       this.bus.sfx = this.ctx.createGain();
       this.bus.music = this.ctx.createGain();
+      this.bus.announcer = this.ctx.createGain();
       // music analyser for visualizers
       try {
         this.musicAnalyser = this.ctx.createAnalyser();
@@ -59,10 +64,14 @@ export class AudioManager {
       this.master.gain.value = this.defaults.masterVolume;
       (this.bus.sfx as GainNode).gain.value = this.defaults.sfxVolume;
       (this.bus.music as GainNode).gain.value = this.defaults.musicVolume;
-      this.musicBaseGain = this.defaults.musicVolume;
+      (this.bus.announcer as GainNode).gain.value = this.defaults.announcerVolume ?? 0.9;
+      this.baseGain.sfx = this.defaults.sfxVolume;
+      this.baseGain.music = this.defaults.musicVolume;
+      this.baseGain.announcer = this.defaults.announcerVolume ?? 0.9;
       // wire graph
       (this.bus.sfx as GainNode).connect(this.master!);
       (this.bus.music as GainNode).connect(this.master!);
+      (this.bus.announcer as GainNode).connect(this.master!);
       this.master.connect(this.ctx.destination);
       // attempt to resume on user gesture
       const resume = (): void => {
@@ -110,7 +119,7 @@ export class AudioManager {
     this.ensure();
     const g = this.bus[ch];
     if (g) g.gain.value = Math.max(0, Math.min(1, v));
-    if (ch === 'music') this.musicBaseGain = Math.max(0, Math.min(1, v));
+    this.baseGain[ch] = Math.max(0, Math.min(1, v));
   }
 
   // Temporarily duck music gain; recovers over defaults.duckReleaseMs
@@ -121,11 +130,28 @@ export class AudioManager {
     const f = Math.max(0, Math.min(1, factor));
     const rel = Math.max(1, releaseMs ?? this.defaults.duckReleaseMs);
     const now = this.ctx.currentTime;
-    const target = this.musicBaseGain * f;
+    const target = this.baseGain.music * f;
     music.gain.cancelScheduledValues(now);
     music.gain.setValueAtTime(music.gain.value, now);
     music.gain.linearRampToValueAtTime(target, now + 0.04);
-    music.gain.linearRampToValueAtTime(this.musicBaseGain, now + rel / 1000);
+    music.gain.linearRampToValueAtTime(this.baseGain.music, now + rel / 1000);
+  }
+
+  // Generic bus duck; recovers over defaults.duckReleaseMs
+  duckBus(ch: Exclude<Channel, 'announcer'>, factor: number, releaseMs?: number): void {
+    // Do not duck announcer via this method; announcer drives the ducking
+    this.ensure();
+    const g = this.bus[ch];
+    if (!g || !this.ctx) return;
+    const f = Math.max(0, Math.min(1, factor));
+    const rel = Math.max(1, releaseMs ?? this.defaults.duckReleaseMs);
+    const now = this.ctx.currentTime;
+    const base = this.baseGain[ch];
+    const target = base * f;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now);
+    g.gain.linearRampToValueAtTime(target, now + 0.04);
+    g.gain.linearRampToValueAtTime(base, now + rel / 1000);
   }
 
   // ------- Music playlist (public/assets) using media element -------
@@ -138,7 +164,7 @@ export class AudioManager {
   async playMusic(): Promise<void> {
     this.ensure();
     if (!this.ctx || !this.bus.music || this.playlist.length === 0) return;
-    const url = this.playlist[this.plIndex % this.playlist.length];
+    const url: string = this.playlist[this.plIndex % this.playlist.length] as string;
     if (!this.musicEl) {
       this.musicEl = new Audio();
       this.musicEl.preload = 'auto';
@@ -197,6 +223,50 @@ export class AudioManager {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  // Play an arbitrary URL (used by announcer); cached and routed to a channel
+  async playUrl(url: string, opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number }): Promise<void> {
+    if (!this.enabled) return;
+    this.ensure();
+    if (!this.ctx) return;
+    const buf = await this.loadBuffer(url);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const rate = opts?.rate ?? 1.0;
+    const detune = opts?.detune ?? 0;
+    try { src.playbackRate.value = rate; } catch { /* ignore */ }
+    try { (src as any).detune && ((src as any).detune.value = detune); } catch { /* ignore */ }
+    const gain = this.ctx.createGain();
+    const vol = Math.max(0, Math.min(1, opts?.volume ?? 1.0));
+    gain.gain.value = vol;
+    const ch = (opts?.channel ?? 'sfx') as Channel;
+    const bus = this.bus[ch as Channel];
+    if (!bus) return;
+    src.connect(gain);
+    gain.connect(bus);
+    // track nodes per channel for interruption
+    this.chanNodes[ch].add({ src, gain });
+    src.start();
+    src.addEventListener('ended', () => {
+      try { src.disconnect(); gain.disconnect(); } catch { /* ignore */ }
+      // remove from tracking set
+      try {
+        for (const pair of Array.from(this.chanNodes[ch])) {
+          if (pair.src === src) this.chanNodes[ch].delete(pair);
+        }
+      } catch { /* ignore */ }
+    });
+  }
+
+  stopChannel(ch: Channel): void {
+    const set = this.chanNodes[ch];
+    if (!set || set.size === 0) return;
+    for (const pair of Array.from(set)) {
+      try { pair.src.stop(); } catch { /* ignore */ }
+      try { pair.src.disconnect(); pair.gain.disconnect(); } catch { /* ignore */ }
+      set.delete(pair);
     }
   }
 

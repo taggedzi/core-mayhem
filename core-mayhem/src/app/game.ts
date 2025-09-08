@@ -26,6 +26,7 @@ import { runPhysics } from './systems/physics';
 import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
 import { runAudioMonitors } from './systems/audioMonitors';
+import { runAnnouncer } from './systems/announcer';
 import { audio } from '../audio';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
@@ -191,6 +192,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     runSpawn(scaled);
     runTriggers();
     runAudioMonitors();
+    runAnnouncer();
 
     // did someone die this frame?
     maybeEndMatch();
