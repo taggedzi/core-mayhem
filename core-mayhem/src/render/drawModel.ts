@@ -1666,36 +1666,39 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const winner = (sim.winner as -1 | 1 | 0) ?? 0;
     const msg = winner === 0 ? 'STALEMATE' : winner === -1 ? 'LEFT WINS' : 'RIGHT WINS';
     const t0 = sim.winnerAt ?? now;
-    const remainMs = Math.max(0, GAMEOVER.bannerMs - (now - t0));
+    const delayMs = (GAMEOVER as any).bannerDelayMs ?? 0;
+    if (now - t0 >= delayMs) {
+      const remainMs = Math.max(0, GAMEOVER.bannerMs - (now - t0));
     const remainSec = Math.ceil(remainMs / 1000);
 
-    const bw = Math.min(W * 0.8, 720);
-    const bh = Math.min(H * 0.22, 180);
-    const x = (W - bw) / 2;
-    const y = (H - bh) / 2;
+      const bw = Math.min(W * 0.8, 720);
+      const bh = Math.min(H * 0.22, 180);
+      const x = (W - bw) / 2;
+      const y = (H - bh) / 2;
 
-    cmds.push({ kind: 'rect', x, y, w: bw, h: bh, fill: 'rgba(0,0,0,0.75)' });
-    cmds.push({
-      kind: 'text',
-      x: W / 2,
-      y: y + bh * 0.42,
-      text: msg,
-      font: `bold ${Math.floor(H * 0.085)}px var(--mono, monospace)`,
-      fill: '#fff',
-      align: 'center',
-      baseline: 'middle',
-    });
-    const sub = GAMEOVER.autoRestart ? `Restarting in ${remainSec}s` : 'Press START to play again';
-    cmds.push({
-      kind: 'text',
-      x: W / 2,
-      y: y + bh * 0.75,
-      text: sub,
-      font: `bold ${Math.floor(H * 0.042)}px var(--mono, monospace)`,
-      fill: '#ddd',
-      align: 'center',
-      baseline: 'middle',
-    });
+      cmds.push({ kind: 'rect', x, y, w: bw, h: bh, fill: 'rgba(0,0,0,0.75)' });
+      cmds.push({
+        kind: 'text',
+        x: W / 2,
+        y: y + bh * 0.42,
+        text: msg,
+        font: `bold ${Math.floor(H * 0.085)}px var(--mono, monospace)`,
+        fill: '#fff',
+        align: 'center',
+        baseline: 'middle',
+      });
+      const sub = GAMEOVER.autoRestart ? `Restarting in ${remainSec}s` : 'Press START to play again';
+      cmds.push({
+        kind: 'text',
+        x: W / 2,
+        y: y + bh * 0.75,
+        text: sub,
+        font: `bold ${Math.floor(H * 0.042)}px var(--mono, monospace)`,
+        fill: '#ddd',
+        align: 'center',
+        baseline: 'middle',
+      });
+    }
   }
 
   // Beams (laser lines that fade)

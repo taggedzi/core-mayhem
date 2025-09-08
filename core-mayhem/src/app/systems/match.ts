@@ -10,6 +10,14 @@ function isDead(core: any): boolean {
 }
 
 export function declareWinner(winner: Side | 0): void {
+  // Announcer first: play end-of-match VO immediately so it starts before the banner shows
+  try {
+    const ev = winner === 0 ? 'match_end_generic' : 'match_end_win';
+    announcer.trigger(ev as any, { urgent: true, priorityBoost: 2 });
+    announcer.run(performance.now());
+  } catch {
+    // ignore announcer errors
+  }
   (sim as any).winner = winner; // 0 = tie
   (sim as any).gameOver = true;
   (sim as any).winnerAt = performance.now();
@@ -28,13 +36,7 @@ export function declareWinner(winner: Side | 0): void {
     // ignore stats errors
   }
 
-  // Announcer: end of match
-  try {
-    if (winner === 0) announcer.trigger('match_end_generic');
-    else announcer.trigger('match_end_win');
-  } catch {
-    // ignore announcer errors
-  }
+  // (announcer already triggered at the start)
 
   if (GAMEOVER.autoRestart && !(sim as any).restartTO) {
     (sim as any).restartTO = setTimeout(() => {

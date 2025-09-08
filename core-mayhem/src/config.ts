@@ -156,6 +156,7 @@ export const CORE = {
 export const GAMEOVER = {
   bannerMs: 10000,
   autoRestart: true,
+  bannerDelayMs: 800, // delay before showing the winner banner (ms)
 } as const;
 
 export const MORTAR_ANGLE = {
