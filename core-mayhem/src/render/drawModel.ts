@@ -205,29 +205,57 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
   // Mesmer background (subtle, additive)
   if ((MESMER as any).enabled) {
-    // Music-reactive bands (lazy-inited)
-    const getBands = (): { bass: number; mid: number; treble: number } => {
+    // Music features (bands + spectral flux pulse), throttled
+    const getFeatures = (): { bass: number; mid: number; treble: number; flux: number } => {
       const n = audio.getMusicBinCount();
-      if (n <= 0) return { bass: 0, mid: 0, treble: 0 };
+      if (n <= 0) return { bass: 0, mid: 0, treble: 0, flux: 0 };
       const buf = ((sim as any)._musicFFT as Uint8Array) ?? ((sim as any)._musicFFT = new Uint8Array(n));
       const lastSpec = Number((sim as any)._musicFFTLastT ?? 0);
+      let updated = false;
       if (now - lastSpec > 33) { // throttle ~30Hz
-        audio.getMusicSpectrum(buf);
-        (sim as any)._musicFFTLastT = now;
+        if (audio.getMusicSpectrum(buf)) {
+          (sim as any)._musicFFTLastT = now;
+          updated = true;
+        }
       }
       const L = buf.length;
-      // Fractional ranges (approximate): bass 0..8%, mid 8..40%, treble 50..90%
-      const i0 = 0, i1 = Math.max(1, Math.floor(L * 0.08));
-      const j0 = Math.max(i1, Math.floor(L * 0.08)), j1 = Math.max(j0 + 1, Math.floor(L * 0.4));
-      const k0 = Math.max(j1, Math.floor(L * 0.5)), k1 = Math.max(k0 + 1, Math.floor(L * 0.9));
+      const idx = (p: number): number => Math.max(0, Math.min(L, Math.floor(L * p)));
+      // Chiptune-friendly bands: very small bass, wide mid, substantial high
+      const b0 = idx(0.00), b1 = idx(0.06);
+      const m0 = idx(0.12), m1 = idx(0.55);
+      const t0 = idx(0.55), t1 = idx(0.90);
       const avg = (a: number, b: number): number => {
         const span = Math.max(1, b - a);
         let s = 0; for (let i = a; i < b; i++) s += buf[i] | 0;
         return (s / span) / 255;
       };
-      return { bass: avg(i0, i1), mid: avg(j0, j1), treble: avg(k0, k1) };
+      // Spectral flux (positive change only), normalized
+      let flux = Number((sim as any)._musicFlux ?? 0);
+      if (updated) {
+        const prev = ((sim as any)._musicPrev as Uint8Array) ?? ((sim as any)._musicPrev = new Uint8Array(L));
+        // Compute two flux measures: low (kick-ish) and chip (mid/high onset)
+        const lf0 = idx(0.03), lf1 = idx(0.25);
+        const cf0 = m0, cf1 = t1;
+        let fLow = 0, fChip = 0;
+        for (let i = lf0; i < lf1; i++) { const d = (buf[i] | 0) - (prev[i] | 0); if (d > 0) fLow += d; }
+        for (let i = cf0; i < cf1; i++) { const d = (buf[i] | 0) - (prev[i] | 0); if (d > 0) fChip += d; }
+        fLow /= Math.max(1, (lf1 - lf0)) * 255;
+        fChip /= Math.max(1, (cf1 - cf0)) * 255;
+        // Weight toward chiptune if mids/highs dominate over bass
+        const eBass = avg(b0, b1);
+        const eMT = (avg(m0, m1) + avg(t0, t1)) * 0.5;
+        const ratio = eMT / Math.max(0.001, eBass);
+        const chipW = Math.max(0, Math.min(1, (ratio - 0.6) / 2.0)); // chipW~1 when mids/highs >> bass
+        const f = (1 - chipW) * fLow + chipW * fChip;
+        (sim as any)._musicFlux = f;
+        // copy current to prev
+        prev.set(buf);
+        flux = f;
+      }
+      return { bass: avg(b0, b1), mid: avg(m0, m1), treble: avg(t0, t1), flux };
     };
-    const bands = getBands();
+    const feat = getFeatures();
+    const bands = { bass: feat.bass, mid: feat.mid, treble: feat.treble };
     const sens = Math.max(0, Math.min(2, (sim as any).vizSens ?? 1));
     const bBass = Math.min(1.5, bands.bass * sens);
     const bMid = Math.min(1.5, bands.mid * sens);
@@ -236,13 +264,24 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const energyRaw = Math.min(1, 0.5 * bBass + 0.35 * bMid + 0.15 * bTreble);
     const eLastT = ((sim as any).musicEnvLastT as number) || now;
     const eDt = Math.max(1, now - eLastT);
-    const atk = 1 - Math.exp(-eDt / 60);   // ~60ms attack
-    const dec = 1 - Math.exp(-eDt / 420);  // ~420ms decay
+    const atk = 1 - Math.exp(-eDt / 40);   // faster attack
+    const dec = 1 - Math.exp(-eDt / 220);  // faster decay for quicker drop-off
     let env = ((sim as any).musicEnv as number) ?? 0;
     if (energyRaw > env) env += (energyRaw - env) * atk; else env += (energyRaw - env) * dec;
     env = Math.max(0, Math.min(1.5, env));
     (sim as any).musicEnv = env;
     (sim as any).musicEnvLastT = now;
+    // Beat pulse from spectral flux (very fast envelope)
+    const pLastT = ((sim as any).musicPulseLastT as number) || now;
+    const pDt = Math.max(1, now - pLastT);
+    const pAtk = 1 - Math.exp(-pDt / 25);
+    const pDec = 1 - Math.exp(-pDt / 140);
+    const fluxIn = Math.max(0, Math.min(1, feat.flux * (0.6 + 0.8 * sens)));
+    let pulse = ((sim as any).musicPulse as number) ?? 0;
+    if (fluxIn > pulse) pulse += (fluxIn - pulse) * pAtk; else pulse += (fluxIn - pulse) * pDec;
+    pulse = Math.max(0, Math.min(1.8, pulse));
+    (sim as any).musicPulse = pulse;
+    (sim as any).musicPulseLastT = now;
     const mode =
       ((sim as any).mesmerMode as 'off' | 'low' | 'always' | undefined) ??
       (MESMER as any).mode ??
@@ -336,16 +375,31 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const busy = 1 - quiet;
         for (let i = 0; i < n; i++) {
           const r = baseR + i * gap;
-          const w = (0.9 + 0.35 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1))) * (1.0 + (2.2 * bBass + 1.0 * env) * (1 - 0.35 * busy));
+          let w = (0.9 + 0.25 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1))) * (1.0 + (1.2 * bMid + 2.2 * pulse + 0.4 * bTreble + 0.3 * env) * (1 - 0.35 * busy));
           // Aim arc toward the midline for both sides so visuals mirror.
           const base = cx < W * 0.5 ? 0 : Math.PI; // left→right or right→left
-          const drift = 0.6 * Math.sin(now * 0.00025 + i * 0.7);
+          const drift = 0.4 * Math.sin(now * 0.00025 + i * 0.7);
           const aC = base + drift;
           // Stronger music-driven span: favor mid-range with some bass + overall energy
-          let musicSpan = (1.2 * bMid + 0.6 * bBass + 0.5 * env) * (1 - 0.4 * busy); // reduce span inflation when busy
+          let musicSpan = (1.3 * bMid + 2.5 * pulse + 0.6 * bTreble + 0.1 * bBass + 0.15 * env) * (1 - 0.45 * busy); // chiptune-weighted span
           musicSpan = Math.min(1.8, musicSpan); // cap to avoid full circles
-          let span = 0.8 + 0.6 * Math.sin(now * 0.0003 + i * 1.2) + musicSpan;
+          let span = 0.7 + 0.45 * Math.sin(now * 0.0003 + i * 1.2) + musicSpan;
           span = Math.min(3.0, span); // hard cap to keep arcs readable
+          // Smooth span and width per-arc to reduce jitter; allow faster change on beats
+          const key = color === 'var(--left)' ? '_L' : '_R';
+          const spans = (m as any)[`_span${key}`] ?? ((m as any)[`_span${key}`] = []);
+          const widths = (m as any)[`_w${key}`] ?? ((m as any)[`_w${key}`] = []);
+          const prevS = spans[i] ?? span;
+          const maxDS = 0.18 + 0.6 * pulse; // allow quicker expansion on strong beats
+          const dS = Math.max(-maxDS, Math.min(maxDS, span - prevS));
+          const smSpan = prevS + dS;
+          spans[i] = smSpan;
+          span = smSpan;
+          const prevW = widths[i] ?? w;
+          const maxDW = 0.22 + 0.9 * pulse;
+          const dW = Math.max(-maxDW, Math.min(maxDW, w - prevW));
+          w = prevW + dW;
+          widths[i] = w;
           const a0 = aC - span * 0.5;
           const a1 = aC + span * 0.5;
           cmds.push({
@@ -357,8 +411,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
             a1,
             stroke: color,
             lineWidth: MESMER.arcs.width * w,
-            // Arcs fade with global fade, current quietness, and music energy
-            alpha: MESMER.arcs.alpha * fade * quiet * Math.min(2.0, (0.6 + 1.4 * bMid + 0.8 * env) * (1 - 0.25 * busy)),
+            // Arcs fade with global fade, current quietness, and beat prominence (drop faster when quiet)
+            alpha: MESMER.arcs.alpha * fade * quiet * Math.min(2.0, (0.35 + 1.1 * bMid + 1.6 * pulse + 0.5 * bTreble + 0.3 * env) * (1 - 0.28 * busy)),
             composite: 'lighter',
             shadowBlur: MESMER.arcs.blur * (1 + 1.2 * env) * (1 - 0.5 * busy),
             shadowColor: color,
