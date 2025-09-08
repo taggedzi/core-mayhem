@@ -28,6 +28,25 @@ Lightweight 2D canvas arena powered by Matter.js with a fixed logical canvas (19
 
 - The game logic runs in fixed logical units; the canvas scales on resize without restarting matches.
 
+## Audio System
+
+- Config lives in `core-mayhem/src/audio/config.ts` and maps in-game events to files and defaults (volume, rate, loop, limits).
+- Event keys are in `core-mayhem/src/audio/keys.ts`.
+- Runtime API is a safe singleton exported from `core-mayhem/src/audio/index.ts`.
+  - `audio.preloadAll()` is called on game start.
+  - `audio.play('event_key')` triggers overlapping SFX with cooldown + concurrency caps.
+  - `audio.startLoop(id, 'core_low_hp_alarm')` and `audio.stopLoop(id)` manage looped sounds.
+  - `audio.setSfxVolume(v)` / `audio.setMusicVolume(v)` adjust channel volumes.
+  - Music ducking is automatic for certain SFX via `duckMusic` in the config.
+- Low-HP alarms are monitored in `core-mayhem/src/app/systems/audioMonitors.ts` and toggle per-side loops.
+
+### Background Music
+- Add a track at `core-mayhem/src/assets/audio/music/main_theme.mp3` (or `.ogg`).
+- The key `music_main` is configured in `audio/config.ts` with `channel: 'music'` and `loop: true`.
+- It auto-starts at game launch and stops on teardown. Volume is controlled via `audio.setMusicVolume(v)` and is ducked automatically during loud SFX.
+
+To change which sound plays for an event or tweak volumes/pitch, edit `core-mayhem/src/audio/config.ts` (no code changes required).
+
 ## Sounds and Music Licenses
 
 - **Pixel Combat Sound Pack** by Helton Yan  

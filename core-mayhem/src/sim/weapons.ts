@@ -22,6 +22,7 @@ import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { applyCoreDamage } from './damage';
+import { audio } from '../audio';
 
 import type { Vec } from '../types';
 import type { World as MatterWorld } from 'matter-js';
@@ -154,6 +155,7 @@ export function fireCannon(
 ): void {
   if (sim.gameOver) return;
   if (isDisabled(from, 'cannon')) return;
+  try { audio.play('fire_cannon'); } catch { /* ignore */ void 0; }
   const dir = Vector.normalise({ x: target.x - src.x, y: target.y - src.y });
   const base =
     22 *
@@ -198,6 +200,7 @@ export function fireCannon(
 export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(side, 'laser')) return;
+  try { audio.play('fire_laser'); } catch { /* ignore */ void 0; }
 
   // Resolve core to hit (or a point)
   const enemyCore: CoreLike =
@@ -309,6 +312,7 @@ export function fireMissiles(
 ): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'missile')) return;
+  try { audio.play('fire_missile'); } catch { /* ignore */ void 0; }
   let target: Vec;
   {
     const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
@@ -362,6 +366,7 @@ export function fireMissiles(
 export function fireMortar(from: Side, src: { x: number; y: number }, count = 1): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'mortar')) return;
+  try { audio.play('fire_mortar'); } catch { /* ignore */ void 0; }
   let target: Vec;
   {
     const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;

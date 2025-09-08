@@ -25,6 +25,8 @@ import { checkTimeLimit, maybeEndMatch } from './systems/match';
 import { runPhysics } from './systems/physics';
 import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
+import { runAudioMonitors } from './systems/audioMonitors';
+import { audio } from '../audio';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
 
@@ -75,6 +77,11 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   (sim as any).matchStart = performance.now(); // ⬅️ stamp match start
   // Start a new stats match session
   startNewMatch();
+
+  // Preload audio assets (safe no-op in tests/non-browser)
+  try { audio.preloadAll(); } catch { /* ignore */ void 0; }
+  // Start background music
+  try { audio.startLoop('bgm', 'music_main'); } catch { /* ignore */ void 0; }
 
   // Edge pipes
   const pipeL = makePipe(SIDE.LEFT);
@@ -155,6 +162,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     runFXPrune(performance.now());
     runSpawn(scaled);
     runTriggers();
+    runAudioMonitors();
 
     // did someone die this frame?
     maybeEndMatch();
@@ -187,6 +195,8 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     detachCollisions?.();
     clearWorld();
     updateHUD();
+    try { audio.stopLoop('alarm_L'); audio.stopLoop('alarm_R'); } catch { /* ignore */ void 0; }
+    try { audio.stopLoop('bgm'); } catch { /* ignore */ void 0; }
   };
 }
 

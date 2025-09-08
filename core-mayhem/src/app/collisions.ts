@@ -9,6 +9,7 @@ import { SIDE, type Side } from '../types';
 import { currentBinFillMul } from './mods';
 import { recordBinDeposit, recordProjectileHit, recordMiss } from './stats';
 import { recordMissileFirstImpact, recordMissileCoreDelay } from './stats';
+import { audio } from '../audio';
 
 import type { Engine, IEventCollision, World as MatterWorld } from 'matter-js';
 
@@ -151,6 +152,12 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     explodeAt(proj.position.x, proj.position.y, proj.plugin.side, color, Number(dmg) || undefined);
 
     if (excess <= 0) {
+      // play shield impact for absorbed shots
+      try { audio.play('impact_shield'); } catch { /* ignore */ void 0; }
+      // If shield collapsed exactly on absorption, signal collapse
+      if (shieldBefore > SHIELD_EPS && core.shieldHP <= SHIELD_EPS) {
+        try { audio.play('core_shield_down'); } catch { /* ignore */ void 0; }
+      }
       // Shot fully absorbed by the shield
       try {
         recordProjectileHit(proj?.plugin?.side, proj?.plugin?.ptype ?? 'cannon', shieldBefore - core.shieldHP, 0, 0);
@@ -162,6 +169,10 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     }
     // Fall through to apply remaining damage to the core below
     dmg = excess;
+    // If shield just broke this hit, signal collapse
+    if (shieldBefore > SHIELD_EPS && core.shieldHP <= SHIELD_EPS) {
+      try { audio.play('core_shield_down'); } catch { /* ignore */ void 0; }
+    }
   }
 
   // Snapshot before
@@ -214,6 +225,14 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   const ringColor2 = sty?.glow ?? (shooterSide === SIDE.LEFT ? css('--left') : css('--right'));
   explodeAt(proj.position.x, proj.position.y, proj.plugin.side, ringColor2, Number(dmg) || undefined);
   World.remove(w, proj);
+  // choose impact sound based on where damage landed
+  try {
+    const segDelta = Math.max(0, segBefore - segAfter);
+    const centerDelta = Math.max(0, centerBefore - centerAfter);
+    if (centerDelta > 0) audio.play('impact_core');
+    else if (segDelta > 0) audio.play('impact_armor');
+    if (centerBefore > 0 && centerAfter <= 0) audio.play('core_death');
+  } catch { /* ignore */ void 0; }
   // minor shake for direct hits
   (sim as any).shakeT0 = performance.now();
   (sim as any).shakeMs = 160;
@@ -342,6 +361,7 @@ export function registerCollisions(
     } catch {
       /* ignore */ void 0;
     }
+    try { if (!pp.didDamage) audio.play('impact_miss'); } catch { /* ignore */ void 0; }
   };
 
       explodeIf(A, B);

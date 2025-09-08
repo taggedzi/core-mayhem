@@ -7,6 +7,7 @@ import { SIDE, type Side } from '../../types';
 import { applyBuff, applyDebuff, currentCooldownMul } from '../mods';
 import { applyRandomBuff } from '../mods';
 import { recordBinCap } from '../stats';
+import { audio } from '../../audio';
 
 function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -23,10 +24,12 @@ export function runTriggers(now = performance.now()): void {
       // Preserve prior behavior by default; allow random pool via config
       if (((MODS as any).buffChooser ?? 'damageOnly') === 'randomPool') applyRandomBuff(side);
       else applyBuff(side);
+      try { audio.play('activate_buff'); } catch { /* ignore */ void 0; }
     }
     if (bins.debuff && bins.debuff.fill >= bins.debuff.cap) {
       bins.debuff.fill = 0;
       applyDebuff(side === SIDE.LEFT ? SIDE.RIGHT : SIDE.LEFT);
+      try { audio.play('activate_debuff'); } catch { /* ignore */ void 0; }
     }
 
     if (bins.cannon.fill >= bins.cannon.cap && now >= sim.cooldowns[key].cannon) {
@@ -67,6 +70,7 @@ export function runTriggers(now = performance.now()): void {
       try { recordBinCap(side, 'repair', now); } catch { /* ignore */ void 0; }
       bins.repair.fill = 0;
       repair(side);
+      try { audio.play('armor_increase'); } catch { /* ignore */ void 0; }
     }
 
     if (bins.shield.fill >= bins.shield.cap) {
@@ -74,6 +78,7 @@ export function runTriggers(now = performance.now()): void {
       bins.shield.fill = 0;
       const core = side === SIDE.LEFT ? (sim as any).coreL : (sim as any).coreR;
       core.shieldHP = Math.min(core.shieldHPmax, core.shieldHP + SHIELD.onPickup);
+      try { audio.play('core_shield_up'); } catch { /* ignore */ void 0; }
     }
   };
 
