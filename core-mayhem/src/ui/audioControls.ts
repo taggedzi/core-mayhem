@@ -1,10 +1,7 @@
 import { audio } from '../audio';
 import { AUDIO_DEFAULTS } from '../audio/config';
 
-const K = {
-  sfx: 'cm_sfxVolume',
-  music: 'cm_musicVolume',
-};
+const K = { sfx: 'cm_sfxVolume', music: 'cm_musicVolume' } as const;
 
 function load(key: string, fallback: number): number {
   try {
@@ -21,17 +18,39 @@ function save(key: string, val: number): void {
 }
 
 export function initAudioControls(): void {
-  const elSfx = document.getElementById('sfxVol') as HTMLInputElement | null;
-  const elMusic = document.getElementById('musicVol') as HTMLInputElement | null;
-  if (!elSfx || !elMusic) return;
+  const btn = document.getElementById('btnAudio') as HTMLButtonElement | null;
+  if (!btn) return;
+
+  // Create a small popover near the button
+  const pop = document.createElement('div');
+  pop.id = 'audioPopover';
+  pop.className = 'audio-popover';
+  pop.style.display = 'none';
+
+  const row = (label: string, id: string, def: number): HTMLInputElement => {
+    const wrap = document.createElement('label');
+    wrap.className = 'audio-row';
+    wrap.textContent = label + ' ';
+    const inp = document.createElement('input');
+    inp.type = 'range';
+    inp.min = '0';
+    inp.max = '1';
+    inp.step = '0.05';
+    inp.id = id;
+    inp.value = String(def);
+    wrap.appendChild(inp);
+    pop.appendChild(wrap);
+    return inp as HTMLInputElement;
+  };
 
   const sfx0 = load(K.sfx, (AUDIO_DEFAULTS as any).sfxVolume ?? 1);
   const music0 = load(K.music, (AUDIO_DEFAULTS as any).musicVolume ?? 0.6);
+  const elSfx = row('SFX', 'sfxVol', sfx0);
+  const elMusic = row('Music', 'musicVol', music0);
 
-  elSfx.value = String(sfx0);
-  elMusic.value = String(music0);
+  document.body.appendChild(pop);
 
-  // Apply initial
+  // Apply initial volumes
   try { audio.setSfxVolume(sfx0); } catch { /* ignore */ }
   try { audio.setMusicVolume(music0); } catch { /* ignore */ }
 
@@ -45,8 +64,40 @@ export function initAudioControls(): void {
     try { audio.setMusicVolume(v); } catch { /* ignore */ }
     save(K.music, v);
   };
-
   elSfx.addEventListener('input', onSfx);
   elMusic.addEventListener('input', onMusic);
-}
 
+  const positionPopover = (): void => {
+    const r = btn.getBoundingClientRect();
+    // place below-right of the button
+    pop.style.position = 'fixed';
+    pop.style.left = `${Math.round(r.right - pop.offsetWidth)}px`;
+    pop.style.top = `${Math.round(r.bottom + 6)}px`;
+  };
+
+  let open = false;
+  const close = (): void => {
+    open = false;
+    pop.style.display = 'none';
+    window.removeEventListener('resize', positionPopover);
+    document.removeEventListener('click', onDocClick, true);
+  };
+  const onDocClick = (e: MouseEvent): void => {
+    if (!open) return;
+    const t = e.target as Node | null;
+    if (t && (t === pop || pop.contains(t) || t === btn)) return;
+    close();
+  };
+  const toggle = (): void => {
+    open = !open;
+    if (open) {
+      pop.style.display = 'block';
+      positionPopover();
+      window.addEventListener('resize', positionPopover);
+      document.addEventListener('click', onDocClick, true);
+    } else {
+      close();
+    }
+  };
+  btn.addEventListener('click', (e) => { e.preventDefault(); toggle(); });
+}
