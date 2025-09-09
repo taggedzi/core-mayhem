@@ -1,6 +1,6 @@
 import { Bodies, World } from 'matter-js';
 
-import { CORE_HP, CORE_SEGMENTS, CORE } from '../config';
+import { CORE } from '../config';
 import { SHIELD } from '../config';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
@@ -72,7 +72,7 @@ export function makeCore(world: World, side: Side, teamColor: string): Core {
   const centerR = R * 0.36;
 
   // --- dynamic segment count ---
-  const nSeg = Math.max(6, Math.floor((sim as any)?.settings?.coreSegments ?? CORE_SEGMENTS));
+  const nSeg = Math.max(6, Math.floor((sim as any)?.settings?.coreSegments ?? CORE.segments.count));
 
   // --- physics bodies (sensors) ---
   const ringBody = Bodies.circle(cxClamped, cyClamped, ringR, { isStatic: true, isSensor: true });
@@ -97,14 +97,14 @@ export function makeCore(world: World, side: Side, teamColor: string): Core {
     rot: 0,
     rotSpeed: 0.0025 * (side === SIDE.LEFT ? 1 : -1),
 
-    segHPmax: CORE_HP.segments,
-    centerHPmax: CORE_HP.center,
-    segHP: new Array(nSeg).fill(CORE_HP.segments),
-    centerHP: CORE_HP.center,
+    segHPmax: CORE.segments.hp,
+    centerHPmax: CORE.hp,
+    segHP: new Array(nSeg).fill(CORE.segments.hp),
+    centerHP: CORE.hp,
 
     // deprecated legacy fields (kept for backward-compat; no longer used for damage)
     shield: 0,
-    shieldMax: CORE_HP.shieldMax ?? 3,
+    shieldMax: SHIELD.maxHP,
 
     // NEW ablative pool
     shieldHP: SHIELD.startHP,
