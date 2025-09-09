@@ -1,5 +1,10 @@
-/** Weapon tuning, firing patterns, homing, and mounts. */
+// core-mayhem/src/configs/weapons.ts
 
+/**
+ * Type representing a valid Weapon ID.
+ *
+ * This type is used to define the possible values for a weapon in the game.
+ */
 type WeaponId = 'cannon' | 'laser' | 'missile' | 'mortar';
 
 /** Absolute weapon mount points (left side; right mirrors). */
@@ -32,6 +37,8 @@ export const WEAPONS = {
 
   // Per-weapon groupings
   cannon: {
+    position: [859, 935],
+    display_radius: 5,
     // Scale initial projectile speed (1 = legacy speed). Lower = slower.
     speed: 0.8,
     cooldownMs: 1200,
@@ -39,12 +46,16 @@ export const WEAPONS = {
   },
 
   laser: {
+    position: [751, 881],
+    display_radius: 5,
     // Laser uses DPS rather than per-projectile damage
     dps: 40,
     cooldownMs: 900,
   },
 
   missile: {
+    position: [643, 827],
+    display_radius: 5,
     // Scale initial projectile speed (1 = legacy speed). Lower = slower.
     speed: 0.75, // slightly higher energy off the rail
     cooldownMs: 1600,
@@ -74,6 +85,8 @@ export const WEAPONS = {
   },
 
   mortar: {
+    position: [901, 275],
+    display_radius: 5,
     damage: 18,
     cooldownMs: 1400,
     // Mortar launch tuning (angle jitter, speed, extra gravity)
@@ -84,16 +97,6 @@ export const WEAPONS = {
       speedJitter: 0.12,
       extraGravity: 0.0,
     },
-  },
-
-  // Weapon mounts
-  mounts: {
-    left: [
-      { id: 'cannon', pos: [859, 935], r: 5 },
-      { id: 'laser', pos: [751, 881], r: 5 },
-      { id: 'missile', pos: [643, 827], r: 5 },
-      { id: 'mortar', pos: [901, 275], r: 5 },
-    ] as const satisfies readonly WeaponMountSpec[],
   },
 } as const;
 
@@ -131,4 +134,28 @@ export const DAMAGE = {
 
 export const MORTAR_ANGLE = WEAPONS.mortar.angle;
 
-export const WEAPON_MOUNTS_LEFT: readonly WeaponMountSpec[] = WEAPONS.mounts.left;
+/**
+ * Absolute weapon mount points (left side; right mirrors).
+ */
+export const WEAPON_MOUNTS_LEFT: readonly WeaponMountSpec[] = [
+  {
+    id: 'cannon',
+    pos: [...WEAPONS.cannon.position],
+    r: WEAPONS.cannon.display_radius,
+  },
+  {
+    id: 'laser',
+    pos: [...WEAPONS.laser.position],
+    r: WEAPONS.laser.display_radius,
+  },
+  {
+    id: 'missile',
+    pos: [...WEAPONS.missile.position],
+    r: WEAPONS.missile.display_radius,
+  },
+  {
+    id: 'mortar',
+    pos: [...WEAPONS.mortar.position],
+    r: WEAPONS.mortar.display_radius,
+  },
+] as const satisfies readonly WeaponMountSpec[];

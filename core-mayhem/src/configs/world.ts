@@ -36,8 +36,6 @@ export const PINS = {
   edgeMargin: 18, // keep pins/rotors this far from field edges
 } as const;
 
-type WeaponId = 'cannon' | 'laser' | 'missile' | 'mortar';
-
 interface PaddleSpec {
   // Absolute bottom-left position (px) of a fixed 80x8 paddle
   pos: [number, number];
@@ -178,4 +176,3 @@ export const BINS_LEFT: readonly BinSpec[] = [
     style: { fill: '#FF6B6B' },
   },
 ] as const;
-
