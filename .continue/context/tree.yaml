@@ -1,0 +1,6 @@
+name: custom-context
+version: 1.0.0
+schema: v1
+
+context:
+  - provider: tree
