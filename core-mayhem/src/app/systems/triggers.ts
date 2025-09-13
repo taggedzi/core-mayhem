@@ -8,8 +8,9 @@ import { applyBuff, applyDebuff, currentCooldownMul } from '../mods';
 import { applyRandomBuff } from '../mods';
 import { recordBinCap } from '../stats';
 import { audio } from '../../audio';
-import { setBanter } from '../../render/banter';
+// setBanter handled via speakBanterSmart
 import type { BanterEvent } from '../../banter';
+import { speakBanterSmart } from '../speakBanterLLM';
 
 function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -112,13 +113,5 @@ export function runTriggers(now = performance.now()): void {
 }
 
 function speakBanter(ev: BanterEvent, side: Side): void {
-  const b: any = (sim as any).banter;
-  const L: any = (sim as any).banterL;
-  const R: any = (sim as any).banterR;
-  if (!b || !L || !R) return;
-  if ((sim as any).banterEnabled === false) return;
-  const me = side === SIDE.LEFT ? L : R;
-  const them = side === SIDE.LEFT ? R : L;
-  const out = b.speak(ev as any, me, them);
-  if (out) setBanter(side === SIDE.LEFT ? 'L' : 'R', out.text);
+  void speakBanterSmart(ev, side === SIDE.LEFT ? 'L' : 'R');
 }

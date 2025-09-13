@@ -28,7 +28,9 @@ import { runTriggers } from './systems/triggers';
 import { runAudioMonitors } from './systems/audioMonitors';
 import { runAnnouncer } from './systems/announcer';
 import { BanterSystem, createCharacter } from '../banter';
+import { readBanterPacing } from '../ui/banterControls';
 import { LightCore, DarkCore } from '../banter/personalities';
+import { readCharacterProfiles } from '../ui/characters';
 import { audio } from '../audio';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
@@ -84,9 +86,16 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // Initialize banter system and characters per match (seeded for determinism)
   try {
     const seed = Number(((sim as any).settings?.seed ?? 1337) | 0);
-    (sim as any).banter = new BanterSystem({ seed, cooldownMs: 5000, sideMinGapMs: 12000 });
-    (sim as any).banterL = createCharacter('left', LightCore, 'Light');
-    (sim as any).banterR = createCharacter('right', DarkCore, 'Dark');
+    const pacing = (() => { try { return readBanterPacing(); } catch { return { cooldownMs: 5000, sideMinGapMs: 12000 }; } })();
+    (sim as any).banter = new BanterSystem({ seed, cooldownMs: pacing.cooldownMs, sideMinGapMs: pacing.sideMinGapMs });
+    const chosen = (() => { try { return readCharacterProfiles(); } catch { return null; } })();
+    if (chosen) {
+      (sim as any).banterL = createCharacter('left', chosen.left, chosen.leftName);
+      (sim as any).banterR = createCharacter('right', chosen.right, chosen.rightName);
+    } else {
+      (sim as any).banterL = createCharacter('left', LightCore, 'Light');
+      (sim as any).banterR = createCharacter('right', DarkCore, 'Dark');
+    }
   } catch {
     /* ignore banter init errors */
   }

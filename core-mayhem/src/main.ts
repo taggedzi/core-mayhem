@@ -6,6 +6,8 @@ import { updateHUD } from './render/hud';
 import { initHelpOverlay, openHelpOverlay } from './ui/help';
 import { initStatsOverlay, openStatsOverlay } from './ui/stats';
 import { initAudioControls } from './ui/audioControls';
+import { initBanterControls } from './ui/banterControls';
+import { initCharactersControls } from './ui/characters';
 import { sim } from './state';
 
 // ——— Types ———
@@ -135,16 +137,8 @@ function init(): void {
   if (btnHelp) btnHelp.onclick = () => openHelpOverlay();
   const btnStats = document.getElementById('btnStats') as HTMLButtonElement | null;
   if (btnStats) btnStats.onclick = () => openStatsOverlay();
-  const btnBanter = document.getElementById('btnBanter') as HTMLButtonElement | null;
-  if (btnBanter) {
-    const refresh = (): void => {
-      const on = (sim as any).banterEnabled !== false;
-      btnBanter.textContent = on ? '💬 Banter On' : '💬 Banter Off';
-      btnBanter.style.opacity = on ? '1' : '0.55';
-    };
-    refresh();
-    btnBanter.onclick = () => { (sim as any).banterEnabled = !(sim as any).banterEnabled; refresh(); };
-  }
+  // Banter popover (like Audio)
+  try { initBanterControls(); } catch { /* ignore */ }
 
   // Window resize (debounced)
   window.addEventListener('resize', () => {
@@ -182,6 +176,7 @@ function init(): void {
   initHelpOverlay();
   initStatsOverlay();
   initAudioControls();
+  initCharactersControls();
 }
 
 // Ensure DOM elements exist before wiring

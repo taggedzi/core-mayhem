@@ -11,10 +11,13 @@ export type BanterEvent =
   | 'victory'
   | 'taunt';
 
-export type EmojiStyle = 'none' | 'emoji' | 'kaomoji';
+// 'unicode' is accepted as an alias of 'emoji' for convenience in persona files
+export type EmojiStyle = 'none' | 'emoji' | 'kaomoji' | 'unicode';
 
 export interface Personality {
   name: string;
+  // Optional long-form persona description for LLM context
+  blurb?: string;
   // Trait intensities 0..1
   aggression: number;
   humor: number;
@@ -349,7 +352,7 @@ function applyQuirks(
     const pos = mood === 'positive';
     const neg = mood === 'negative';
     const pool =
-      q.emojiStyle === 'emoji'
+      (q.emojiStyle === 'emoji' || q.emojiStyle === 'unicode')
         ? pos
           ? lex.emojisPositive
           : neg

@@ -2,7 +2,8 @@ import { MATCH_LIMIT } from '../../config';
 import { sim } from '../../state';
 // import { SIDE } from '../../types';
 import { announcer } from '../../announcer';
-import { setBanter } from '../../render/banter';
+// setBanter handled via speakBanterSmart
+import { speakBanterSmart } from '../speakBanterLLM';
 import { ANNOUNCER_THRESHOLDS } from '../../announcer/config';
 
 // Local rolling state for detectors
@@ -172,17 +173,6 @@ export function runAnnouncer(): void {
 }
 
 function speakBanter(ev: string, side: 'L' | 'R'): void {
-  const b: any = (sim as any).banter;
-  const L: any = (sim as any).banterL;
-  const R: any = (sim as any).banterR;
-  if (!b || !L || !R) return;
-  if ((sim as any).banterEnabled === false) return;
-  const me = side === 'L' ? L : R;
-  const them = side === 'L' ? R : L;
-  try {
-    const out = b.speak(ev as any, me, them);
-    if (out) setBanter(side, out.text);
-  } catch {
-    // ignore banter errors
-  }
+  // fire-and-forget; helper handles LLM/fallback
+  void speakBanterSmart(ev as any, side);
 }
