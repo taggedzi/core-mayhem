@@ -2,6 +2,7 @@ import { MATCH_LIMIT } from '../../config';
 import { sim } from '../../state';
 // import { SIDE } from '../../types';
 import { announcer } from '../../announcer';
+import { setBanter } from '../../render/banter';
 import { ANNOUNCER_THRESHOLDS } from '../../announcer/config';
 
 // Local rolling state for detectors
@@ -55,6 +56,11 @@ export function runAnnouncer(): void {
     announcer.trigger('pre_game');
     announcer.trigger('match_start_ready');
     announcer.trigger('match_start_go');
+    // Banter: both sides greet at match start
+    try {
+      speakBanter('match_start', 'L');
+      speakBanter('match_start', 'R');
+    } catch { /* ignore */ }
   }
 
   const now = performance.now();
@@ -72,6 +78,10 @@ export function runAnnouncer(): void {
     if (dL > 0 || dR > 0) {
       announcer.trigger('first_core_damage');
       didFirstCenterDamage = true;
+      try {
+        if (dL > dR) speakBanter('first_blood', 'R');
+        else /* dR >= dL */ speakBanter('first_blood', 'L');
+      } catch { /* ignore */ }
     }
   }
 
@@ -79,16 +89,23 @@ export function runAnnouncer(): void {
   const dropL = Math.max(0, prevCenterL - (cL.centerHP | 0));
   const dropR = Math.max(0, prevCenterR - (cR.centerHP | 0));
   const swing = Math.abs(dropL - dropR);
-  if (swing >= ANNOUNCER_THRESHOLDS.swingExtreme) announcer.trigger('extreme_event', { urgent: true });
-  else if (swing >= ANNOUNCER_THRESHOLDS.swingMajor) announcer.trigger('major_swing');
-  else if (swing >= ANNOUNCER_THRESHOLDS.swingHigh) announcer.trigger('high_damage');
+  if (swing >= ANNOUNCER_THRESHOLDS.swingExtreme) {
+    announcer.trigger('extreme_event', { urgent: true });
+    try { if (dropL > dropR) speakBanter('big_hit', 'R'); else if (dropR > dropL) speakBanter('big_hit', 'L'); } catch { /* ignore */ }
+  } else if (swing >= ANNOUNCER_THRESHOLDS.swingMajor) {
+    announcer.trigger('major_swing');
+    try { if (dropL > dropR) speakBanter('big_hit', 'R'); else if (dropR > dropL) speakBanter('big_hit', 'L'); } catch { /* ignore */ }
+  } else if (swing >= ANNOUNCER_THRESHOLDS.swingHigh) {
+    announcer.trigger('high_damage');
+    try { if (dropL > dropR) speakBanter('big_hit', 'R'); else if (dropR > dropL) speakBanter('big_hit', 'L'); } catch { /* ignore */ }
+  }
 
   // In danger: once per side when crossing low HP threshold
   const lowThr = Math.max(0, Math.min(1, ANNOUNCER_THRESHOLDS.lowHPpct));
   const lowL = (cL.centerHP | 0) > 0 && (cL.centerHP | 0) / (cL.centerHPmax || 1) <= lowThr;
   const lowR = (cR.centerHP | 0) > 0 && (cR.centerHP | 0) / (cR.centerHPmax || 1) <= lowThr;
-  if (lowL && !dangerSpokenL) { announcer.trigger('core_in_danger_L'); dangerSpokenL = true; }
-  if (lowR && !dangerSpokenR) { announcer.trigger('core_in_danger_R'); dangerSpokenR = true; }
+  if (lowL && !dangerSpokenL) { announcer.trigger('core_in_danger_L'); dangerSpokenL = true; try { speakBanter('near_death', 'L'); } catch { /* ignore */ } }
+  if (lowR && !dangerSpokenR) { announcer.trigger('core_in_danger_R'); dangerSpokenR = true; try { speakBanter('near_death', 'R'); } catch { /* ignore */ } }
 
   // Momentum / advantage computations
   const adv = (cL.centerHP | 0) - (cR.centerHP | 0); // positive = L ahead, negative = R ahead
@@ -98,6 +115,7 @@ export function runAnnouncer(): void {
     if (Math.abs(adv) >= magThr && (now - lastShiftAt) >= ANNOUNCER_THRESHOLDS.momentumWindowMs) {
       announcer.trigger('momentum_shift');
       lastShiftAt = now;
+      try { if (sign > 0) speakBanter('comeback', 'L'); else if (sign < 0) speakBanter('comeback', 'R'); } catch { /* ignore */ }
     }
   }
   if (sign !== 0) lastAdvSign = sign;
@@ -151,4 +169,20 @@ export function runAnnouncer(): void {
   prevCenterR = (cR.centerHP | 0);
 
   announcer.run(now);
+}
+
+function speakBanter(ev: string, side: 'L' | 'R'): void {
+  const b: any = (sim as any).banter;
+  const L: any = (sim as any).banterL;
+  const R: any = (sim as any).banterR;
+  if (!b || !L || !R) return;
+  if ((sim as any).banterEnabled === false) return;
+  const me = side === 'L' ? L : R;
+  const them = side === 'L' ? R : L;
+  try {
+    const out = b.speak(ev as any, me, them);
+    if (out) setBanter(side, out.text);
+  } catch {
+    // ignore banter errors
+  }
 }

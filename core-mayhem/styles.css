@@ -105,6 +105,21 @@ button:disabled {
   max-height: 100%; /* safety */
 }
 
+/* Banter overlay (left/right, lightweight text) */
+.banter {
+  position: absolute;
+  top: 8px;
+  max-width: 42%;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  z-index: 10;
+  pointer-events: none;
+}
+.banter.left { left: 12px; text-align: left; color: var(--left); }
+.banter.right { right: 12px; text-align: right; color: var(--right); }
+
 /* Help overlay */
 #helpOverlay,
 #statsOverlay {

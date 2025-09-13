@@ -27,6 +27,8 @@ import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
 import { runAudioMonitors } from './systems/audioMonitors';
 import { runAnnouncer } from './systems/announcer';
+import { BanterSystem, createCharacter } from '../banter';
+import { LightCore, DarkCore } from '../banter/personalities';
 import { audio } from '../audio';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
@@ -78,6 +80,16 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   (sim as any).matchStart = performance.now(); // ⬅️ stamp match start
   // Start a new stats match session
   startNewMatch();
+
+  // Initialize banter system and characters per match (seeded for determinism)
+  try {
+    const seed = Number(((sim as any).settings?.seed ?? 1337) | 0);
+    (sim as any).banter = new BanterSystem({ seed, cooldownMs: 5000, sideMinGapMs: 12000 });
+    (sim as any).banterL = createCharacter('left', LightCore, 'Light');
+    (sim as any).banterR = createCharacter('right', DarkCore, 'Dark');
+  } catch {
+    /* ignore banter init errors */
+  }
 
   // Preload audio assets (safe no-op in tests/non-browser)
   try { audio.preloadAll(); } catch { /* ignore */ void 0; }
@@ -188,6 +200,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     const scaled = dtMs * (stg.timescale ?? 1);
 
     runPhysics(scaled);
+    try { (sim as any).banter?.step(scaled); } catch { /* ignore */ }
     runFXPrune(performance.now());
     runSpawn(scaled);
     runTriggers();

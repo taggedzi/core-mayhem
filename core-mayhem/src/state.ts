@@ -169,6 +169,9 @@ interface SimState {
   tick?: number;
   matchIndex?: number;
   projSeq?: number;
+
+  // UI toggles
+  banterEnabled?: boolean;
 }
 
 // ——— Factory + singleton ———
@@ -234,6 +237,7 @@ function createSimState(): SimState {
     tick: 0,
     matchIndex: 0,
     projSeq: 1,
+    banterEnabled: true,
   };
 }
 

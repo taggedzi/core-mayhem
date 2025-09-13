@@ -4,6 +4,7 @@ import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
 import { recordMatchEnd } from '../stats';
 import { announcer } from '../../announcer';
+import { setBanter } from '../../render/banter';
 
 function isDead(core: any): boolean {
   return (core?.centerHP | 0) <= 0;
@@ -21,6 +22,22 @@ export function declareWinner(winner: Side | 0): void {
   (sim as any).winner = winner; // 0 = tie
   (sim as any).gameOver = true;
   (sim as any).winnerAt = performance.now();
+
+  // Banter: winner speaks a victory line
+  try {
+    const b: any = (sim as any).banter;
+    const L: any = (sim as any).banterL;
+    const R: any = (sim as any).banterR;
+    if (b && L && R) {
+      if (winner === SIDE.LEFT) {
+        const out = b.speak('victory', L, R);
+        if (out) setBanter('L', out.text, 6000);
+      } else if (winner === SIDE.RIGHT) {
+        const out = b.speak('victory', R, L);
+        if (out) setBanter('R', out.text, 6000);
+      }
+    }
+  } catch { /* ignore */ }
 
   const stats = (sim as any).stats ?? ((sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 });
   if (winner === SIDE.LEFT) stats.leftWins++;

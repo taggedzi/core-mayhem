@@ -6,6 +6,7 @@ import { updateHUD } from './render/hud';
 import { initHelpOverlay, openHelpOverlay } from './ui/help';
 import { initStatsOverlay, openStatsOverlay } from './ui/stats';
 import { initAudioControls } from './ui/audioControls';
+import { sim } from './state';
 
 // ——— Types ———
 type StopFn = () => void;
@@ -134,6 +135,16 @@ function init(): void {
   if (btnHelp) btnHelp.onclick = () => openHelpOverlay();
   const btnStats = document.getElementById('btnStats') as HTMLButtonElement | null;
   if (btnStats) btnStats.onclick = () => openStatsOverlay();
+  const btnBanter = document.getElementById('btnBanter') as HTMLButtonElement | null;
+  if (btnBanter) {
+    const refresh = (): void => {
+      const on = (sim as any).banterEnabled !== false;
+      btnBanter.textContent = on ? '💬 Banter On' : '💬 Banter Off';
+      btnBanter.style.opacity = on ? '1' : '0.55';
+    };
+    refresh();
+    btnBanter.onclick = () => { (sim as any).banterEnabled = !(sim as any).banterEnabled; refresh(); };
+  }
 
   // Window resize (debounced)
   window.addEventListener('resize', () => {

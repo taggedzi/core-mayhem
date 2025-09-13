@@ -22,6 +22,7 @@ export const DEV_HELP_LINES: readonly string[] = [
   'b / B: Fill Buff Bin (Left / Right)',
   'd / D: Fill Debuff Bin (Left / Right)',
   'V: Cycle mesmer visuals Off → Low → Always',
+  'N: Toggle banter on/off',
 ];
 
 export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => void {
@@ -87,6 +88,23 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
         const next = order[(idx + 1) % order.length];
         (sim as any).mesmerMode = next;
         toast(`Mesmer: ${next}`);
+        break;
+      }
+
+      // Toggle banter visibility quickly
+      case 'n':
+      case 'N': {
+        (sim as any).banterEnabled = !(sim as any).banterEnabled;
+        const on = (sim as any).banterEnabled !== false;
+        toast(`Banter: ${on ? 'on' : 'off'}`);
+        if (!on) {
+          try {
+            const elL = document.getElementById('banterL');
+            const elR = document.getElementById('banterR');
+            if (elL) elL.textContent = '';
+            if (elR) elR.textContent = '';
+          } catch { /* ignore */ }
+        }
         break;
       }
 

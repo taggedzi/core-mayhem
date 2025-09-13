@@ -8,6 +8,8 @@ import { applyBuff, applyDebuff, currentCooldownMul } from '../mods';
 import { applyRandomBuff } from '../mods';
 import { recordBinCap } from '../stats';
 import { audio } from '../../audio';
+import { setBanter } from '../../render/banter';
+import type { BanterEvent } from '../../banter';
 
 function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -39,6 +41,8 @@ export function runTriggers(now = performance.now()): void {
       (sim.fxArm ||= []).push({ x: wep.cannon.pos.x, y: wep.cannon.pos.y, until: now + WEAPON_WINDUP_MS, color });
       const tc = side === SIDE.LEFT ? (sim as any).coreR : (sim as any).coreL;
       queueFireCannon(side, wep.cannon.pos, tc.center);
+      // Banter: shooter taunts lightly on fire
+      try { speakBanter('taunt', side); } catch { /* ignore */ }
     }
 
     if (bins.laser.fill >= bins.laser.cap && now >= sim.cooldowns[key].laser) {
@@ -48,6 +52,7 @@ export function runTriggers(now = performance.now()): void {
       (sim.fxArm ||= []).push({ x: wep.laser.pos.x, y: wep.laser.pos.y, until: now + WEAPON_WINDUP_MS, color });
       const tc = side === SIDE.LEFT ? (sim as any).coreR : (sim as any).coreL;
       queueFireLaser(side, wep.laser.pos, tc);
+      try { speakBanter('taunt', side); } catch { /* ignore */ }
     }
 
     if (bins.missile.fill >= bins.missile.cap && now >= sim.cooldowns[key].missile) {
@@ -56,6 +61,7 @@ export function runTriggers(now = performance.now()): void {
       sim.cooldowns[key].missile = now + Math.round(COOLDOWN_MS.missile * currentCooldownMul(side));
       (sim.fxArm ||= []).push({ x: wep.missile.pos.x, y: wep.missile.pos.y, until: now + WEAPON_WINDUP_MS, color });
       queueFireMissiles(side, wep.missile.pos);
+      try { speakBanter('taunt', side); } catch { /* ignore */ }
     }
 
     if (bins.mortar.fill >= bins.mortar.cap && now >= sim.cooldowns[key].mortar) {
@@ -64,6 +70,7 @@ export function runTriggers(now = performance.now()): void {
       sim.cooldowns[key].mortar = now + Math.round(COOLDOWN_MS.mortar * currentCooldownMul(side));
       (sim.fxArm ||= []).push({ x: wep.mortar.pos.x, y: wep.mortar.pos.y, until: now + WEAPON_WINDUP_MS, color });
       queueFireMortar(side, wep.mortar.pos);
+      try { speakBanter('taunt', side); } catch { /* ignore */ }
     }
 
     if (bins.repair.fill >= bins.repair.cap) {
@@ -104,3 +111,14 @@ export function runTriggers(now = performance.now()): void {
   }
 }
 
+function speakBanter(ev: BanterEvent, side: Side): void {
+  const b: any = (sim as any).banter;
+  const L: any = (sim as any).banterL;
+  const R: any = (sim as any).banterR;
+  if (!b || !L || !R) return;
+  if ((sim as any).banterEnabled === false) return;
+  const me = side === SIDE.LEFT ? L : R;
+  const them = side === SIDE.LEFT ? R : L;
+  const out = b.speak(ev as any, me, them);
+  if (out) setBanter(side === SIDE.LEFT ? 'L' : 'R', out.text);
+}
