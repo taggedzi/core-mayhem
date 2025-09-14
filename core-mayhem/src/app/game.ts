@@ -168,35 +168,39 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // Preload audio assets (safe no-op in tests/non-browser)
   try { audio.preloadAll(); } catch { /* ignore */ void 0; }
   // Initialize music playlist only once; keep music playing across matches
-  void (async () => {
-    try {
-      if (!audio.hasPlaylist()) {
-        const res = await fetch('/assets/music/playlist.json', { cache: 'no-cache' });
-        if (res.ok) {
-          const files = (await res.json()) as string[];
-          const urls = Array.isArray(files)
-            ? files
-                .filter((f) => typeof f === 'string' && /\.(mp3|ogg)$/i.test(f))
-                .map((f) => `/assets/music/${f}`)
-            : [];
-          if (urls.length) {
-            audio.setMusicPlaylist(urls);
+  // Skip in non-web-audio environments (e.g., tests/JS DOM) to avoid network calls
+  const canUseWebAudio = (typeof window !== 'undefined') && ((window as any).AudioContext !== undefined);
+  if (canUseWebAudio) {
+    void (async () => {
+      try {
+        if (!audio.hasPlaylist()) {
+          const res = await fetch('/assets/music/playlist.json', { cache: 'no-cache' });
+          if (res.ok) {
+            const files = (await res.json()) as string[];
+            const urls = Array.isArray(files)
+              ? files
+                  .filter((f) => typeof f === 'string' && /\.(mp3|ogg)$/i.test(f))
+                  .map((f) => `/assets/music/${f}`)
+              : [];
+            if (urls.length) {
+              audio.setMusicPlaylist(urls);
+            }
           }
         }
-      }
-    } catch { /* ignore */ }
-    try {
-      // Start music only if not already playing
-      if (!audio.isMusicPlaying()) {
-        if (!audio.hasPlaylist()) {
-          // Fallback: try a default track
-          const probe = await fetch('/assets/music/main_theme.mp3', { method: 'HEAD' });
-          if (probe.ok) audio.setMusicPlaylist(['/assets/music/main_theme.mp3']);
+      } catch { /* ignore */ }
+      try {
+        // Start music only if not already playing
+        if (!audio.isMusicPlaying()) {
+          if (!audio.hasPlaylist()) {
+            // Fallback: try a default track
+            const probe = await fetch('/assets/music/main_theme.mp3', { method: 'HEAD' });
+            if (probe.ok) audio.setMusicPlaylist(['/assets/music/main_theme.mp3']);
+          }
+          if (audio.hasPlaylist()) audio.playMusic();
         }
-        if (audio.hasPlaylist()) audio.playMusic();
-      }
-    } catch { /* ignore */ }
-  })();
+      } catch { /* ignore */ }
+    })();
+  }
 
   // Edge pipes
   const pipeL = makePipe(SIDE.LEFT);
