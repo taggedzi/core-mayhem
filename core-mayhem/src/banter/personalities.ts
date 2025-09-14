@@ -3840,14 +3840,3 @@ export const OverTheTopVillainCore: Personality = {
     ],
   },
 };
-
-export const PERSONA_CATALOG = {
-  LightCore,
-  DarkCore,
-  PirateCore,
-  NinjaCore,
-  CyborgCore,
-  MageCore,
-} as const;
-
-export default { LightCore, DarkCore, PirateCore, NinjaCore, CyborgCore, MageCore };
