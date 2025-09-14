@@ -1,7 +1,10 @@
 import { Events, Body, Composite } from 'matter-js';
 
+import { audio } from '../audio';
+import { BanterSystem, createCharacter } from '../banter';
+import { LightCore, DarkCore } from '../banter/personalities';
+import { PERSONA_CATALOG } from '../banter/personas';
 import { DEFAULTS } from '../config';
-// FX and damage handling are now in dedicated modules
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { updateScoreboard } from '../render/score';
@@ -10,29 +13,23 @@ import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { makeCore } from '../sim/core';
 import { makePipe, placeObstaclesFromSpecs } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
-// --- DEV HOTKEYS: only in Vite dev or if forced via config ---
 import { makeWeapons } from '../sim/weapons';
 import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
 import { SIDE } from '../types';
+import { readBanterPacing } from '../ui/banterControls';
+import { readCharacterProfiles } from '../ui/characters';
 
-// import { applyBuff, applyDebuff } from './mods';
 import { registerCollisions } from './collisions';
 import { attachDevHotkeys } from './devKeys';
 import { startNewMatch } from './stats';
+import { runAnnouncer } from './systems/announcer';
+import { runAudioMonitors } from './systems/audioMonitors';
 import { runFXPrune } from './systems/fx';
 import { checkTimeLimit, maybeEndMatch } from './systems/match';
 import { runPhysics } from './systems/physics';
 import { runSpawn } from './systems/spawn';
 import { runTriggers } from './systems/triggers';
-import { runAudioMonitors } from './systems/audioMonitors';
-import { runAnnouncer } from './systems/announcer';
-import { BanterSystem, createCharacter } from '../banter';
-import { readBanterPacing } from '../ui/banterControls';
-import { LightCore, DarkCore } from '../banter/personalities';
-import { PERSONA_CATALOG } from '../banter/personas';
-import { readCharacterProfiles } from '../ui/characters';
-import { audio } from '../audio';
 
 import type { World as MatterWorld, Engine } from 'matter-js';
 
@@ -91,21 +88,21 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     (sim as any).banter = new BanterSystem({ seed, cooldownMs: pacing.cooldownMs, sideMinGapMs: pacing.sideMinGapMs });
     // --- Game mode selection: manual | random | tournament ---
     const mode = (() => {
-      try { return (localStorage.getItem('cm_game_mode') as any) || 'manual'; } catch { return 'manual'; }
+      try { return ((localStorage.getItem('cm_game_mode') as any) ?? 'manual'); } catch { return 'manual'; }
     })() as 'manual' | 'random' | 'tournament';
 
     // Small deterministic RNG seeded from overall seed + match index
-    const mulberry32 = (s: number) => { let t = s >>> 0; return () => { t += 0x6d2b79f5; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; };
+    const mulberry32 = (s: number): (() => number) => { let t = s >>> 0; return (): number => { t += 0x6d2b79f5; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; };
     const rng = mulberry32((seed ^ ((sim as any).matchIndex | 0)) >>> 0);
     const keys = Object.keys(PERSONA_CATALOG);
-    const saveProfile = (side: 'L' | 'R', personaKey: string) => {
+    const saveProfile = (side: 'L' | 'R', personaKey: string): void => {
       try { localStorage.setItem(side === 'L' ? 'cm_char_L' : 'cm_char_R', JSON.stringify({ persona: personaKey })); } catch { /* ignore */ }
     };
-    const labelFromKey = (k: string) => k.replace(/\s*Core$/i, '').trim();
+    const labelFromKey = (k: string): string => k.replace(/\s*Core$/i, '').trim();
 
     if (mode === 'random') {
       // Pick two distinct personas at random each match
-      let i = Math.floor(rng() * keys.length);
+      const i = Math.floor(rng() * keys.length);
       let j = Math.floor(rng() * keys.length);
       if (keys.length > 1) while (j === i) j = Math.floor(rng() * keys.length);
       const kL = keys[i]!, kR = keys[j]!;
@@ -128,7 +125,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
         for (let n = out.length - 1; n > 0; n--) { const m = Math.floor(rng() * (n + 1)); const tmp = out[n]!; out[n] = out[m]!; out[m] = tmp; }
         return out;
       };
-      const T = ((sim as any).tournament ||= {}) as any;
+      const T = (((sim as any).tournament ??= {}) as any);
       if (!Array.isArray(T.pairs) || !Number.isFinite(T.index)) {
         T.pairs = mkPairs();
         T.index = 0;

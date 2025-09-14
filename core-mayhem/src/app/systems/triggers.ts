@@ -1,3 +1,4 @@
+import { audio } from '../../audio';
 import { COOLDOWN_MS, WEAPON_WINDUP_MS, MODS } from '../../config';
 import { SHIELD } from '../../config';
 import { repair } from '../../core/repair';
@@ -6,11 +7,12 @@ import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
 import { applyBuff, applyDebuff, currentCooldownMul } from '../mods';
 import { applyRandomBuff } from '../mods';
+import { speakBanterSmart } from '../speakBanterLLM';
 import { recordBinCap } from '../stats';
-import { audio } from '../../audio';
+
 // setBanter handled via speakBanterSmart
 import type { BanterEvent } from '../../banter';
-import { speakBanterSmart } from '../speakBanterLLM';
+
 
 function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();

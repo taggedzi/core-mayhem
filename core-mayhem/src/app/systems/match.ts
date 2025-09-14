@@ -1,11 +1,11 @@
+import { announcer } from '../../announcer';
 import { GAMEOVER, MATCH_LIMIT } from '../../config';
 import { updateScoreboard } from '../../render/score';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
-import { recordMatchEnd } from '../stats';
-import { announcer } from '../../announcer';
-// setBanter handled via speakBanterSmart
 import { speakBanterSmart } from '../speakBanterLLM';
+import { recordMatchEnd } from '../stats';
+// setBanter handled via speakBanterSmart
 
 function isDead(core: any): boolean {
   return (core?.centerHP | 0) <= 0;
@@ -46,7 +46,7 @@ export function declareWinner(winner: Side | 0): void {
 
   // Tournament bookkeeping: advance pairing and record winner
   try {
-    const mode = (() => { try { return (localStorage.getItem('cm_game_mode') as any) || 'manual'; } catch { return 'manual'; } })() as 'manual' | 'random' | 'tournament';
+    const mode = (() => { try { return ((localStorage.getItem('cm_game_mode') as any) ?? 'manual'); } catch { return 'manual'; } })() as 'manual' | 'random' | 'tournament';
     if (mode === 'tournament') {
       const T = (sim as any).tournament as any;
       if (T && Array.isArray(T.pairs)) {

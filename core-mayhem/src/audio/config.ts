@@ -1,22 +1,23 @@
-import type { SoundKey } from './keys';
 
 // Import asset URLs via bundler; these are resolved to URLs at build time
 // Note: some filenames contain typos; we match the actual files on disk.
+import activate_buff_url from '../assets/audio/activate_buff.ogg';
+import activate_debuff_url from '../assets/audio/activate_debuff.ogg';
+import core_alarm_url from '../assets/audio/core_alarm.ogg';
+import core_death_url from '../assets/audio/core_death.ogg';
+import core_repair_url from '../assets/audio/core_repair.ogg';
+import core_shield_down_url from '../assets/audio/core_sheilf_down.ogg';
+import core_shield_up_url from '../assets/audio/core_sheilf_up.ogg';
 import fire_cannon_url from '../assets/audio/fire_cannon.ogg';
 import fire_laser_url from '../assets/audio/fire_laser.ogg';
 import fire_missile_url from '../assets/audio/fire_missile.ogg';
 import fire_mortar_url from '../assets/audio/fire_mortar.ogg';
-import impact_shield_url from '../assets/audio/impact_sheild.ogg';
 import impact_armor_url from '../assets/audio/impact_armor.ogg';
 import impact_core_url from '../assets/audio/impact_core.ogg';
 import impact_miss_url from '../assets/audio/impact_miss.ogg';
-import activate_buff_url from '../assets/audio/activate_buff.ogg';
-import activate_debuff_url from '../assets/audio/activate_debuff.ogg';
-import core_death_url from '../assets/audio/core_death.ogg';
-import core_alarm_url from '../assets/audio/core_alarm.ogg';
-import core_shield_up_url from '../assets/audio/core_sheilf_up.ogg';
-import core_shield_down_url from '../assets/audio/core_sheilf_down.ogg';
-import core_repair_url from '../assets/audio/core_repair.ogg';
+import impact_shield_url from '../assets/audio/impact_sheild.ogg';
+
+import type { SoundKey } from './keys';
 
 export interface SoundSpec {
   src: string; // URL resolved by bundler

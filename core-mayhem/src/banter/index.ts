@@ -97,7 +97,7 @@ function shuffleInPlace<T>(rng: () => number, arr: T[]): void {
 }
 
 // Small base lexicon and templates. Expandable later.
-export type Lexicon = {
+export interface Lexicon {
   greet: string[];
   hype: string[];
   tauntSoft: string[]; // playful
@@ -111,7 +111,7 @@ export type Lexicon = {
   emojisNegative: string[];
   kaomojiPositive: string[];
   kaomojiNegative: string[];
-};
+}
 
 // const BASE_LEXICON: Lexicon = {
 //   greet: ["Ready.", "Booted.", "Online.", "Systems green.", "Let's go."],
@@ -227,12 +227,12 @@ const BASE_LEXICON: Lexicon = {
   kaomojiNegative: ['(×_×)', '(>︵<)', '(ಠ_ಠ)', '(ノಠ益ಠ)ノ彡┻━┻', '(;￣Д￣)'],
 };
 
-type Template = {
+interface Template {
   id: string; // for cooldown tracking
   build: (ctx: BuildCtx) => string;
   // weight computed per personality; base weight used as multiplier
   baseWeight?: number;
-};
+}
 
 type TemplateBook = Record<BanterEvent, Template[]>;
 
@@ -318,13 +318,13 @@ const TEMPLATES: TemplateBook = {
   ],
 };
 
-type BuildCtx = {
+interface BuildCtx {
   me: string;
   them: string;
   trait: (name: keyof Omit<Personality, 'name' | 'quirks' | 'lexicon'>) => number;
   pick: (lex: keyof Lexicon) => string;
   rng: () => number;
-};
+}
 
 function mergeLexicon(base: Lexicon, override?: Partial<Lexicon>): Lexicon {
   if (!override) return base;
@@ -404,14 +404,14 @@ class Cooldowns {
   constructor(cooldownMs?: number) {
     if (typeof cooldownMs === 'number') this.cd = Math.max(0, cooldownMs);
   }
-  setTime(ms: number) {
+  setTime(ms: number): void {
     this.now = ms;
   }
-  canUse(key: string) {
+  canUse(key: string): boolean {
     const until = this.map.get(key) ?? 0;
     return this.now >= until;
   }
-  touch(key: string) {
+  touch(key: string): void {
     this.map.set(key, this.now + this.cd);
   }
 }
@@ -434,7 +434,7 @@ export class BanterSystem {
   }
 
   // Advance internal time (ms). Use your game dt.
-  step(dtMs: number) {
+  step(dtMs: number): void {
     this.timeMs += Math.max(0, dtMs | 0);
     this.cds.setTime(this.timeMs);
   }
@@ -450,9 +450,9 @@ export class BanterSystem {
     const lastAt = this.lastSpeakerAt.get(me.id) ?? -Infinity;
     if (this.timeMs - lastAt < this.sideMinGapMs) return null;
 
-    const trait = (name: keyof Omit<Personality, 'name' | 'quirks' | 'lexicon'>) =>
+    const trait = (name: keyof Omit<Personality, 'name' | 'quirks' | 'lexicon'>): number =>
       Math.max(0, Math.min(1, (p as any)[name] as number));
-    const pick = (lex: keyof Lexicon) => {
+    const pick = (lex: keyof Lexicon): string => {
       const arr = mergedLex[lex];
       return arr[Math.floor(rng() * arr.length)] ?? '';
     };
@@ -462,12 +462,12 @@ export class BanterSystem {
     // Shuffle to vary among equal weights deterministically
     shuffleInPlace(rng, templates);
 
-    type Candidate = {
+    interface Candidate {
       id: string;
       text: string;
       weight: number;
       mood: 'positive' | 'negative' | 'neutral';
-    };
+    }
     const candidates: Candidate[] = [];
 
     const ctxBase: Omit<BuildCtx, 'pick'> & { pick: BuildCtx['pick'] } = {
@@ -516,7 +516,7 @@ export class BanterSystem {
     );
 
     // Style with quirks and punctuation based on traits
-    let line = styleLine(rng, choice.text, p, choice.mood, mergedLex);
+    const line = styleLine(rng, choice.text, p, choice.mood, mergedLex);
 
     this.cds.touch(`${me.id}::${choice.id}`);
     this.lastLineBySpeaker.set(me.id, line);

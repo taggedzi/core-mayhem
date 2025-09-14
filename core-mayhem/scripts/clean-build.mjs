@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-env node */
 // Remove JS artifacts emitted by TypeScript next to .ts files, plus their maps.
 // Safe by default: only deletes .js/.js.map (and .d.ts) when a sibling .ts/tsx exists.
 
@@ -11,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..'); // core-mayhem
 
-const DRY = process.argv.includes('--dry');
+const DRY = (globalThis.process?.argv ?? []).includes('--dry');
 
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -54,11 +55,9 @@ async function exists(p) {
 
 async function main() {
   let removed = 0;
-  let scanned = 0;
   const deletions = [];
 
   for await (const file of walk(PROJECT_ROOT)) {
-    scanned++;
     const ext = path.extname(file);
     const name = path.basename(file);
 
@@ -84,20 +83,20 @@ async function main() {
   // Delete gathered files
   for (const f of deletions) {
     if (DRY) {
-      console.log('[dry] rm', path.relative(PROJECT_ROOT, f));
+      globalThis.console?.log?.('[dry] rm', path.relative(PROJECT_ROOT, f));
       continue;
     }
     try {
       await fs.unlink(f);
       removed++;
-      console.log('rm', path.relative(PROJECT_ROOT, f));
+      globalThis.console?.log?.('rm', path.relative(PROJECT_ROOT, f));
     } catch (err) {
-      console.warn('skip (cannot delete):', path.relative(PROJECT_ROOT, f), String(err?.message || err));
+      globalThis.console?.warn?.('skip (cannot delete):', path.relative(PROJECT_ROOT, f), String(err?.message || err));
     }
   }
 
   const msg = DRY ? `Would remove ${deletions.length} file(s).` : `Removed ${removed} file(s).`;
-  console.log(msg);
+  globalThis.console?.log?.(msg);
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+main().catch((err) => { globalThis.console?.error?.(err); try { globalThis.process?.exit?.(1); } catch { /* ignore */ } });

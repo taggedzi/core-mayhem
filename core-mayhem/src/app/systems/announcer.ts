@@ -1,10 +1,10 @@
+import { announcer } from '../../announcer';
+import { ANNOUNCER_THRESHOLDS } from '../../announcer/config';
 import { MATCH_LIMIT } from '../../config';
 import { sim } from '../../state';
 // import { SIDE } from '../../types';
-import { announcer } from '../../announcer';
 // setBanter handled via speakBanterSmart
 import { speakBanterSmart } from '../speakBanterLLM';
-import { ANNOUNCER_THRESHOLDS } from '../../announcer/config';
 
 // Local rolling state for detectors
 let lastMatchIndex = -1;
@@ -103,15 +103,15 @@ export function runAnnouncer(): void {
 
   // In danger: once per side when crossing low HP threshold
   const lowThr = Math.max(0, Math.min(1, ANNOUNCER_THRESHOLDS.lowHPpct));
-  const lowL = (cL.centerHP | 0) > 0 && (cL.centerHP | 0) / (cL.centerHPmax || 1) <= lowThr;
-  const lowR = (cR.centerHP | 0) > 0 && (cR.centerHP | 0) / (cR.centerHPmax || 1) <= lowThr;
+  const lowL = (cL.centerHP | 0) > 0 && (cL.centerHP | 0) / ((cL.centerHPmax ?? 1)) <= lowThr;
+  const lowR = (cR.centerHP | 0) > 0 && (cR.centerHP | 0) / ((cR.centerHPmax ?? 1)) <= lowThr;
   if (lowL && !dangerSpokenL) { announcer.trigger('core_in_danger_L'); dangerSpokenL = true; try { speakBanter('near_death', 'L'); } catch { /* ignore */ } }
   if (lowR && !dangerSpokenR) { announcer.trigger('core_in_danger_R'); dangerSpokenR = true; try { speakBanter('near_death', 'R'); } catch { /* ignore */ } }
 
   // Momentum / advantage computations
   const adv = (cL.centerHP | 0) - (cR.centerHP | 0); // positive = L ahead, negative = R ahead
   const sign = Math.sign(adv);
-  const magThr = Math.max(1, Math.floor(((cL.centerHPmax || 1) + (cR.centerHPmax || 1)) * 0.5 * ANNOUNCER_THRESHOLDS.momentumShiftPctOfCenter));
+  const magThr = Math.max(1, Math.floor((((cL.centerHPmax ?? 1) + (cR.centerHPmax ?? 1)) * 0.5 * ANNOUNCER_THRESHOLDS.momentumShiftPctOfCenter)));
   if (sign !== 0 && lastAdvSign !== 0 && sign !== lastAdvSign) {
     if (Math.abs(adv) >= magThr && (now - lastShiftAt) >= ANNOUNCER_THRESHOLDS.momentumWindowMs) {
       announcer.trigger('momentum_shift');
@@ -129,7 +129,13 @@ export function runAnnouncer(): void {
   // L comeback: from minAdvSoFar toward zero (only meaningful if minAdvSoFar < 0)
   const start = (sim as any).matchStart ?? 0;
   const elapsed = performance.now() - start;
-  const total = ((sim as any).settings && (sim as any).settings.matchMs) || (Number((MATCH_LIMIT as any).ms) || 0);
+  const total = (() => {
+    const matchMs = (sim as any).settings?.matchMs as number | undefined;
+    if (typeof matchMs === 'number') return matchMs;
+    const raw = (MATCH_LIMIT as any).ms as unknown;
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  })();
   const frac = total > 0 ? Math.max(0, Math.min(1, elapsed / total)) : 0;
   const lateBoost = frac >= 0.75 ? 1 : 0; // boost priorities in last 25% of time
 

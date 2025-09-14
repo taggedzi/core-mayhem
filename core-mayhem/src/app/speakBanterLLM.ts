@@ -1,8 +1,9 @@
-import { setBanter } from '../render/banter';
-import type { BanterEvent } from '../banter';
 import { ollamaChat } from '../banter/llm/ollama';
+import { setBanter } from '../render/banter';
 import { sim } from '../state';
 import { readLLMSettings, readBanterPacing } from '../ui/banterControls';
+
+import type { BanterEvent } from '../banter';
 
 type SideLR = 'L' | 'R';
 
@@ -21,7 +22,7 @@ function banterDebugEnabled(): boolean {
   }
 }
 function dbg(...args: any[]): void {
-  if (banterDebugEnabled()) console.debug(...args);
+  if (banterDebugEnabled()) console.warn(...args);
 }
 
 function eventAllowed(ev: BanterEvent, mask: string): boolean {
@@ -202,13 +203,13 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
   }
 
   // Per-side generation counter to drop stale async completions
-  const seq = ((sim as any).banterSeq ||= { L: 0, R: 0 }) as Record<SideLR, number>;
+  const seq = (((sim as any).banterSeq ??= { L: 0, R: 0 }) as Record<SideLR, number>);
   // Bump generation for every call so later calls supersede earlier ones
   const myGen = ++seq[side];
 
   // Local pacing guard for LLM path and fallback alike
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const gate = ((sim as any).banterGate ||= { L: 0, R: 0, lastAny: 0 }) as any;
+  const gate = (((sim as any).banterGate ??= { L: 0, R: 0, lastAny: 0 }) as any);
   const pacing = (() => {
     try {
       return readBanterPacing();
@@ -216,9 +217,9 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
       return { cooldownMs: 5000, sideMinGapMs: 12000 };
     }
   })();
-  const sideTooSoon = now - (gate[side] || 0) < Math.max(0, pacing.sideMinGapMs | 0);
-  const crossMin = Math.max(800, Math.min(3500, Math.round((pacing.sideMinGapMs || 2000) * 0.4)));
-  const anyTooSoon = now - (gate.lastAny || 0) < crossMin;
+  const sideTooSoon = now - (gate[side] ?? 0) < Math.max(0, pacing.sideMinGapMs | 0);
+  const crossMin = Math.max(800, Math.min(3500, Math.round(((pacing.sideMinGapMs ?? 2000)) * 0.4)));
+  const anyTooSoon = now - (gate.lastAny ?? 0) < crossMin;
   if (sideTooSoon || anyTooSoon) {
     // Too soon to speak; invalidate older inflight by bumping gen, but do nothing else
     return;
@@ -252,7 +253,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     const ui = (sim as any).banterUI;
     const lastOpp = st.includeOpponentLast ? (side === 'L' ? ui?.R?.text : ui?.L?.text) : '';
     const system = buildPersonaFromTraits(me, st.emojiStyle, them);
-    const prompt = composeUserPrompt(ev, { meHP, themHP, lastOpp: lastOpp || '' });
+    const prompt = composeUserPrompt(ev, { meHP, themHP, lastOpp: lastOpp ?? '' });
 
     // Optional debug logging of final prompts
     dbg('[banter][LLM] system:', system);

@@ -1,5 +1,6 @@
-import { AUDIO_DEFAULTS, SOUNDS } from './config';
 import { AudioManager } from './AudioManager';
+import { AUDIO_DEFAULTS, SOUNDS } from './config';
+
 import type { Channel, SoundKey } from './keys';
 
 // Safe singleton: no-op in non-browser environments

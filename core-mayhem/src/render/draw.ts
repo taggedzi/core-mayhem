@@ -1,8 +1,8 @@
 import { sim } from '../state';
 
+import { drawBanter } from './drawBanter';
 import { toDrawCommands } from './drawModel';
 import { renderScene } from './renderScene';
-import { drawBanter } from './drawBanter';
 
 export function drawFrame(ctx: CanvasRenderingContext2D): void {
   const W = sim.W, H = sim.H;

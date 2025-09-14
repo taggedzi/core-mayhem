@@ -2,7 +2,9 @@ import { Bodies, World, Body, Vector } from 'matter-js';
 
 import { currentDmgMul } from '../app/mods';
 import { isDisabled } from '../app/mods';
+import { speakBanterSmart } from '../app/speakBanterLLM';
 import { recordShotFired, recordLaserHit, recordMiss } from '../app/stats';
+import { audio } from '../audio';
 import { LASER_FX } from '../config';
 import { DAMAGE } from '../config';
 import { WEAPON_WINDUP_MS } from '../config';
@@ -23,8 +25,6 @@ import { SIDE, type Side } from '../types';
 
 import { applyCoreDamage } from './damage';
 // setBanter handled via speakBanterSmart
-import { speakBanterSmart } from '../app/speakBanterLLM';
-import { audio } from '../audio';
 
 import type { Vec } from '../types';
 import type { World as MatterWorld } from 'matter-js';
@@ -248,7 +248,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     // Banter: shield collapsed due to laser drain
     try {
       if (shieldBefore > SHIELD_EPS && shieldAfter <= SHIELD_EPS) {
-        const victimSide = from === SIDE.LEFT ? 'R' : 'L';
+        const victimSide = side === SIDE.LEFT ? 'R' : 'L';
         void speakBanterSmart('shields_down' as any, victimSide);
       }
     } catch { /* ignore */ }
@@ -271,7 +271,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
         for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
           if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
-            const victimSide = from === SIDE.LEFT ? 'R' : 'L';
+            const victimSide = side === SIDE.LEFT ? 'R' : 'L';
             void speakBanterSmart('armor_break' as any, victimSide);
             break;
           }
@@ -297,7 +297,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
         for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
           if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
-            const victimSide = from === SIDE.LEFT ? 'R' : 'L';
+            const victimSide = side === SIDE.LEFT ? 'R' : 'L';
             void speakBanterSmart('armor_break' as any, victimSide);
             break;
           }

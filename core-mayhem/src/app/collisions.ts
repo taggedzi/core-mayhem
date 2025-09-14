@@ -1,5 +1,6 @@
 import { Events, World, Body, Query, Composite } from 'matter-js';
 
+import { audio } from '../audio';
 import { EXPLOSION, FX_MS, PROJECTILE_STYLE } from '../config';
 import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from '../sim/damage';
@@ -7,11 +8,10 @@ import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { currentBinFillMul } from './mods';
+import { speakBanterSmart } from './speakBanterLLM';
 import { recordBinDeposit, recordProjectileHit, recordMiss } from './stats';
 import { recordMissileFirstImpact, recordMissileCoreDelay } from './stats';
-import { audio } from '../audio';
 // setBanter handled via speakBanterSmart
-import { speakBanterSmart } from './speakBanterLLM';
 
 import type { Engine, IEventCollision, World as MatterWorld } from 'matter-js';
 
@@ -190,7 +190,9 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   // Armor segment break detection: any index crossed >0 -> 0
   try {
     for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-      if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+      const before = (segBeforeArr[i] ?? 0) | 0;
+      const after = (segAfterArr[i] ?? 0) | 0;
+      if (before > 0 && after <= 0) {
         void speakBanterSmart('armor_break' as any, side === SIDE.LEFT ? 'L' : 'R');
         break;
       }

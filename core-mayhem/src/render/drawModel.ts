@@ -1,6 +1,7 @@
 // src/render/drawModel.ts
 import { Composite } from 'matter-js';
 
+import { audio } from '../audio';
 import { WEAPON_WINDUP_MS } from '../config';
 import { WALL_T } from '../config'; // used for wall thickness
 import { LASER_FX } from '../config';
@@ -13,7 +14,6 @@ import { LIGHT_PANEL } from '../config';
 import { BADGES } from '../config';
 import { NAME_TAGS } from '../config';
 import { sim } from '../state';
-import { audio } from '../audio';
 
 import { colorForAmmo } from './colors';
 
@@ -1464,7 +1464,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (!m) return;
 
         // Timed buff badge (generic slot)
-        const until = Math.max(Number((m as any).buffUntil || 0), Number((m as any).dmgUntil || 0));
+        const until = Math.max(Number((m as any).buffUntil ?? 0), Number((m as any).dmgUntil ?? 0));
         const active = nowMs < until;
         if (active) {
           const tLeft = Math.max(0, Math.ceil((until - nowMs) / 1000));
@@ -1536,8 +1536,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const fontPx = Math.max(10, Math.floor(sim.H * (style.fontScale ?? 0.026)));
       const padX = Math.max(6, Number(style.padX ?? 10));
       const padY = Math.max(4, Number(style.padY ?? 4));
-      const maxW = Math.max(120, sim.W * (style.maxWidthFrac ?? 0.36));
-      const place = (side: number, pBL: [number, number]): { x: number; y: number } => ({
+  const place = (side: number, pBL: [number, number]): { x: number; y: number } => ({
         x: side < 0 ? pBL[0] : sim.W - pBL[0],
         y: sim.H - pBL[1],
       });
@@ -1563,10 +1562,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (!baseName) baseName = String(c.displayName ?? '').trim();
         if (!baseName) {
           const id = String(c.id ?? '').toLowerCase();
-          baseName = id === 'left' || id === 'right' ? defaultSideName : (String(c.id || defaultSideName));
+          baseName = id === 'left' || id === 'right' ? defaultSideName : (String(c.id ?? defaultSideName));
         }
         // Avoid duplicate like "Light (Light)"; prefer side name in that case
-        const norm = (s: string) => s.replace(/\s*Core$/i, '').trim().toLowerCase();
+        const norm = (s: string): string => s.replace(/\s*Core$/i, '').trim().toLowerCase();
         if (inParens && norm(baseName) === norm(inParens)) baseName = defaultSideName;
         const label = inParens ? `${baseName} (${inParens})` : baseName;
         return label;

@@ -1,7 +1,7 @@
+import { announcerControls } from '../announcer';
 import { audio } from '../audio';
 import { AUDIO_DEFAULTS } from '../audio/config';
 import { sim } from '../state';
-import { announcerControls } from '../announcer';
 
 const K = { sfx: 'cm_sfxVolume', music: 'cm_musicVolume', viz: 'cm_vizSens', beat: 'cm_beatSens', chip: 'cm_chipMode',
   annVol: 'cm_announcerVol', annDuckM: 'cm_annDuckMusic', annDuckS: 'cm_annDuckSfx', annRel: 'cm_annDuckRelease', annGap: 'cm_annMinGap', annOn: 'cm_annEnabled' } as const;

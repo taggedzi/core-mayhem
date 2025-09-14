@@ -1,4 +1,5 @@
 import { audio } from '../audio';
+
 import { ANNOUNCER_AUDIO, EVENTS, POOLS, type AnnounceEvent } from './config';
 
 type PoolId = keyof typeof POOLS;
@@ -33,7 +34,7 @@ class AnnouncerService {
     const spec = EVENTS[ev];
     if (!spec) return;
     const now = performance.now();
-    const lastEv = this.lastEventAt.get(ev) || 0;
+    const lastEv = this.lastEventAt.get(ev) ?? 0;
     if ((spec.cooldownMs ?? 0) > 0 && now - lastEv < (spec.cooldownMs as number)) return;
     this.lastEventAt.set(ev, now);
     const prio = (spec.priority | 0) + ((opts?.priorityBoost ?? 0) | 0);

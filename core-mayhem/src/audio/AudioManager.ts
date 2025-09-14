@@ -279,11 +279,11 @@ export class AudioManager {
 
     // cooldown
     const nowMs = performance.now();
-    const last = this.lastPlayAt.get(key) || 0;
+    const last = this.lastPlayAt.get(key) ?? 0;
     if ((spec.cooldownMs ?? 0) > 0 && nowMs - last < (spec.cooldownMs as number)) return;
 
     // concurrent limiter
-    const current = this.instances.get(key) || 0;
+    const current = this.instances.get(key) ?? 0;
     if ((spec.maxConcurrent ?? Infinity) <= current) return;
 
     // load buffer
@@ -310,7 +310,7 @@ export class AudioManager {
     // bookkeeping
     this.instances.set(key, current + 1);
     src.addEventListener('ended', () => {
-      this.instances.set(key, Math.max(0, (this.instances.get(key) || 1) - 1));
+      this.instances.set(key, Math.max(0, (this.instances.get(key) ?? 1) - 1));
       try { src.disconnect(); gain.disconnect(); } catch { /* ignore */ }
     });
 

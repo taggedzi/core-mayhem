@@ -1,5 +1,5 @@
-import { sim } from '../state';
 import { DEFAULT_LLM, type LLMSettings } from '../config/llm';
+import { sim } from '../state';
 
 const K = {
   on: 'cm_banterEnabled',
@@ -26,7 +26,7 @@ function loadNum(key: string, fallback: number): number {
   try { const v = Number(localStorage.getItem(key)); return Number.isFinite(v) ? v : fallback; } catch { return fallback; }
 }
 function loadStr(key: string, fallback: string): string {
-  try { const v = localStorage.getItem(key); return v == null ? fallback : v; } catch { return fallback; }
+  try { const v = localStorage.getItem(key); return v ?? fallback; } catch { return fallback; }
 }
 function save(key: string, v: string | number | boolean): void {
   try { localStorage.setItem(key, typeof v === 'boolean' ? (v ? '1' : '0') : String(v)); } catch { /* ignore */ }
@@ -291,8 +291,9 @@ export function initBanterControls(): void {
   elCd.addEventListener('change', () => save(K.cd, Math.max(0, Number(elCd.value) | 0)));
   elGap.addEventListener('change', () => save(K.gap, Math.max(0, Number(elGap.value) | 0)));
   for (const ev of events) {
-    evChecks[ev].addEventListener('change', () => {
-      const list = events.filter(e => !!evChecks[e].checked);
+    const cb = evChecks[ev]!;
+    cb.addEventListener('change', () => {
+      const list = events.filter((e) => !!evChecks[e]?.checked);
       save(K.ev, list.length === events.length ? '*' : list.join(','));
     });
   }
@@ -332,7 +333,7 @@ export function initBanterControls(): void {
   resetWrap.appendChild(btnReset);
   pop.appendChild(resetWrap);
 
-  const setUIFrom = (cfg: LLMSettings & { enabled: boolean }) => {
+  const setUIFrom = (cfg: LLMSettings & { enabled: boolean }): void => {
     // Enabled
     elOn.checked = cfg.enabled; (sim as any).banterEnabled = cfg.enabled; save(K.on, cfg.enabled);
     // Provider
@@ -365,7 +366,7 @@ export function initBanterControls(): void {
     // Events
     const all = ['match_start','first_blood','big_hit','stagger','comeback','near_death','victory','taunt'];
     const mask = cfg.events === '*' ? new Set(all) : new Set(cfg.events.split(',').map(s=>s.trim()).filter(Boolean));
-    for (const ev of all) { const on = mask.has(ev); evChecks[ev].checked = on; }
+    for (const ev of all) { const on = mask.has(ev); const cb = evChecks[ev]; if (cb) cb.checked = on; }
     save(K.ev, cfg.events);
     refreshBtnLabel();
   };

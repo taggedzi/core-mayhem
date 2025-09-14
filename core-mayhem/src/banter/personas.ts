@@ -1,4 +1,5 @@
 import * as P from './personalities';
+
 import type { Personality } from './index';
 
 function isPersonality(o: any): o is Personality {
@@ -19,10 +20,9 @@ function isPersonality(o: any): o is Personality {
 export const PERSONA_CATALOG: Readonly<Record<string, Personality>> = Object.freeze(
   Object.fromEntries(
     Object.entries(P)
-      .filter(([k, v]) => isPersonality(v))
+      .filter(([, v]) => isPersonality(v))
       .map(([k, v]) => [k, v as Personality])
   )
 );
 
 export default PERSONA_CATALOG;
-

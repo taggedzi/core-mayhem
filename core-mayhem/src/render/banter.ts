@@ -9,7 +9,7 @@ export function setBanter(side: 'L' | 'R', text: string, ms = 6000): void {
   const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   // Also record into sim so canvas can draw speech bubbles near cores
   try {
-    const ui = ((sim as any).banterUI ||= { L: { text: '', t0: 0, until: 0 }, R: { text: '', t0: 0, until: 0 } });
+    const ui = (((sim as any).banterUI ??= { L: { text: '', t0: 0, until: 0 }, R: { text: '', t0: 0, until: 0 } }));
     const until = now + Math.max(500, ms | 0);
     if (side === 'L') { ui.L.text = text; ui.L.t0 = now; ui.L.until = until; }
     else { ui.R.text = text; ui.R.t0 = now; ui.R.until = until; }
@@ -34,7 +34,7 @@ export function setBanter(side: 'L' | 'R', text: string, ms = 6000): void {
 }
 
 export function clearBanter(side?: 'L' | 'R'): void {
-  const doSide = (s: 'L' | 'R') => {
+  const doSide = (s: 'L' | 'R'): void => {
     const id = s === 'L' ? 'banterL' : 'banterR';
     const el = typeof document !== 'undefined' ? document.getElementById(id) : null;
     if (!el) return;

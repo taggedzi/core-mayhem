@@ -1,0 +1,147 @@
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\announcer\index.ts
+   1:1   warning  There should be at least one empty line between import groups                                              import/order
+  36:45  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\app\collisions.ts
+  11:1  warning  There should be at least one empty line between import groups      import/order
+  12:1  warning  There should be at least one empty line between import groups      import/order
+  12:1  warning  `../audio` import should occur before import of `../config`        import/order
+  14:1  warning  `./speakBanterLLM` import should occur before import of `./stats`  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\app\game.ts
+   28:1   warning  `./systems/audioMonitors` import should occur before import of `./systems/fx`                                        import/order
+   29:1   warning  There should be at least one empty line between import groups                                                        import/order
+   29:1   warning  `./systems/announcer` import should occur before import of `./systems/fx`                                            import/order
+   30:1   warning  `../banter` import should occur before import of `../config`                                                         import/order
+   31:1   warning  `../ui/banterControls` import should occur before import of `./collisions`                                           import/order
+   32:1   warning  `../banter/personalities` import should occur before import of `../config`                                           import/order
+   33:1   warning  `../banter/personas` import should occur before import of `../config`                                                import/order
+   34:1   warning  `../ui/characters` import should occur before import of `./collisions`                                               import/order
+   35:1   warning  `../audio` import should occur before import of `../config`                                                          import/order
+   94:66  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator            @typescript-eslint/prefer-nullish-coalescing
+  101:63  warning  Missing return type on function                                                                                      @typescript-eslint/explicit-function-return-type
+  104:38  warning  Missing return type on function                                                                                      @typescript-eslint/explicit-function-return-type
+  131:42  warning  Prefer using nullish coalescing operator (`??=`) instead of a logical assignment (`||=`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\app\speakBanterLLM.ts
+    1:1   warning  There should be at least one empty line between import groups                                                        import/order
+    1:1   warning  `../render/banter` import should occur after import of `../banter/llm/ollama`                                        import/order
+    2:1   warning  There should be at least one empty line between import groups                                                        import/order
+    2:1   warning  `../banter` type import should occur after import of `../ui/banterControls`                                          import/order
+   24:29  warning  Unexpected console statement. Only these console methods are allowed: warn, error                                    no-console
+  205:39  warning  Prefer using nullish coalescing operator (`??=`) instead of a logical assignment (`||=`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  211:41  warning  Prefer using nullish coalescing operator (`??=`) instead of a logical assignment (`||=`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  219:41  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator            @typescript-eslint/prefer-nullish-coalescing
+  221:42  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator            @typescript-eslint/prefer-nullish-coalescing
+  255:75  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator            @typescript-eslint/prefer-nullish-coalescing
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\app\systems\announcer.ts
+    4:1   warning  `../../announcer` import should occur before import of `../../config`                                      import/order
+    7:1   warning  `../../announcer/config` import should occur before import of `../../config`                               import/order
+  106:77  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  107:77  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  114:58  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  114:82  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  132:74  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\app\systems\match.ts
+   6:1   warning  `../../announcer` import should occur before import of `../../config`                                      import/order
+   8:1   warning  `../speakBanterLLM` import should occur before import of `../stats`                                        import/order
+  49:86  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\app\systems\triggers.ts
+  10:1  warning  There should be at least one empty line between import groups        import/order
+  10:1  warning  `../../audio` import should occur before import of `../../config`    import/order
+  12:1  warning  There should be at least one empty line between import groups        import/order
+  13:1  warning  `../speakBanterLLM` import should occur before import of `../stats`  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\audio\AudioManager.ts
+  282:43  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  286:45  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  313:68  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\audio\config.ts
+   1:1  warning  `./keys` type import should occur after import of `../assets/audio/core_repair.ogg`                           import/order
+   5:1  warning  `../assets/audio/fire_cannon.ogg` import should occur after import of `../assets/audio/core_repair.ogg`       import/order
+   6:1  warning  `../assets/audio/fire_laser.ogg` import should occur after import of `../assets/audio/core_repair.ogg`        import/order
+   7:1  warning  `../assets/audio/fire_missile.ogg` import should occur after import of `../assets/audio/core_repair.ogg`      import/order
+   8:1  warning  `../assets/audio/fire_mortar.ogg` import should occur after import of `../assets/audio/core_repair.ogg`       import/order
+   9:1  warning  `../assets/audio/impact_sheild.ogg` import should occur after import of `../assets/audio/core_repair.ogg`     import/order
+  10:1  warning  `../assets/audio/impact_armor.ogg` import should occur after import of `../assets/audio/core_repair.ogg`      import/order
+  11:1  warning  `../assets/audio/impact_core.ogg` import should occur after import of `../assets/audio/core_repair.ogg`       import/order
+  12:1  warning  `../assets/audio/impact_miss.ogg` import should occur after import of `../assets/audio/core_repair.ogg`       import/order
+  15:1  warning  `../assets/audio/core_death.ogg` import should occur after import of `../assets/audio/core_alarm.ogg`         import/order
+  17:1  warning  `../assets/audio/core_sheilf_up.ogg` import should occur after import of `../assets/audio/core_repair.ogg`    import/order
+  18:1  warning  `../assets/audio/core_sheilf_down.ogg` import should occur after import of `../assets/audio/core_repair.ogg`  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\audio\index.ts
+  2:1  warning  There should be at least one empty line between import groups     import/order
+  2:1  warning  `./AudioManager` import should occur before import of `./config`  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\banter\demo.ts
+  4:1  warning  There should be at least one empty line between import groups     import/order
+  5:1  warning  `./personalities` import should occur before import of `./index`  import/order
+  7:1  warning  Missing return type on function                                   @typescript-eslint/explicit-function-return-type
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\banter\index.ts
+  100:13  error    Use an `interface` instead of a `type`           @typescript-eslint/consistent-type-definitions
+  230:6   error    Use an `interface` instead of a `type`           @typescript-eslint/consistent-type-definitions
+  321:6   error    Use an `interface` instead of a `type`           @typescript-eslint/consistent-type-definitions
+  407:3   warning  Missing return type on function                  @typescript-eslint/explicit-function-return-type
+  410:3   warning  Missing return type on function                  @typescript-eslint/explicit-function-return-type
+  414:3   warning  Missing return type on function                  @typescript-eslint/explicit-function-return-type
+  437:3   warning  Missing return type on function                  @typescript-eslint/explicit-function-return-type
+  453:82  warning  Missing return type on function                  @typescript-eslint/explicit-function-return-type
+  455:39  warning  Missing return type on function                  @typescript-eslint/explicit-function-return-type
+  465:10  error    Use an `interface` instead of a `type`           @typescript-eslint/consistent-type-definitions
+  519:9   error    'line' is never reassigned. Use 'const' instead  prefer-const
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\banter\personas.ts
+  1:1  warning  There should be at least one empty line between import groups  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\main.ts
+  3:1  warning  `./sim/world` import should occur after import of `./render/hud`    import/order
+  6:1  warning  `./ui/help` import should occur after import of `./ui/characters`   import/order
+  7:1  warning  `./ui/stats` import should occur after import of `./ui/characters`  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\render\banter.ts
+  12:39  warning  Prefer using nullish coalescing operator (`??=`) instead of a logical assignment (`||=`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  37:33  warning  Missing return type on function                                                                                      @typescript-eslint/explicit-function-return-type
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\render\draw.ts
+  5:1  warning  `./drawBanter` import should occur before import of `./drawModel`  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\render\drawBanter.ts
+   47:33   warning  Missing return type on function                                                                            @typescript-eslint/explicit-function-return-type
+  138:81   warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  138:102  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\render\drawModel.ts
+    16:1   warning  `../audio` import should occur before import of `../config`                                                import/order
+  1467:60  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  1467:94  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  1565:87  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  1568:34  warning  Missing return type on function                                                                            @typescript-eslint/explicit-function-return-type
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\sim\weapons.ts
+  24:1  warning  There should be at least one empty line between import groups                import/order
+  26:1  warning  `../app/speakBanterLLM` import should occur before import of `../app/stats`  import/order
+  27:1  warning  `../audio` import should occur before import of `../config`                  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\ui\audioControls.ts
+  4:1  warning  `../announcer` import should occur before import of `../audio`  import/order
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\ui\banterControls.ts
+    2:1   warning  `../config/llm` import should occur before import of `../state`                                            import/order
+   29:53  warning  Prefer using nullish coalescing operator (`??`) instead of a ternary expression, as it is simpler to read  @typescript-eslint/prefer-nullish-coalescing
+  336:63  warning  Missing return type on function                                                                            @typescript-eslint/explicit-function-return-type
+
+E:\Home\Documents\Programming\core-mayhem\core-mayhem\src\ui\characters.ts
+    1:1   warning  There should be at least one empty line between import groups                                              import/order
+   89:68  warning  Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator  @typescript-eslint/prefer-nullish-coalescing
+  102:50  warning  Missing return type on function                                                                            @typescript-eslint/explicit-function-return-type
+
+✖ 99 problems (5 errors, 94 warnings)
+  5 errors and 54 warnings potentially fixable with the `--fix` option.
+

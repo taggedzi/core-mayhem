@@ -1,4 +1,5 @@
 import { PERSONA_CATALOG } from '../banter/personas';
+
 import type { Personality } from '../banter';
 
 type SideLR = 'L' | 'R';
@@ -9,10 +10,10 @@ const K = {
 } as const;
 const K_MODE = 'cm_game_mode';
 
-type StoredProfile = {
+interface StoredProfile {
   persona: keyof typeof PERSONA_CATALOG;
   overrides?: Partial<Personality> & { quirks?: Partial<NonNullable<Personality['quirks']>> };
-};
+}
 
 function loadProfile(side: SideLR): StoredProfile | null {
   try { const raw = localStorage.getItem(K[side]); if (!raw) return null; return JSON.parse(raw) as StoredProfile; } catch { return null; }
@@ -31,7 +32,7 @@ function applyOverrides(base: Personality, ov?: StoredProfile['overrides']): Per
   }
   if (ov.blurb != null) (p as any).blurb = String(ov.blurb);
   const bq = base.quirks ?? { ellipsis: 0, staccato: 0, randomCaps: 0, emojiStyle: 'none', emoji: 0 };
-  const oq = ov.quirks ?? {};
+  const oq: Partial<NonNullable<Personality['quirks']>> = ov.quirks ?? {};
   p.quirks = {
     ellipsis: oq.ellipsis != null ? clamp01(Number(oq.ellipsis)) : bq.ellipsis,
     staccato: oq.staccato != null ? clamp01(Number(oq.staccato)) : bq.staccato,
@@ -86,7 +87,7 @@ export function initCharactersControls(): void {
     pop.appendChild(d);
     const wrap = document.createElement('label'); wrap.className = 'audio-row'; wrap.textContent = 'Mode ';
     const sel = document.createElement('select'); sel.id = 'cm_mode_sel';
-    const cur = (() => { try { return localStorage.getItem(K_MODE) || 'manual'; } catch { return 'manual'; } })();
+    const cur = (() => { try { return localStorage.getItem(K_MODE) ?? 'manual'; } catch { return 'manual'; } })();
     const opts = [
       { value: 'manual', label: 'Manual (Use selections below)' },
       { value: 'random', label: 'Random Each Match' },
@@ -99,10 +100,10 @@ export function initCharactersControls(): void {
 
   modeRow();
 
-  const makeSide = (side: SideLR, title: string) => {
+  const makeSide = (side: SideLR, title: string): void => {
     pop.appendChild(section(title));
     const stored = loadProfile(side) ?? { persona: 'LightCore' } as StoredProfile;
-    const base = PERSONA_CATALOG[stored.persona] ?? PERSONA_CATALOG.LightCore;
+    const base = (PERSONA_CATALOG[stored.persona] ?? PERSONA_CATALOG.LightCore)!;
     const cur = applyOverrides(base, stored.overrides);
 
     const selPersona = selectRow('Persona', `${side}_persona`, personaOptions(), stored.persona);
@@ -135,7 +136,7 @@ export function initCharactersControls(): void {
     btnReset.addEventListener('click', (e) => {
       e.preventDefault();
       const persona = (selPersona.value as keyof typeof PERSONA_CATALOG) || 'LightCore';
-      const p = PERSONA_CATALOG[persona];
+      const p = (PERSONA_CATALOG[persona] ?? PERSONA_CATALOG.LightCore)!;
       sAgg.value = String(p.aggression);
       sHum.value = String(p.humor);
       sFor.value = String(p.formality);
@@ -150,7 +151,7 @@ export function initCharactersControls(): void {
     });
 
     selPersona.addEventListener('change', () => {
-      const p = PERSONA_CATALOG[selPersona.value as keyof typeof PERSONA_CATALOG] ?? PERSONA_CATALOG.LightCore;
+      const p = (PERSONA_CATALOG[selPersona.value as keyof typeof PERSONA_CATALOG] ?? PERSONA_CATALOG.LightCore)!;
       sAgg.value = String(p.aggression);
       sHum.value = String(p.humor);
       sFor.value = String(p.formality);
@@ -186,8 +187,8 @@ export function initCharactersControls(): void {
 
 export function readCharacterProfiles(): { left: Personality; right: Personality; leftName: string; rightName: string } {
   const pL = loadProfile('L'); const pR = loadProfile('R');
-  const baseL = pL?.persona ? PERSONA_CATALOG[pL.persona] : PERSONA_CATALOG.LightCore;
-  const baseR = pR?.persona ? PERSONA_CATALOG[pR.persona] : PERSONA_CATALOG.DarkCore;
+  const baseL = ((pL?.persona ? PERSONA_CATALOG[pL.persona] : PERSONA_CATALOG.LightCore) ?? PERSONA_CATALOG.LightCore)!;
+  const baseR = ((pR?.persona ? PERSONA_CATALOG[pR.persona] : PERSONA_CATALOG.DarkCore) ?? PERSONA_CATALOG.DarkCore)!;
   const left = applyOverrides(baseL, pL?.overrides);
   const right = applyOverrides(baseR, pR?.overrides);
   return { left, right, leftName: baseL.name.replace(/Core$/,'') || 'Left', rightName: baseR.name.replace(/Core$/,'') || 'Right' };

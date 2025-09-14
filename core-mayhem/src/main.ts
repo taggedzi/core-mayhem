@@ -1,14 +1,13 @@
 // main.ts
 import { startGame } from './app/game';
-import { resizeCanvas } from './sim/world';
 import { initStats } from './app/stats';
 import { updateHUD } from './render/hud';
-import { initHelpOverlay, openHelpOverlay } from './ui/help';
-import { initStatsOverlay, openStatsOverlay } from './ui/stats';
+import { resizeCanvas } from './sim/world';
 import { initAudioControls } from './ui/audioControls';
 import { initBanterControls } from './ui/banterControls';
 import { initCharactersControls } from './ui/characters';
-import { sim } from './state';
+import { initHelpOverlay, openHelpOverlay } from './ui/help';
+import { initStatsOverlay, openStatsOverlay } from './ui/stats';
 
 // ——— Types ———
 type StopFn = () => void;

@@ -25,14 +25,14 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
     const textColor = '#111';
     ctx.font = 'bold 14px Verdana, Tahoma, Geneva, sans-serif';
     const m = ctx.getTransform();
-    const sx = m.a || 1;
-    const sy = m.d || 1;
+    const sx = m.a ?? 1;
+    const sy = m.d ?? 1;
     // Fade in/out
     const now2 = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const fadeInMs = 140;
     const fadeOutMs = 220;
-    const age = Math.max(0, now2 - (t0 || now2));
-    const remain = Math.max(0, (until || now2) - now2);
+    const age = Math.max(0, now2 - (t0 ?? now2));
+    const remain = Math.max(0, (until ?? now2) - now2);
     const alphaIn = Math.max(0, Math.min(1, age / fadeInMs));
     const alphaOut = Math.max(0, Math.min(1, remain / fadeOutMs));
     const alpha = Math.min(alphaIn, alphaOut) || 1;
@@ -44,7 +44,7 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
     const words = String(text).split(/\s+/);
     const lines: string[] = [];
     let cur = '';
-    const widthPx = (s: string) => ctx.measureText(s).width;
+    const widthPx = (s: string): number => ctx.measureText(s).width;
     for (const w0 of words) {
       const t = cur ? cur + ' ' + w0 : w0;
       if (widthPx(t) <= maxPx || !cur) cur = t; else { lines.push(cur); cur = w0; }
@@ -130,12 +130,12 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
     const r = Number(core.ringR ?? core.R ?? 40);
     if (!Number.isFinite(cx) || !Number.isFinite(cy) || !Number.isFinite(r)) return;
     const m = ctx.getTransform();
-    const sx = m.a || 1, sy = m.d || 1;
+    const sx = m.a ?? 1, sy = m.d ?? 1;
     const gap = 18 / sy; // vertical gap between core bottom and bubble top
     const anchorTopY = (cy + r) + gap; // below core
     const tipX = cx + (side === 'L' ? -8 / sx : 8 / sx);
     const tipY = cy + r; // bottom edge of the core ring
-    drawBubble(String(uiSide.text), cx, anchorTopY, tipX, tipY, side, uiSide.t0 || now, uiSide.until || now);
+    drawBubble(String(uiSide.text), cx, anchorTopY, tipX, tipY, side, uiSide.t0 ?? now, uiSide.until ?? now);
   };
 
   drawForSide('L');

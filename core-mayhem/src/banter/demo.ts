@@ -1,10 +1,11 @@
 // Small demo showing how events trigger different banter lines
 // Run in a test harness or call from your game main.
 
-import { BanterSystem, createCharacter } from "./index";
 import { LightCore, DarkCore } from "./personalities";
 
-function runDemo() {
+import { BanterSystem, createCharacter } from "./index";
+
+function runDemo(): void {
   const banter = new BanterSystem({ seed: 20240912, cooldownMs: 2500 });
   const left = createCharacter("left", LightCore, "Light");
   const right = createCharacter("right", DarkCore, "Dark");
@@ -43,4 +44,3 @@ declare const window: any;
 if (typeof window === "undefined") {
   runDemo();
 }
-
