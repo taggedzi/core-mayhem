@@ -11,6 +11,7 @@ import { MESMER } from '../config';
 // TOP_BAND removed
 import { LIGHT_PANEL } from '../config';
 import { BADGES } from '../config';
+import { NAME_TAGS } from '../config';
 import { sim } from '../state';
 import { audio } from '../audio';
 
@@ -1524,6 +1525,69 @@ export function toDrawCommands(now: number = performance.now()): Scene {
 
       mk(-1);
       mk(1);
+    }
+  }
+
+  // Overlays — Core Name + Persona tags (mirrored placement like badges)
+  {
+    if ((NAME_TAGS as any)?.enabled !== false) {
+      const posBL = ((NAME_TAGS as any)?.left?.pos as [number, number] | undefined) ?? [sim.W * 0.18, sim.H - 40];
+      const style: any = (NAME_TAGS as any)?.style ?? {};
+      const fontPx = Math.max(10, Math.floor(sim.H * (style.fontScale ?? 0.026)));
+      const padX = Math.max(6, Number(style.padX ?? 10));
+      const padY = Math.max(4, Number(style.padY ?? 4));
+      const maxW = Math.max(120, sim.W * (style.maxWidthFrac ?? 0.36));
+      const place = (side: number, pBL: [number, number]): { x: number; y: number } => ({
+        x: side < 0 ? pBL[0] : sim.W - pBL[0],
+        y: sim.H - pBL[1],
+      });
+      const makeText = (side: number): string | null => {
+        const c = side < 0 ? (sim as any).banterL : (sim as any).banterR;
+        if (!c) return null;
+        const name = String(c.displayName ?? c.id ?? (side < 0 ? 'Left' : 'Right'));
+        // Prefer persona key from character selection (drop-down) over personality.name
+        let personaKey = '';
+        try {
+          const raw = localStorage.getItem(side < 0 ? 'cm_char_L' : 'cm_char_R');
+          if (raw) {
+            const obj = JSON.parse(raw);
+            if (obj && typeof obj.persona === 'string') personaKey = obj.persona;
+          }
+        } catch { /* ignore */ }
+        const personaLabel = (personaKey || '').replace(/\s*Core$/i, '').trim();
+        const pName0 = String(c.personality?.name ?? '').trim();
+        const fallbackLabel = pName0.replace(/\s*Core$/i, '').trim();
+        const inParens = personaLabel || fallbackLabel;
+        const label = inParens ? `${name} (${inParens})` : name;
+        return label;
+      };
+      const drawOne = (side: number): void => {
+        const text = makeText(side);
+        if (!text) return;
+        const p = place(side, posBL);
+        const stroke = side < 0 ? (style.strokeLeft ?? 'var(--left)') : (style.strokeRight ?? 'var(--right)');
+        const fill = style.fill ?? '#0e1730';
+        const textFill = style.text ?? '#ffffff';
+        cmds.push({
+          kind: 'textBox',
+          x: p.x,
+          y: p.y,
+          text,
+          font: `${fontPx}px var(--mono, monospace)`,
+          fill,
+          stroke,
+          lineWidth: Number(style.lineWidth ?? 2),
+          padX,
+          padY,
+          textFill,
+          anchor: side < 0 ? 'bl' : 'br',
+          alpha: 1,
+          // Renderer will clamp box width based on maxWidth if it wraps; for single-line we set maxWidth
+          // through text measurement; here pass as hint via text command (not supported in textBox), so skip.
+        } as any);
+      };
+      drawOne(-1);
+      drawOne(1);
     }
   }
 
