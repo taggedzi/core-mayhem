@@ -10,6 +10,8 @@ import { currentBinFillMul } from './mods';
 import { recordBinDeposit, recordProjectileHit, recordMiss } from './stats';
 import { recordMissileFirstImpact, recordMissileCoreDelay } from './stats';
 import { audio } from '../audio';
+// setBanter handled via speakBanterSmart
+import { speakBanterSmart } from './speakBanterLLM';
 
 import type { Engine, IEventCollision, World as MatterWorld } from 'matter-js';
 
@@ -157,6 +159,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
       // If shield collapsed exactly on absorption, signal collapse
       if (shieldBefore > SHIELD_EPS && core.shieldHP <= SHIELD_EPS) {
         try { audio.play('core_shield_down'); } catch { /* ignore */ void 0; }
+        try { void speakBanterSmart('shields_down' as any, side === SIDE.LEFT ? 'L' : 'R'); } catch { /* ignore */ }
       }
       // Shot fully absorbed by the shield
       try {
@@ -172,15 +175,27 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     // If shield just broke this hit, signal collapse
     if (shieldBefore > SHIELD_EPS && core.shieldHP <= SHIELD_EPS) {
       try { audio.play('core_shield_down'); } catch { /* ignore */ void 0; }
+      try { void speakBanterSmart('shields_down' as any, side === SIDE.LEFT ? 'L' : 'R'); } catch { /* ignore */ }
     }
   }
 
   // Snapshot before
-  const segBefore = core.segHP.reduce((a, b) => a + (b | 0), 0);
+  const segBeforeArr = core.segHP.slice();
+  const segBefore = segBeforeArr.reduce((a, b) => a + (b | 0), 0);
   const centerBefore = core.centerHP | 0;
   if (isCenter) core.centerHP = Math.max(0, core.centerHP - dmg);
   else applyCoreDamage(core, proj.position, dmg, angleToSeg);
-  const segAfter = core.segHP.reduce((a, b) => a + (b | 0), 0);
+  const segAfterArr = core.segHP.slice();
+  const segAfter = segAfterArr.reduce((a, b) => a + (b | 0), 0);
+  // Armor segment break detection: any index crossed >0 -> 0
+  try {
+    for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
+      if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+        void speakBanterSmart('armor_break' as any, side === SIDE.LEFT ? 'L' : 'R');
+        break;
+      }
+    }
+  } catch { /* ignore */ }
   const centerAfter = core.centerHP | 0;
   try {
     recordProjectileHit(

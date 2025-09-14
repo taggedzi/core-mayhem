@@ -31,8 +31,11 @@ export function runTriggers(now = performance.now()): void {
     }
     if (bins.debuff && bins.debuff.fill >= bins.debuff.cap) {
       bins.debuff.fill = 0;
-      applyDebuff(side === SIDE.LEFT ? SIDE.RIGHT : SIDE.LEFT);
+      const victim = side === SIDE.LEFT ? SIDE.RIGHT : SIDE.LEFT;
+      applyDebuff(victim);
       try { audio.play('activate_debuff'); } catch { /* ignore */ void 0; }
+      // Banter: debuff victim reacts
+      try { speakBanter('debuffed' as any, victim); } catch { /* ignore */ }
     }
 
     if (bins.cannon.fill >= bins.cannon.cap && now >= sim.cooldowns[key].cannon) {
@@ -79,6 +82,8 @@ export function runTriggers(now = performance.now()): void {
       bins.repair.fill = 0;
       repair(side);
       try { audio.play('armor_increase'); } catch { /* ignore */ void 0; }
+      // Banter: self-repair acknowledgment
+      try { speakBanter('repair' as any, side); } catch { /* ignore */ }
     }
 
     if (bins.shield.fill >= bins.shield.cap) {
@@ -87,6 +92,8 @@ export function runTriggers(now = performance.now()): void {
       const core = side === SIDE.LEFT ? (sim as any).coreL : (sim as any).coreR;
       core.shieldHP = Math.min(core.shieldHPmax, core.shieldHP + SHIELD.onPickup);
       try { audio.play('core_shield_up'); } catch { /* ignore */ void 0; }
+      // Banter: shields up acknowledgment
+      try { speakBanter('shields_up' as any, side); } catch { /* ignore */ }
     }
   };
 

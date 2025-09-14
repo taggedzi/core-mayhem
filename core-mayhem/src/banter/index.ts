@@ -9,7 +9,13 @@ export type BanterEvent =
   | 'comeback'
   | 'near_death'
   | 'victory'
-  | 'taunt';
+  | 'taunt'
+  // New targeted/reactive events
+  | 'shields_down'      // my shields just collapsed
+  | 'armor_break'       // I lost an armor segment
+  | 'shields_up'        // I raised shields / got shield pickup
+  | 'repair'            // I repaired armor
+  | 'debuffed';         // I was debuffed by opponent
 
 // 'unicode' is accepted as an alias of 'emoji' for convenience in persona files
 export type EmojiStyle = 'none' | 'emoji' | 'kaomoji' | 'unicode';
@@ -290,6 +296,26 @@ const TEMPLATES: TemplateBook = {
     },
     { id: 'tt.short', build: ({ pick }) => pick('tauntSoft') },
   ],
+  shields_down: [
+    { id: 'sd.grit', build: () => 'Shields down—still fighting.' },
+    { id: 'sd.snap', build: ({ trait }) => (trait('sarcasm') > 0.6 ? 'Nice. Now come closer.' : 'You broke the shield. So what?') },
+  ],
+  armor_break: [
+    { id: 'ab.snarl', build: ({ pick }) => `${pick('pain')} Lost a plate.` },
+    { id: 'ab.defiant', build: ({ trait }) => (trait('aggression') > 0.6 ? 'Rip more. I won’t fold.' : 'Armor’s thinning… I’m fine.') },
+  ],
+  shields_up: [
+    { id: 'su.short', build: () => 'Shield online.' },
+    { id: 'su.flex', build: ({ trait }) => (trait('aggression') > 0.6 ? 'Under cover. Try me now.' : 'Back under cover.') },
+  ],
+  repair: [
+    { id: 'rp.brisk', build: () => 'Patched up.' },
+    { id: 'rp.composure', build: ({ trait }) => (trait('formality') > 0.6 ? 'Repairs complete.' : 'Good as new.') },
+  ],
+  debuffed: [
+    { id: 'db.irritated', build: () => 'Tch—systems slugged.' },
+    { id: 'db.spiky', build: ({ trait }) => (trait('sarcasm') > 0.6 ? 'Cute trick. Timer’s ticking.' : 'Debuff won’t save you.') },
+  ],
 };
 
 type BuildCtx = {
@@ -506,6 +532,8 @@ function inferMood(
 ): 'positive' | 'negative' | 'neutral' {
   if (event === 'victory' || event === 'first_blood' || event === 'comeback') return 'positive';
   if (event === 'near_death' || event === 'stagger' || event === 'big_hit') return 'negative';
+  if (event === 'shields_down' || event === 'armor_break' || event === 'debuffed') return 'negative';
+  if (event === 'shields_up' || event === 'repair') return 'positive';
   // Taunt mood depends on aggression
   if (event === 'taunt') return trait('aggression') > 0.55 ? 'negative' : 'neutral';
   // Default
@@ -566,6 +594,16 @@ function fallbackLine(event: BanterEvent, ctx: BuildCtx): string | null {
       return ctx.pick('comeback');
     case 'near_death':
       return ctx.pick('nearDeath');
+    case 'shields_down':
+      return 'Shields down.';
+    case 'armor_break':
+      return 'Lost a plate.';
+    case 'shields_up':
+      return 'Shield online.';
+    case 'repair':
+      return 'Patched up.';
+    case 'debuffed':
+      return 'Systems slugged.';
     default:
       return null;
   }

@@ -72,6 +72,11 @@ function styleHintFor(ev: BanterEvent, ctx: { meHP: number; themHP: number }): s
     near_death: `desperate or fearless; short and cutting; ${tone}`,
     victory: `boastful finisher; signature flair; ${tone}`,
     taunt: `spicy, witty, targeted jab; ${tone}`,
+    shields_down: `gritty resilience; acknowledge collapse without panic; ${tone}`,
+    armor_break: `pained but defiant; terse; ${tone}`,
+    shields_up: `confident, re-fortified; quick flex; ${tone}`,
+    repair: `composed, regained footing; short; ${tone}`,
+    debuffed: `irritated, defiant; minimize impact; ${tone}`,
   } as const;
   return byEvent[ev] ?? tone;
 }

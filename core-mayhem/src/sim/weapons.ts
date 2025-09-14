@@ -22,6 +22,8 @@ import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { applyCoreDamage } from './damage';
+// setBanter handled via speakBanterSmart
+import { speakBanterSmart } from '../app/speakBanterLLM';
 import { audio } from '../audio';
 
 import type { Vec } from '../types';
@@ -243,30 +245,65 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     }
     const shieldAfter = coreAny.shieldHP as number;
     const shieldDelta = Math.max(0, shieldBefore - shieldAfter);
+    // Banter: shield collapsed due to laser drain
+    try {
+      if (shieldBefore > SHIELD_EPS && shieldAfter <= SHIELD_EPS) {
+        const victimSide = from === SIDE.LEFT ? 'R' : 'L';
+        void speakBanterSmart('shields_down' as any, victimSide);
+      }
+    } catch { /* ignore */ }
 
     const centerBefore = (enemyCore as any).centerHP | 0;
-    const segBefore = Array.isArray((enemyCore as any).segHP)
-      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+    const segBeforeArr = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.slice()
       : 0;
+    const segBefore = Array.isArray(segBeforeArr) ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
     // Apply damage to core exactly once (your helper handles center/segments)
     applyCoreDamage(enemyCore as any, aim, toCore, angleToSeg);
     const centerAfter = (enemyCore as any).centerHP | 0;
-    const segAfter = Array.isArray((enemyCore as any).segHP)
-      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+    const segAfterArr = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.slice()
       : 0;
+    const segAfter = Array.isArray(segAfterArr) ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
     try { recordLaserHit(side, shieldDelta, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch { /* ignore */ void 0; }
+    // Armor break detection under laser
+    try {
+      if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
+        for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
+          if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+            const victimSide = from === SIDE.LEFT ? 'R' : 'L';
+            void speakBanterSmart('armor_break' as any, victimSide);
+            break;
+          }
+        }
+      }
+    } catch { /* ignore */ }
   } else {
     // No shield pool: all to core
     const centerBefore = (enemyCore as any).centerHP | 0;
-    const segBefore = Array.isArray((enemyCore as any).segHP)
-      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+    const segBeforeArr = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.slice()
       : 0;
+    const segBefore = Array.isArray(segBeforeArr) ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
     applyCoreDamage(enemyCore as any, aim, base, angleToSeg);
     const centerAfter = (enemyCore as any).centerHP | 0;
-    const segAfter = Array.isArray((enemyCore as any).segHP)
-      ? (enemyCore as any).segHP.reduce((a: number, b: number) => a + (b | 0), 0)
+    const segAfterArr = Array.isArray((enemyCore as any).segHP)
+      ? (enemyCore as any).segHP.slice()
       : 0;
+    const segAfter = Array.isArray(segAfterArr) ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
     try { recordLaserHit(side, 0, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch { /* ignore */ void 0; }
+    // Armor break detection (no shields)
+    try {
+      if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
+        for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
+          if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+            const victimSide = from === SIDE.LEFT ? 'R' : 'L';
+            void speakBanterSmart('armor_break' as any, victimSide);
+            break;
+          }
+        }
+      }
+    } catch { /* ignore */ }
   }
 
   // --- FX (kept as you had it) ---
