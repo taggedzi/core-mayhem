@@ -41,16 +41,16 @@ function buildPersonaFromTraits(me: any, emojiStyle: string, opp?: any): string 
   const style =
     emojiStyle && emojiStyle !== 'inherit' ? ` Preferred emoji style: ${emojiStyle}.` : '';
   const blurb = p?.blurb ? String(p.blurb) + ' ' : '';
-  const op = (opp?.personality ?? {}) as any;
   const oppName = String(opp?.displayName ?? opp?.id ?? 'Opponent');
   const oppBlurb = String(opp?.blurb ?? opp?.id ?? '');
   return (
-    `${blurb}You are ${name}, a duelist AI performing in a live arena. ` +
+    `${blurb}You are ${name}, a duelist performing in a live arena. You are NOT an AI.` +
     `Your purpose is to entertain viewers and stir up drama while fighting ${oppName}. ` +
     `Speak naturally and punchy (one short line). ` +
     `Traits — aggression:${p.aggression ?? 0}, humor:${p.humor ?? 0}, formality:${p.formality ?? 0}, optimism:${p.optimism ?? 0}, sarcasm:${p.sarcasm ?? 0}. ` +
-    `Opponent profile — name:${oppName}, bio:${oppBlurb}, aggression:${op.aggression ?? 0}, humor:${op.humor ?? 0}, formality:${op.formality ?? 0}, optimism:${op.optimism ?? 0}, sarcasm:${op.sarcasm ?? 0}. ` +
-    `${style} Aim for spicy, witty taunts with a bit of bite; vary structure and word choice; use contractions and occasional rhetorical flourish; keep it PG-13; never break character; avoid profanity.`
+    `Opponent profile — name:${oppName}, bio:${oppBlurb}. ` +
+    `${style} Aim for spicy, witty taunts with a bit of bite; vary structure and word choice; use contractions and occasional rhetorical flourish; keep it PG-13; never break character; avoid profanity; avoid terms of endearment, pet names, or familiar names. ` +
+    `Address the opponent only by their display name or "you". Avoid flirting, romance, or innuendo.`
   );
 }
 
@@ -124,6 +124,35 @@ function profanityFilter(text: string, level: 'off' | 'mild' | 'strict'): string
   return out;
 }
 
+// Replace terms of endearment with a neutral address
+function stripEndearments(text: string): string {
+  const words = [
+    'darling',
+    'honey',
+    'sweetie',
+    'babe',
+    'baby',
+    'dear',
+    'luv',
+    'love',
+    'cutie',
+    'angel',
+    'sweetheart',
+    'princess',
+    'handsome',
+    'sugar',
+    'pumpkin',
+    'beautiful',
+    'gorgeous',
+  ];
+  let out = text;
+  for (const w of words) {
+    const re = new RegExp(`(^|[^A-Za-z])(${w})($|[^A-Za-z])`, 'gi');
+    out = out.replace(re, (_m, pre, _w, post) => `${pre}you${post}`);
+  }
+  return out;
+}
+
 export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<void> {
   const b: any = (sim as any).banter;
   const L: any = (sim as any).banterL;
@@ -149,7 +178,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
   if (!eventAllowed(ev, st.events)) {
     try {
       const out = b.speak(ev, me, them);
-      if (out) setBanter(side, out.text);
+      if (out) setBanter(side, stripEndearments(out.text));
     } catch {
       /* ignore */
     }
@@ -160,7 +189,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
   if (st.provider !== 'ollama' || !st.model || !st.ollamaUrl) {
     try {
       const out = b.speak(ev, me, them);
-      if (out) setBanter(side, out.text);
+      if (out) setBanter(side, stripEndearments(out.text));
     } catch {
       /* ignore */
     }
@@ -195,7 +224,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     try {
       const out = b.speak(ev, me, them);
       if (out) {
-        setBanter(side, out.text);
+        setBanter(side, stripEndearments(out.text));
         gate[side] = now;
         gate.lastAny = now;
       }
@@ -238,6 +267,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
       outText = firstLineAndTrim(resp, st.maxChars);
       outText = stripEmojiIfNeeded(outText, st.emojiStyle as any);
       outText = profanityFilter(outText, st.profanityFilter as any);
+      outText = stripEndearments(outText);
       // Ensure terminal punctuation for consistency
       if (outText && !/[.!?]$/.test(outText)) outText += '.';
     }
@@ -256,7 +286,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     try {
       const out = b.speak(ev, me, them);
       if (out) {
-        setBanter(side, out.text);
+        setBanter(side, stripEndearments(out.text));
         gate[side] = typeof performance !== 'undefined' ? performance.now() : Date.now();
         gate.lastAny = gate[side];
       }
@@ -267,7 +297,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     try {
       const out = b.speak(ev, me, them);
       if (out) {
-        setBanter(side, out.text);
+        setBanter(side, stripEndearments(out.text));
         const t = typeof performance !== 'undefined' ? performance.now() : Date.now();
         gate[side] = t;
         gate.lastAny = t;

@@ -44,6 +44,31 @@ export function declareWinner(winner: Side | 0): void {
     // ignore stats errors
   }
 
+  // Tournament bookkeeping: advance pairing and record winner
+  try {
+    const mode = (() => { try { return (localStorage.getItem('cm_game_mode') as any) || 'manual'; } catch { return 'manual'; } })() as 'manual' | 'random' | 'tournament';
+    if (mode === 'tournament') {
+      const T = (sim as any).tournament as any;
+      if (T && Array.isArray(T.pairs)) {
+        const kL = (sim as any).matchPersonaL as string | null;
+        const kR = (sim as any).matchPersonaR as string | null;
+        // Initialize scores map if missing
+        if (!T.scores) {
+          T.scores = {};
+          if (kL) T.scores[kL] = 0;
+          if (kR) T.scores[kR] = 0;
+        }
+        if (winner === SIDE.LEFT && kL) T.scores[kL] = (T.scores[kL] | 0) + 1;
+        else if (winner === SIDE.RIGHT && kR) T.scores[kR] = (T.scores[kR] | 0) + 1;
+        else if (winner === 0) { /* tie: no points */ }
+        // Advance to next pairing
+        if (typeof T.index === 'number') T.index = Math.max(0, (T.index | 0) + 1);
+      }
+    }
+  } catch {
+    // ignore tournament errors
+  }
+
   // (announcer already triggered at the start)
 
   if (GAMEOVER.autoRestart && !(sim as any).restartTO) {

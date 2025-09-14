@@ -30,6 +30,7 @@ import { runAnnouncer } from './systems/announcer';
 import { BanterSystem, createCharacter } from '../banter';
 import { readBanterPacing } from '../ui/banterControls';
 import { LightCore, DarkCore } from '../banter/personalities';
+import { PERSONA_CATALOG } from '../banter/personas';
 import { readCharacterProfiles } from '../ui/characters';
 import { audio } from '../audio';
 
@@ -88,13 +89,80 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     const seed = Number(((sim as any).settings?.seed ?? 1337) | 0);
     const pacing = (() => { try { return readBanterPacing(); } catch { return { cooldownMs: 5000, sideMinGapMs: 12000 }; } })();
     (sim as any).banter = new BanterSystem({ seed, cooldownMs: pacing.cooldownMs, sideMinGapMs: pacing.sideMinGapMs });
-    const chosen = (() => { try { return readCharacterProfiles(); } catch { return null; } })();
-    if (chosen) {
-      (sim as any).banterL = createCharacter('left', chosen.left, chosen.leftName);
-      (sim as any).banterR = createCharacter('right', chosen.right, chosen.rightName);
+    // --- Game mode selection: manual | random | tournament ---
+    const mode = (() => {
+      try { return (localStorage.getItem('cm_game_mode') as any) || 'manual'; } catch { return 'manual'; }
+    })() as 'manual' | 'random' | 'tournament';
+
+    // Small deterministic RNG seeded from overall seed + match index
+    const mulberry32 = (s: number) => { let t = s >>> 0; return () => { t += 0x6d2b79f5; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; };
+    const rng = mulberry32((seed ^ ((sim as any).matchIndex | 0)) >>> 0);
+    const keys = Object.keys(PERSONA_CATALOG);
+    const saveProfile = (side: 'L' | 'R', personaKey: string) => {
+      try { localStorage.setItem(side === 'L' ? 'cm_char_L' : 'cm_char_R', JSON.stringify({ persona: personaKey })); } catch { /* ignore */ }
+    };
+    const labelFromKey = (k: string) => k.replace(/\s*Core$/i, '').trim();
+
+    if (mode === 'random') {
+      // Pick two distinct personas at random each match
+      let i = Math.floor(rng() * keys.length);
+      let j = Math.floor(rng() * keys.length);
+      if (keys.length > 1) while (j === i) j = Math.floor(rng() * keys.length);
+      const kL = keys[i]!, kR = keys[j]!;
+      const pL = PERSONA_CATALOG[kL] ?? LightCore;
+      const pR = PERSONA_CATALOG[kR] ?? DarkCore;
+      (sim as any).banterL = createCharacter('left', pL, labelFromKey(kL));
+      (sim as any).banterR = createCharacter('right', pR, labelFromKey(kR));
+      // Track for UI labels and potential consumers
+      (sim as any).matchPersonaL = kL; (sim as any).matchPersonaR = kR;
+      saveProfile('L', kL); saveProfile('R', kR);
+    } else if (mode === 'tournament') {
+      // Round-robin tournament over all unique pairs
+      type Pair = [string, string];
+      const mkPairs = (): Pair[] => {
+        const out: Pair[] = [];
+        for (let a = 0; a < keys.length; a++) {
+          for (let b = a + 1; b < keys.length; b++) out.push([keys[a]!, keys[b]!] as Pair);
+        }
+        // Shuffle deterministically
+        for (let n = out.length - 1; n > 0; n--) { const m = Math.floor(rng() * (n + 1)); const tmp = out[n]!; out[n] = out[m]!; out[m] = tmp; }
+        return out;
+      };
+      const T = ((sim as any).tournament ||= {}) as any;
+      if (!Array.isArray(T.pairs) || !Number.isFinite(T.index)) {
+        T.pairs = mkPairs();
+        T.index = 0;
+        T.scores = Object.fromEntries(keys.map((k) => [k, 0]));
+      }
+      if (T.index >= T.pairs.length) {
+        // Completed: reset for a fresh run next time
+        T.pairs = mkPairs();
+        T.index = 0;
+        T.scores = Object.fromEntries(keys.map((k) => [k, 0]));
+      }
+      const [aKey, bKey] = (T.pairs[T.index] ?? [keys[0]!, keys[Math.min(1, keys.length - 1)]!]) as Pair;
+      // Alternate sides per match for fairness
+      const swap = (((sim as any).matchIndex | 0) % 2) === 0;
+      const kL = swap ? aKey : bKey;
+      const kR = swap ? bKey : aKey;
+      const pL = PERSONA_CATALOG[kL] ?? LightCore;
+      const pR = PERSONA_CATALOG[kR] ?? DarkCore;
+      (sim as any).banterL = createCharacter('left', pL, labelFromKey(kL));
+      (sim as any).banterR = createCharacter('right', pR, labelFromKey(kR));
+      (sim as any).matchPersonaL = kL; (sim as any).matchPersonaR = kR;
+      saveProfile('L', kL); saveProfile('R', kR);
     } else {
-      (sim as any).banterL = createCharacter('left', LightCore, 'Light');
-      (sim as any).banterR = createCharacter('right', DarkCore, 'Dark');
+      // Manual
+      const chosen = (() => { try { return readCharacterProfiles(); } catch { return null; } })();
+      if (chosen) {
+        (sim as any).banterL = createCharacter('left', chosen.left, chosen.leftName);
+        (sim as any).banterR = createCharacter('right', chosen.right, chosen.rightName);
+        (sim as any).matchPersonaL = null; (sim as any).matchPersonaR = null;
+      } else {
+        (sim as any).banterL = createCharacter('left', LightCore, 'Light');
+        (sim as any).banterR = createCharacter('right', DarkCore, 'Dark');
+        (sim as any).matchPersonaL = 'LightCore'; (sim as any).matchPersonaR = 'DarkCore';
+      }
     }
   } catch {
     /* ignore banter init errors */

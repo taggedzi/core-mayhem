@@ -7,6 +7,7 @@ const K = {
   L: 'cm_char_L',
   R: 'cm_char_R',
 } as const;
+const K_MODE = 'cm_game_mode';
 
 type StoredProfile = {
   persona: keyof typeof PERSONA_CATALOG;
@@ -76,6 +77,27 @@ export function initCharactersControls(): void {
     wrap.appendChild(sel); pop.appendChild(wrap); return sel;
   };
   const btnRow = (): HTMLDivElement => { const d = document.createElement('div'); d.className = 'audio-row buttons'; pop.appendChild(d); return d; };
+
+  // --- Game Mode ---
+  const modeRow = (): void => {
+    const d = document.createElement('div');
+    d.className = 'audio-row';
+    const strong = document.createElement('strong'); strong.textContent = 'Game Mode'; d.appendChild(strong);
+    pop.appendChild(d);
+    const wrap = document.createElement('label'); wrap.className = 'audio-row'; wrap.textContent = 'Mode ';
+    const sel = document.createElement('select'); sel.id = 'cm_mode_sel';
+    const cur = (() => { try { return localStorage.getItem(K_MODE) || 'manual'; } catch { return 'manual'; } })();
+    const opts = [
+      { value: 'manual', label: 'Manual (Use selections below)' },
+      { value: 'random', label: 'Random Each Match' },
+      { value: 'tournament', label: 'Tournament (Round Robin)' },
+    ];
+    for (const o of opts) { const opt = document.createElement('option'); opt.value = o.value; opt.text = o.label; if (o.value === cur) opt.selected = true; sel.appendChild(opt); }
+    wrap.appendChild(sel); pop.appendChild(wrap);
+    sel.addEventListener('change', () => { try { localStorage.setItem(K_MODE, sel.value); } catch { /* ignore */ } });
+  };
+
+  modeRow();
 
   const makeSide = (side: SideLR, title: string) => {
     pop.appendChild(section(title));

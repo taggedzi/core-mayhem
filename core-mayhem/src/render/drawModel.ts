@@ -1544,7 +1544,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const makeText = (side: number): string | null => {
         const c = side < 0 ? (sim as any).banterL : (sim as any).banterR;
         if (!c) return null;
-        const name = String(c.displayName ?? c.id ?? (side < 0 ? 'Left' : 'Right'));
+        const defaultSideName = side < 0 ? 'Left' : 'Right';
         // Prefer persona key from character selection (drop-down) over personality.name
         let personaKey = '';
         try {
@@ -1558,7 +1558,17 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const pName0 = String(c.personality?.name ?? '').trim();
         const fallbackLabel = pName0.replace(/\s*Core$/i, '').trim();
         const inParens = personaLabel || fallbackLabel;
-        const label = inParens ? `${name} (${inParens})` : name;
+        // Base name: use Personality.name if present; fallback to displayName; else readable side label
+        let baseName = String(c.personality?.name ?? '').trim();
+        if (!baseName) baseName = String(c.displayName ?? '').trim();
+        if (!baseName) {
+          const id = String(c.id ?? '').toLowerCase();
+          baseName = id === 'left' || id === 'right' ? defaultSideName : (String(c.id || defaultSideName));
+        }
+        // Avoid duplicate like "Light (Light)"; prefer side name in that case
+        const norm = (s: string) => s.replace(/\s*Core$/i, '').trim().toLowerCase();
+        if (inParens && norm(baseName) === norm(inParens)) baseName = defaultSideName;
+        const label = inParens ? `${baseName} (${inParens})` : baseName;
         return label;
       };
       const drawOne = (side: number): void => {
