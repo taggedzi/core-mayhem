@@ -37,8 +37,10 @@ export function clearBanter(side?: 'L' | 'R'): void {
   const doSide = (s: 'L' | 'R'): void => {
     const id = s === 'L' ? 'banterL' : 'banterR';
     const el = typeof document !== 'undefined' ? document.getElementById(id) : null;
-    if (!el) return;
-    el.textContent = '';
+    if (el) {
+      el.textContent = '';
+    }
+    // Always clear pending auto-clear timeouts and sim state, even if DOM element is absent
     const prev = s === 'L' ? toL : toR;
     if (prev !== null) window.clearTimeout(prev);
     if (s === 'L') toL = null; else toR = null;
