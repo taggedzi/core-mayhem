@@ -9,6 +9,25 @@ Lightweight 2D canvas arena powered by Matter.js with a fixed logical canvas (19
 - Build: `npm run build`
 - Preview: `npm run preview`
 
+## Deployment
+
+- Build artifacts: `core-mayhem/dist` (configured in `core-mayhem/vite.config.ts`).
+- Build for production: from `core-mayhem/` run `npm run build`.
+- Preview the built site locally: from `core-mayhem/` run `npm run preview`.
+- What to deploy: upload or point your host to the `core-mayhem/dist` folder. It contains only static files (HTML/CSS/JS/assets) and can be served by any static host (S3/CloudFront, Cloudflare Pages, Netlify, Vercel, Nginx/Apache, etc.).
+- Paths: the config sets `base: './'` so built asset URLs are relative; you can host the folder at domain root or under a subpath without extra changes.
+
+### Common Hosts
+- Netlify / Vercel / Cloudflare Pages: set the project root to `core-mayhem`, the build command to `npm run build`, and the publish directory to `core-mayhem/dist` (or just `dist` if the platform treats `core-mayhem` as the working dir).
+- Any VPS / Nginx / Apache: copy `core-mayhem/dist` to your web root (e.g., `/var/www/site`), configure the server to serve static files from that directory.
+- GitHub Pages: either
+  - Use a GitHub Action that builds in `core-mayhem` and publishes `core-mayhem/dist` to the `gh-pages` branch; or
+  - Reconfigure `outDir` to `../docs` (and push `docs/` to main) if you prefer the Pages “Docs” source. With the current `base: './'`, both approaches work.
+
+### Assets
+- Files placed in `core-mayhem/public` are copied to `dist` unchanged and served at the same path (e.g., `public/assets/music/*` → `/assets/music/*`).
+- Other assets referenced from code are bundled and hashed by Vite.
+
 ## Quality
 
 - Typecheck: `npm run typecheck`
