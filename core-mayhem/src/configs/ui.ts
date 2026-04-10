@@ -85,3 +85,17 @@ export const NAME_TAGS = {
     maxWidthFrac: 0.36, // clamp width relative to W
   },
 } as const;
+
+// Procedural retro arcade avatar displayed below turrets, above name tags.
+// Left side uses BL coords (cx, cy); right mirrors cx automatically.
+// Tweak cx/cy/orbR to reposition or resize without touching render code.
+export const AVATAR = {
+  enabled: true,
+  left: {
+    cx: 800, // BL x from left edge
+    cy: 155, // BL y from bottom edge
+  },
+  orbR: 52, // orb body radius (px)
+  ring1: { iR: 10, oR: 18, segs: 6, gap: 0.27 }, // inner ring offsets from orbR
+  ring2: { iR: 21, oR: 33, segs: 4, gap: 0.3 }, // outer ring offsets from orbR
+} as const;
