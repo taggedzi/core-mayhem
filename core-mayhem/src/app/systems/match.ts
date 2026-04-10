@@ -1,5 +1,6 @@
 import { announcer } from '../../announcer';
 import { GAMEOVER, MATCH_LIMIT } from '../../config';
+import { setAvatarEmotion } from '../../render/avatar';
 import { updateScoreboard } from '../../render/score';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
@@ -28,6 +29,13 @@ export function declareWinner(winner: Side | 0): void {
   try {
     if (winner === SIDE.LEFT) void speakBanterSmart('victory' as any, 'L');
     else if (winner === SIDE.RIGHT) void speakBanterSmart('victory' as any, 'R');
+  } catch { /* ignore */ }
+
+  // Avatar: winner celebrates, loser collapses
+  try {
+    if (winner === SIDE.LEFT)       { setAvatarEmotion('L', 'victory'); setAvatarEmotion('R', 'dead'); }
+    else if (winner === SIDE.RIGHT) { setAvatarEmotion('R', 'victory'); setAvatarEmotion('L', 'dead'); }
+    else                            { setAvatarEmotion('L', 'dead');    setAvatarEmotion('R', 'dead'); }
   } catch { /* ignore */ }
 
   const stats = (sim as any).stats ?? ((sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 });

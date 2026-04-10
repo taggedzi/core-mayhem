@@ -1,6 +1,7 @@
 import { announcer } from '../../announcer';
 import { ANNOUNCER_THRESHOLDS } from '../../announcer/config';
 import { MATCH_LIMIT } from '../../config';
+import { resetAvatarState } from '../../render/avatar';
 import { sim } from '../../state';
 // import { SIDE } from '../../types';
 // setBanter handled via speakBanterSmart
@@ -57,6 +58,8 @@ export function runAnnouncer(): void {
     announcer.trigger('pre_game');
     announcer.trigger('match_start_ready');
     announcer.trigger('match_start_go');
+    // Avatar: entrance animation on new match
+    try { resetAvatarState(); } catch { /* ignore */ }
     // Banter: both sides greet at match start
     try {
       speakBanter('match_start', 'L');

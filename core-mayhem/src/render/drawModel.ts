@@ -15,6 +15,7 @@ import { BADGES } from '../config';
 import { NAME_TAGS } from '../config';
 import { sim } from '../state';
 
+import { buildAvatarCmds } from './avatar';
 import { colorForAmmo } from './colors';
 
 import type { Core } from '../sim/core';
@@ -84,6 +85,8 @@ export type DrawCommand =
       stroke?: string;
       lineWidth?: number;
       alpha?: number;
+      shadowBlur?: number;
+      shadowColor?: string;
     }
   | {
       kind: 'poly';
@@ -1527,6 +1530,11 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       mk(1);
     }
   }
+
+  // Avatars — procedural retro arcade characters, below turrets / above name tags
+  try {
+    for (const cmd of buildAvatarCmds(now, W, H)) cmds.push(cmd);
+  } catch { /* non-fatal: never crash the render loop */ }
 
   // Overlays — Core Name + Persona tags (mirrored placement like badges)
   {

@@ -1,5 +1,6 @@
 import { ollamaChat } from '../banter/llm/ollama';
 import { setBanter } from '../render/banter';
+import { setAvatarEmotion, banterToAvatarEmotion } from '../render/avatar';
 import { sim } from '../state';
 import { readLLMSettings, readBanterPacing } from '../ui/banterControls';
 
@@ -160,6 +161,12 @@ function stripEndearments(text: string): string {
 }
 
 export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<void> {
+  // Avatar reacts immediately to every game event, regardless of banter pacing
+  try {
+    const avatarEmo = banterToAvatarEmotion(ev as string);
+    if (avatarEmo) setAvatarEmotion(side, avatarEmo);
+  } catch { /* non-fatal */ }
+
   const b: any = (sim as any).banter;
   const L: any = (sim as any).banterL;
   const R: any = (sim as any).banterR;

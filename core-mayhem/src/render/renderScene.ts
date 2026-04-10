@@ -91,6 +91,8 @@ function paint(ctx: CanvasRenderingContext2D, cmd: DrawCommand): void {
     case 'wedge': {
       ctx.save();
       if (cmd.alpha != null) ctx.globalAlpha = cmd.alpha;
+      if (cmd.shadowBlur != null) ctx.shadowBlur = cmd.shadowBlur;
+      if (cmd.shadowColor) ctx.shadowColor = cssVar(ctx, cmd.shadowColor);
       ctx.beginPath();
       ctx.arc(cmd.cx, cmd.cy, cmd.r1, cmd.a0, cmd.a1, false);
       ctx.arc(cmd.cx, cmd.cy, cmd.r0, cmd.a1, cmd.a0, true);
