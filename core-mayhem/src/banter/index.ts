@@ -1019,24 +1019,34 @@ const TEMPLATES: TemplateBook = {
     { id: 'tt.short', build: ({ pick }) => pick('tauntSoft') },
   ],
   shields_down: [
-    { id: 'sd.grit', build: () => 'Shields down—still fighting.' },
-    { id: 'sd.snap', build: ({ trait }) => (trait('sarcasm') > 0.6 ? 'Nice. Now come closer.' : 'You broke the shield. So what?') },
+    { id: 'sd.grit', build: ({ them }) => `Shields down—I am still coming for you, ${them}.` },
+    { id: 'sd.snap', build: ({ trait, them }) => (trait('sarcasm') > 0.6 ? `Nice move, ${them}. Now come closer.` : `You broke the shield, ${them}. So what?`) },
+    { id: 'sd.defiant', build: ({ them }) => `Barrier gone—nothing between us now, ${them}.` },
+    { id: 'sd.raw', build: ({ trait, them }) => (trait('aggression') > 0.6 ? `No shield. Good. More fun, ${them}.` : `Shield's down. Keep swinging, ${them}—you'll need more than that.`) },
   ],
   armor_break: [
-    { id: 'ab.snarl', build: ({ pick }) => `${pick('pain')} Lost a plate.` },
-    { id: 'ab.defiant', build: ({ trait }) => (trait('aggression') > 0.6 ? 'Rip more. I won’t fold.' : 'Armor’s thinning… I’m fine.') },
+    { id: 'ab.snarl', build: ({ pick, them }) => `${pick('pain')} Plate cracked—but I'm still here, ${them}.` },
+    { id: 'ab.defiant', build: ({ trait, them }) => (trait('aggression') > 0.6 ? `Rip more, ${them}. I will not fold.` : `Armor's thinning, ${them}—I've got more fight left than you think.`) },
+    { id: 'ab.grit', build: ({ them }) => `Hurt. Not finished, ${them}.` },
+    { id: 'ab.taunt', build: ({ them }) => `You dented the armor, ${them}. Try the rest.` },
   ],
   shields_up: [
-    { id: 'su.short', build: () => 'Shield online.' },
-    { id: 'su.flex', build: ({ trait }) => (trait('aggression') > 0.6 ? 'Under cover. Try me now.' : 'Back under cover.') },
+    { id: 'su.short', build: ({ them }) => `Shield up. Try me now, ${them}.` },
+    { id: 'su.flex', build: ({ trait, them }) => (trait('aggression') > 0.6 ? `Back under cover, ${them}. Your turn.` : `Shielded. Come on then, ${them}.`) },
+    { id: 'su.taunt', build: ({ them }) => `Reloaded. Don't let that stop you, ${them}.` },
+    { id: 'su.calm', build: ({ trait, them }) => (trait('formality') > 0.6 ? `Defense restored. Whenever you are ready, ${them}.` : `Shield's back. What's your next move, ${them}?`) },
   ],
   repair: [
-    { id: 'rp.brisk', build: () => 'Patched up.' },
-    { id: 'rp.composure', build: ({ trait }) => (trait('formality') > 0.6 ? 'Repairs complete.' : 'Good as new.') },
+    { id: 'rp.brisk', build: ({ them }) => `Patched up. Still coming for you, ${them}.` },
+    { id: 'rp.composure', build: ({ trait, them }) => (trait('formality') > 0.6 ? `Repairs complete. Resuming engagement, ${them}.` : `Good as new. You'll have to do more than that, ${them}.`) },
+    { id: 'rp.taunt', build: ({ them }) => `Healed. Did you think that would stop me, ${them}?` },
+    { id: 'rp.ready', build: ({ trait, them }) => (trait('aggression') > 0.6 ? `Sealed up. Now I come for you, ${them}.` : `Back in shape. Let's keep going, ${them}.`) },
   ],
   debuffed: [
-    { id: 'db.irritated', build: () => 'Tch—systems slugged.' },
-    { id: 'db.spiky', build: ({ trait }) => (trait('sarcasm') > 0.6 ? 'Cute trick. Timer’s ticking.' : 'Debuff won’t save you.') },
+    { id: 'db.irritated', build: ({ them }) => `Tch—systems slugged. Clever, ${them}.` },
+    { id: 'db.spiky', build: ({ trait, them }) => (trait('sarcasm') > 0.6 ? `Cute trick, ${them}. Timer's ticking.` : `Your debuff won't save you, ${them}.`) },
+    { id: 'db.resolve', build: ({ them }) => `Slowed—not stopped. Watch yourself, ${them}.` },
+    { id: 'db.comeback', build: ({ trait, them }) => (trait('aggression') > 0.6 ? `You think a debuff ends me, ${them}? Wrong.` : `A little slower, ${them}, but I'm still a problem.`) },
   ],
 };
 
@@ -1326,15 +1336,15 @@ function fallbackLine(event: BanterEvent, ctx: BuildCtx): string | null {
     case 'near_death':
       return ctx.pick('nearDeath');
     case 'shields_down':
-      return 'Shields down.';
+      return `Shields down—still coming, ${ctx.them}.`;
     case 'armor_break':
-      return 'Lost a plate.';
+      return `${ctx.pick('pain')} Still here, ${ctx.them}.`;
     case 'shields_up':
-      return 'Shield online.';
+      return `Shield up. Try me now, ${ctx.them}.`;
     case 'repair':
-      return 'Patched up.';
+      return `Patched up. Not done with you yet, ${ctx.them}.`;
     case 'debuffed':
-      return 'Systems slugged.';
+      return `Slowed—not stopped, ${ctx.them}.`;
     default:
       return null;
   }
