@@ -66,13 +66,14 @@ export const BADGES = {
   },
 } as const;
 
-// Name/Persona tags per side (mirrored). Place LEFT and RIGHT mirrors automatically.
-// Coordinates use bottom-left origin (BL). Anchor is at the box corner toward arena edge.
+// Name/Persona tags per side (mirrored). Each box has its inner edge fixed a set distance
+// from the center dividing line and expands outward toward the nearest canvas edge.
+// centerGap: px from center line to the inner (center-facing) edge of each name box.
+// bottomY:   px from the bottom of the canvas to the bottom of each name box.
 export const NAME_TAGS = {
   enabled: true,
-  left: {
-    pos: [500, 10] as [number, number], // BL position for LEFT; RIGHT mirrors horizontally
-  },
+  centerGap: 50, // inner edge distance from center dividing line (px)
+  bottomY: 10,   // distance from canvas bottom edge (px)
   style: {
     fill: '#0e1730',
     text: '#ffffff',
@@ -82,7 +83,6 @@ export const NAME_TAGS = {
     padX: 12,
     padY: 6,
     fontScale: 0.026, // H * scale → px
-    maxWidthFrac: 0.36, // clamp width relative to W
   },
 } as const;
 

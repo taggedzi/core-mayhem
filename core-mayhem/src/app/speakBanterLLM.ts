@@ -198,8 +198,8 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     return;
   }
 
-  // Provider branch
-  if (st.provider !== 'ollama' || !st.model || !st.ollamaUrl) {
+  // Provider branch — LLM must be explicitly enabled; defaults to deterministic
+  if (!st.llmEnabled || st.provider !== 'ollama' || !st.model || !st.ollamaUrl) {
     try {
       const out = b.speak(ev, me, them);
       if (out) setBanter(side, stripEndearments(out.text));

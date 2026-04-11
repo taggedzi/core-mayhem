@@ -1539,14 +1539,18 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   // Overlays — Core Name + Persona tags (mirrored placement like badges)
   {
     if ((NAME_TAGS as any)?.enabled !== false) {
-      const posBL = ((NAME_TAGS as any)?.left?.pos as [number, number] | undefined) ?? [sim.W * 0.18, sim.H - 40];
+      const centerGap = Number((NAME_TAGS as any)?.centerGap ?? 50);
+      const bottomY = Number((NAME_TAGS as any)?.bottomY ?? 10);
       const style: any = (NAME_TAGS as any)?.style ?? {};
       const fontPx = Math.max(10, Math.floor(sim.H * (style.fontScale ?? 0.026)));
       const padX = Math.max(6, Number(style.padX ?? 10));
       const padY = Math.max(4, Number(style.padY ?? 4));
-  const place = (side: number, pBL: [number, number]): { x: number; y: number } => ({
-        x: side < 0 ? pBL[0] : sim.W - pBL[0],
-        y: sim.H - pBL[1],
+      // Left box: inner (right) edge is centerGap left of center; expands leftward → anchor 'br'
+      // Right box: inner (left) edge is centerGap right of center; expands rightward → anchor 'bl'
+      const place = (side: number): { x: number; y: number; anchor: 'bl' | 'br' } => ({
+        x: side < 0 ? sim.W / 2 - centerGap : sim.W / 2 + centerGap,
+        y: sim.H - bottomY,
+        anchor: side < 0 ? 'br' : 'bl',
       });
       const makeText = (side: number): string | null => {
         const c = side < 0 ? (sim as any).banterL : (sim as any).banterR;
@@ -1581,7 +1585,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const drawOne = (side: number): void => {
         const text = makeText(side);
         if (!text) return;
-        const p = place(side, posBL);
+        const p = place(side);
         const stroke = side < 0 ? (style.strokeLeft ?? 'var(--left)') : (style.strokeRight ?? 'var(--right)');
         const fill = style.fill ?? '#0e1730';
         const textFill = style.text ?? '#ffffff';
@@ -1597,10 +1601,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
           padX,
           padY,
           textFill,
-          anchor: side < 0 ? 'bl' : 'br',
+          anchor: p.anchor,
           alpha: 1,
-          // Renderer will clamp box width based on maxWidth if it wraps; for single-line we set maxWidth
-          // through text measurement; here pass as hint via text command (not supported in textBox), so skip.
         } as any);
       };
       drawOne(-1);

@@ -3,6 +3,7 @@ import { sim } from '../state';
 
 const K = {
   on: 'cm_banterEnabled',
+  llmOn: 'cm_banterLLMEnabled',
   src: 'cm_banterSource',
   url: 'cm_ollamaUrl',
   model: 'cm_ollamaModel',
@@ -34,6 +35,7 @@ function save(key: string, v: string | number | boolean): void {
 
 function getInitial(): LLMSettings {
   return {
+    llmEnabled: loadBool(K.llmOn, DEFAULT_LLM.llmEnabled),
     provider: (loadStr(K.src, DEFAULT_LLM.provider) as any),
     ollamaUrl: loadStr(K.url, DEFAULT_LLM.ollamaUrl),
     model: loadStr(K.model, DEFAULT_LLM.model),
@@ -203,6 +205,8 @@ export function initBanterControls(): void {
     { value: 'ollama', label: 'Ollama' },
   ], st.provider);
 
+  const elLLMOn = checkbox('Enable LLM calls', 'banterLLMEnabled', st.llmEnabled);
+
   // Ollama-specific
   const elUrl = textRow('Ollama URL', 'ollamaUrl', st.ollamaUrl, 'http://localhost:11434');
   const elModel = selectRow('Model', 'ollamaModel', [{ value: '', label: '(select model)' }], st.model || '');
@@ -253,6 +257,7 @@ export function initBanterControls(): void {
   // Initial provider UI state
   const applyProviderVisibility = (): void => {
     const showOllama = (elProvider.value === 'ollama');
+    elLLMOn.parentElement!.style.display = showOllama ? '' : 'none';
     elUrl.parentElement!.style.display = showOllama ? '' : 'none';
     elModel.parentElement!.style.display = showOllama ? '' : 'none';
     btnWrap.style.display = showOllama ? '' : 'none';
@@ -277,6 +282,8 @@ export function initBanterControls(): void {
     save(K.src, elProvider.value);
     applyProviderVisibility();
   });
+
+  elLLMOn.addEventListener('change', () => save(K.llmOn, !!(elLLMOn as HTMLInputElement).checked));
 
   elUrl.addEventListener('change', () => save(K.url, elUrl.value.trim()));
   elModel.addEventListener('change', () => save(K.model, elModel.value));
@@ -339,6 +346,8 @@ export function initBanterControls(): void {
     // Provider
     elProvider.value = cfg.provider; save(K.src, cfg.provider);
     applyProviderVisibility();
+    // LLM enabled
+    elLLMOn.checked = cfg.llmEnabled; save(K.llmOn, cfg.llmEnabled);
     // Ollama
     elUrl.value = cfg.ollamaUrl; save(K.url, cfg.ollamaUrl);
     // Model: reset to value (do not repopulate list here)

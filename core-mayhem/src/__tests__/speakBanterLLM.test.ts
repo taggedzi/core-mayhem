@@ -31,6 +31,7 @@ function seedSimBasics(): void {
 
 function setLLMSettings(partial: any = {}, enabled = true) {
   const base = {
+    llmEnabled: true,
     provider: 'ollama',
     ollamaUrl: 'http://local',
     model: 'tiny',

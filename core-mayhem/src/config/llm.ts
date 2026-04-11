@@ -3,6 +3,8 @@
 export type LLMProvider = 'deterministic' | 'ollama';
 
 export interface LLMSettings {
+  /** Master switch for LLM calls. Must be explicitly true — defaults to false. */
+  llmEnabled: boolean;
   provider: LLMProvider;
   ollamaUrl: string;
   model: string;
@@ -22,6 +24,7 @@ export interface LLMSettings {
 }
 
 export const DEFAULT_LLM: Readonly<LLMSettings> = {
+  llmEnabled: false,
   provider: 'deterministic',
   ollamaUrl: 'http://localhost:11434',
   model: '',
