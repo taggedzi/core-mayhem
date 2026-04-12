@@ -276,6 +276,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     // Apply configurable time scale (slow down/speed up sim)
     const stg = (sim as any).settings ?? DEFAULTS;
     const scaled = dtMs * (stg.timescale ?? 1);
+    if (sim.engine) sim.engine.timing.timeScale = stg.timescale ?? 1;
 
     runPhysics(scaled);
     try { (sim as any).banter?.step(scaled); } catch { /* ignore */ }

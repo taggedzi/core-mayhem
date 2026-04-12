@@ -6,7 +6,7 @@ export const DEFAULTS: Settings = {
   chaos: 0.7,
   spawnRate: 26,
   targetAmmo: 80,
-  timescale: 0.7,
+  timescale: 1.0,
   loop: false,
   pipeUpSpeed: 22,
   pipeUpGain: 3.2,
@@ -27,7 +27,7 @@ export const GAMEOVER = {
 
 /** Developer key toggles (dev helpers in prod builds). */
 export const DEV_KEYS = {
-  enabledInProd: false,
+  enabledInProd: true,
 } as const;
 
 /** Armor behavior for damage spillover and chip chance. */
@@ -61,4 +61,3 @@ export const MODS = {
   debuffDurationMs: 30000,
   allowedDebuffs: ['cannon', 'laser', 'missile', 'mortar'] as const,
 } as const;
-
