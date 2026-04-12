@@ -73,7 +73,7 @@ export const BADGES = {
 export const NAME_TAGS = {
   enabled: true,
   centerGap: 50, // inner edge distance from center dividing line (px)
-  bottomY: 10,   // distance from canvas bottom edge (px)
+  bottomY: 10, // distance from canvas bottom edge (px)
   style: {
     fill: '#0e1730',
     text: '#ffffff',
@@ -92,7 +92,7 @@ export const NAME_TAGS = {
 export const AVATAR = {
   enabled: true,
   left: {
-    cx: 800, // BL x from left edge
+    cx: 820, // BL x from left edge
     cy: 155, // BL y from bottom edge
   },
   orbR: 52, // orb body radius (px)
