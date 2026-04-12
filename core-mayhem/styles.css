@@ -82,6 +82,8 @@ button {
   border-radius: 4px;
   font-weight: 700;
   cursor: pointer;
+  /* C1: improve tap responsiveness on touch screens — removes the 300ms delay */
+  touch-action: manipulation;
 }
 button:disabled {
   opacity: 0.4;
@@ -103,6 +105,8 @@ button:disabled {
   height: auto; /* we’ll set explicit px via JS */
   max-width: 100%;
   max-height: 100%; /* safety */
+  /* C1: prevent canvas from triggering browser scroll/zoom on touch devices */
+  touch-action: none;
 }
 
 /* Banter overlay (left/right, lightweight text) */
@@ -132,6 +136,8 @@ button:disabled {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
+  /* C2: -webkit- prefix for older Safari support */
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 #helpOverlay .help-panel,

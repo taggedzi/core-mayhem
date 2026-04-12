@@ -1,0 +1,60 @@
+# Netlify / Cloudflare Pages security and cache headers for Core Mayhem.
+#
+# For Nginx, Apache, or other servers see the equivalent directives below
+# each header block in the comments.
+#
+# IMPORTANT: After deploying, validate your CSP at:
+#   https://csp-evaluator.withgoogle.com/
+# and check headers at:
+#   https://securityheaders.com/
+#
+# connect-src is intentionally set to * because the Ollama URL is
+# user-configurable at runtime and cannot be predicted at deploy time.
+# If you do not use the Ollama LLM feature you may tighten this to 'self'.
+
+/*
+  # Prevent MIME-type sniffing attacks
+  # Nginx: add_header X-Content-Type-Options "nosniff" always;
+  X-Content-Type-Options: nosniff
+
+  # Prevent clickjacking by disallowing embedding in iframes
+  # Nginx: add_header X-Frame-Options "DENY" always;
+  X-Frame-Options: DENY
+
+  # Limit referrer information sent to other origins
+  # Nginx: add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Opt out of browser features the game does not use
+  # Nginx: add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), accelerometer=(), payment=()" always;
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), accelerometer=(), payment=()
+
+  # Content Security Policy
+  # - script-src 'self'        : only load scripts from this origin
+  # - style-src 'self'         : only load stylesheets from this origin (no inline styles in HTML)
+  # - img-src 'self' data:     : allow same-origin images and data URIs (canvas toDataURL)
+  # - media-src 'self'         : audio files are served from this origin
+  # - connect-src *            : Ollama URL is user-configured — must allow arbitrary hosts
+  # - worker-src 'self'        : allow same-origin workers (Vite / future use)
+  # - object-src 'none'        : block plugins (Flash etc.)
+  # - frame-src 'none'         : block iframes
+  # - base-uri 'self'          : prevent base tag hijacking
+  # Nginx: add_header Content-Security-Policy "default-src 'self'; ..." always;
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src *; worker-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'
+
+  # Enable HSTS if you are certain the site will always be served over HTTPS.
+  # Remove or comment out this line if you serve over HTTP in any environment.
+  # Nginx: add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Long-lived cache for content-hashed assets (Vite appends a hash to filenames)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Never cache the HTML entry point — it references hashed assets
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Never cache the music playlist (it can be updated independently)
+/assets/music/playlist.json
+  Cache-Control: no-cache, no-store, must-revalidate

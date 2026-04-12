@@ -25,6 +25,9 @@ export class AudioManager {
     announcer: new Set(),
   };
   private enabled = true;
+  // P5: store the resume handler so it can be removed if the AudioContext is
+  // never triggered by a user gesture (e.g. page visited without interaction).
+  private resumeFn: (() => void) | null = null;
   // Streaming music via media element for large files
   private musicEl: HTMLAudioElement | null = null;
   private musicNode: MediaElementAudioSourceNode | null = null;
@@ -78,7 +81,9 @@ export class AudioManager {
         this.ctx?.resume().catch(() => void 0);
         window.removeEventListener('pointerdown', resume);
         window.removeEventListener('keydown', resume);
+        this.resumeFn = null;
       };
+      this.resumeFn = resume;
       window.addEventListener('pointerdown', resume);
       window.addEventListener('keydown', resume);
     } catch {
@@ -348,6 +353,16 @@ export class AudioManager {
     if (!l) return;
     try { l.src.stop(); l.src.disconnect(); l.gain.disconnect(); } catch { /* ignore */ }
     this.loops.delete(id);
+  }
+
+  // P5: remove the window-level resume listeners if they were never triggered.
+  // Call this when tearing down the page or audio subsystem entirely.
+  cancelResume(): void {
+    if (this.resumeFn) {
+      window.removeEventListener('pointerdown', this.resumeFn);
+      window.removeEventListener('keydown', this.resumeFn);
+      this.resumeFn = null;
+    }
   }
 
   stopAll(): void {

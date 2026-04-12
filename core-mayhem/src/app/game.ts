@@ -165,8 +165,10 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     /* ignore banter init errors */
   }
 
-  // Preload audio assets (safe no-op in tests/non-browser)
-  try { audio.preloadAll(); } catch { /* ignore */ void 0; }
+  // P4: defer audio preload past the first paint so it doesn't compete with
+  // initial rendering. preloadAll() fires async decodeAudioData calls and can
+  // add latency to the first visible frame if run synchronously at game start.
+  setTimeout(() => { try { audio.preloadAll(); } catch { /* ignore */ } }, 0);
   // Initialize music playlist only once; keep music playing across matches
   // Skip in non-web-audio environments (e.g., tests/JS DOM) to avoid network calls
   const canUseWebAudio = (typeof window !== 'undefined') && ((window as any).AudioContext !== undefined);

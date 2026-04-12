@@ -4,7 +4,6 @@ interface ScoreData {
   leftWins: number;
   rightWins: number;
   ties: number;
-  html: string; // keep the existing colored-tag markup
 }
 
 /** Pure: reads sim.stats and returns both numbers and the existing HTML. */
@@ -14,13 +13,5 @@ export function getScoreData(): ScoreData {
   const rightWins = s.rightWins | 0;
   const ties = s.ties | 0;
 
-  // New compact scoreboard: show only wins per side and total ties
-  const html = `
-    <span class="left tag">LEFT</span> ${leftWins}
-    <span class="sep">|</span> T:${ties}
-    <span class="sep">|</span>
-    <span class="right tag">RIGHT</span> ${rightWins}
-  `;
-
-  return { leftWins, rightWins, ties, html };
+  return { leftWins, rightWins, ties };
 }

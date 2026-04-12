@@ -5,8 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Core Mayhem</title>
     <link rel="stylesheet" href="/styles.css" />
+    <!-- C3: noscript style applied when JS is disabled; the notice itself is in <body> -->
+    <noscript><style>
+      #noscript-notice {
+        position: fixed; inset: 0; display: flex; align-items: center;
+        justify-content: center; background: #05070a; color: #e6f0ff;
+        font-family: Verdana, sans-serif; font-size: 16px; text-align: center;
+        padding: 24px; z-index: 9999;
+      }
+    </style></noscript>
   </head>
   <body>
+    <!-- C3: visible only when JavaScript is disabled (noscript style defined in head) -->
+    <noscript>
+      <div id="noscript-notice">
+        Core Mayhem requires JavaScript.<br>
+        Please enable JavaScript and use a modern browser
+        (Chrome 80+, Firefox 74+, Safari 13.1+, Edge 79+).
+      </div>
+    </noscript>
     <header>
       <div class="left">
         <button id="btnHelp" title="Show dev hotkeys (H)">Help</button>

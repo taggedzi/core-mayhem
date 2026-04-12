@@ -37,6 +37,9 @@ class AudioFacade {
   isMusicPlaying(): boolean { return this.get()?.isMusicPlaying() ?? false; }
   getMusicBinCount(): number { return this.get()?.getMusicBinCount() ?? 0; }
   getMusicSpectrum(out: Uint8Array): boolean { return this.get()?.getMusicSpectrum(out) ?? false; }
+  // P5: remove window resume listeners if the audio context was created but
+  // never resumed via user gesture. Safe to call at page teardown.
+  cancelResume(): void { this.get()?.cancelResume(); }
 }
 
 export const audio = new AudioFacade();

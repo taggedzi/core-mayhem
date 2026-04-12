@@ -105,6 +105,9 @@ async function testOllamaChat(base: string, model: string, timeoutMs = 1200): Pr
 }
 
 export function initBanterControls(): void {
+  // P3: guard against being called more than once (popover is a singleton)
+  if (document.getElementById('banterPopover')) return;
+
   const btn = document.getElementById('btnBanter') as HTMLButtonElement | null;
   if (!btn) return;
 
@@ -209,6 +212,24 @@ export function initBanterControls(): void {
 
   // Ollama-specific
   const elUrl = textRow('Ollama URL', 'ollamaUrl', st.ollamaUrl, 'http://localhost:11434');
+
+  // S2: mixed-content warning — shown when the page is served over HTTPS but the
+  // configured Ollama URL uses plain HTTP. Browsers block such requests.
+  const mixedContentWarn = document.createElement('div');
+  mixedContentWarn.className = 'audio-row';
+  mixedContentWarn.style.color = '#ffcc44';
+  mixedContentWarn.style.fontSize = '11px';
+  mixedContentWarn.style.display = 'none';
+  mixedContentWarn.textContent =
+    'Warning: page is on HTTPS but Ollama URL uses HTTP. Browsers block mixed-content requests. Use https:// for the Ollama URL.';
+  pop.appendChild(mixedContentWarn);
+
+  const updateMixedContentWarning = (): void => {
+    const onHttpsPage = window.location.protocol === 'https:';
+    const urlIsHttp = elUrl.value.trim().toLowerCase().startsWith('http:');
+    mixedContentWarn.style.display = onHttpsPage && urlIsHttp ? 'block' : 'none';
+  };
+  updateMixedContentWarning();
   const elModel = selectRow('Model', 'ollamaModel', [{ value: '', label: '(select model)' }], st.model || '');
   const btnWrap = document.createElement('div');
   btnWrap.className = 'audio-row buttons';
@@ -285,7 +306,23 @@ export function initBanterControls(): void {
 
   elLLMOn.addEventListener('change', () => save(K.llmOn, !!(elLLMOn as HTMLInputElement).checked));
 
-  elUrl.addEventListener('change', () => save(K.url, elUrl.value.trim()));
+  elUrl.addEventListener('change', () => {
+    // S3: validate that the URL is well-formed and uses http:// or https://
+    const raw = elUrl.value.trim();
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        elUrl.setCustomValidity('URL must start with http:// or https://');
+        return;
+      }
+    } catch {
+      elUrl.setCustomValidity('Invalid URL — must be a full URL starting with http:// or https://');
+      return;
+    }
+    elUrl.setCustomValidity('');
+    save(K.url, raw);
+    updateMixedContentWarning();
+  });
   elModel.addEventListener('change', () => save(K.model, elModel.value));
   elTimeout.addEventListener('change', () => save(K.to, Math.max(500, Number(elTimeout.value) | 0)));
   elChars.addEventListener('change', () => save(K.chars, Math.max(40, Number(elChars.value) | 0)));
@@ -349,7 +386,8 @@ export function initBanterControls(): void {
     // LLM enabled
     elLLMOn.checked = cfg.llmEnabled; save(K.llmOn, cfg.llmEnabled);
     // Ollama
-    elUrl.value = cfg.ollamaUrl; save(K.url, cfg.ollamaUrl);
+    elUrl.value = cfg.ollamaUrl; elUrl.setCustomValidity(''); save(K.url, cfg.ollamaUrl);
+    updateMixedContentWarning();
     // Model: reset to value (do not repopulate list here)
     // Clear options and insert placeholder + current if provided
     elModel.innerHTML = '';
@@ -407,6 +445,7 @@ export function initBanterControls(): void {
     if (open) {
       pop.style.display = 'block';
       positionPopover();
+      updateMixedContentWarning();
       window.addEventListener('resize', positionPopover);
       document.addEventListener('click', onDocClick, true);
     } else close();
