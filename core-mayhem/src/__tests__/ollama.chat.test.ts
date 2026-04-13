@@ -103,8 +103,8 @@ describe('ollamaChat', () => {
     // Simulate a hanging fetch that rejects on abort
     (globalThis.fetch as unknown as vi.Mock).mockImplementationOnce((_url: string, init: any) => {
       const sig: AbortSignal = init.signal;
-      return new Promise((_resolve, reject) => {
-        const onAbort = () => reject(new Error('aborted'));
+      return new Promise((_resolve, reject): void => {
+        const onAbort = (): void => { reject(new Error('aborted')); };
         if (sig.aborted) reject(new Error('aborted'));
         else sig.addEventListener('abort', onAbort, { once: true });
       });

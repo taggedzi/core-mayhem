@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import type { Channel, SoundKey } from '../audio/keys';
-import type { SoundSpec } from '../audio/config';
 import { AudioManager } from '../audio/AudioManager';
+
+import type { SoundSpec } from '../audio/config';
+import type { SoundKey } from '../audio/keys';
 
 // ---- Minimal Web Audio mocks --------------------------------------------
 class MockGainNode {
@@ -62,14 +63,14 @@ class MockHTMLAudioElement {
   paused = true;
   currentTime = 0;
   private endedCb: (() => void) | null = null;
-  addEventListener = (ev: string, cb: () => void) => { if (ev === 'ended') this.endedCb = cb; };
+  addEventListener = (ev: string, cb: () => void): void => { if (ev === 'ended') this.endedCb = cb; };
   play = vi.fn(async () => { this.paused = false; });
   pause = vi.fn(() => { this.paused = true; });
-  triggerEnded = () => { this.endedCb?.(); };
+  triggerEnded = (): void => { this.endedCb?.(); };
 }
 
 // ---- Test helpers --------------------------------------------------------
-const makeMgr = (sounds: Record<SoundKey, SoundSpec>, defaults?: Partial<ConstructorParameters<typeof AudioManager>[1]>) => {
+const makeMgr = (sounds: Record<SoundKey, SoundSpec>, defaults?: Partial<ConstructorParameters<typeof AudioManager>[1]>): AudioManager => {
   const def = {
     enabled: true,
     masterVolume: 1,

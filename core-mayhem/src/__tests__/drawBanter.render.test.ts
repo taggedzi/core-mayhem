@@ -14,21 +14,21 @@ class MockCtx {
   shadowColor = '';
   textBaseline = '';
   textAlign = '';
-  getTransform() { return { a: 1, d: 1 } as any; }
-  measureText(s: string) { return { width: s.length * 8 } as any; }
-  save = () => { this.logs.push('save'); };
-  restore = () => { this.logs.push('restore'); };
-  beginPath = () => { this.logs.push('begin'); };
-  moveTo = (_x: number, _y: number) => { /* noop */ };
-  lineTo = (_x: number, _y: number) => { /* noop */ };
-  arcTo = (_x1: number, _y1: number, _x2: number, _y2: number, _r: number) => { /* noop */ };
-  closePath = () => { /* noop */ };
-  fill = () => { this.logs.push('fill'); };
-  stroke = () => { this.logs.push('stroke'); };
-  fillText = (s: string, x: number, y: number) => { this.logs.push(`text:${s}:${Math.round(x)},${Math.round(y)}`); };
+  getTransform(): any { return { a: 1, d: 1 } as any; }
+  measureText(s: string): any { return { width: s.length * 8 } as any; }
+  save = (): void => { this.logs.push('save'); };
+  restore = (): void => { this.logs.push('restore'); };
+  beginPath = (): void => { this.logs.push('begin'); };
+  moveTo = (_x: number, _y: number): void => { /* noop */ };
+  lineTo = (_x: number, _y: number): void => { /* noop */ };
+  arcTo = (_x1: number, _y1: number, _x2: number, _y2: number, _r: number): void => { /* noop */ };
+  closePath = (): void => { /* noop */ };
+  fill = (): void => { this.logs.push('fill'); };
+  stroke = (): void => { this.logs.push('stroke'); };
+  fillText = (s: string, x: number, y: number): void => { this.logs.push(`text:${s}:${Math.round(x)},${Math.round(y)}`); };
 }
 
-function setupSim() {
+function setupSim(): void {
   // canvas size and core geometry
   (sim as any).W = 800;
   (sim as any).H = 600;

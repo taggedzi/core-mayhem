@@ -17,15 +17,15 @@ vi.mock('../app/stats', () => ({
   recordMatchEnd: vi.fn(() => {}),
 }));
 
-import * as matchMod from '../app/systems/match';
-import { declareWinner, maybeEndMatch, checkTimeLimit } from '../app/systems/match';
 import { announcer } from '../announcer';
-import { updateScoreboard } from '../render/score';
 import { speakBanterSmart } from '../app/speakBanterLLM';
 import { recordMatchEnd } from '../app/stats';
+import * as matchMod from '../app/systems/match';
+import { declareWinner, maybeEndMatch, checkTimeLimit } from '../app/systems/match';
+import { MATCH_LIMIT, GAMEOVER } from '../config';
+import { updateScoreboard } from '../render/score';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
-import { MATCH_LIMIT, GAMEOVER } from '../config';
 
 describe('systems/match unit', () => {
   beforeEach(() => {
@@ -121,7 +121,7 @@ describe('systems/match unit', () => {
     expect(call[1]).toBe(GAMEOVER.bannerMs);
     // Manually fire the scheduled callback
     expect(typeof scheduled).toBe('function');
-    scheduled && scheduled();
+    if (scheduled) scheduled();
     expect(fired).toBe(1);
     expect((sim as any).restartTO).toBe(0);
     spyTO.mockRestore();

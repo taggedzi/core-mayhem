@@ -1,5 +1,6 @@
 // eslint.config.js
 import js from '@eslint/js';
+import importPlugin from 'eslint-plugin-import';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
@@ -19,13 +20,13 @@ export default tseslint.config(
       parser: tseslint.parser,
       parserOptions: {
         projectService: {
-          // Allow linting of test files and setup files excluded from tsconfig.json
-          allowDefaultProject: [‘src/__tests__/**/*.ts’, ‘vitest.setup.js’],
+          allowDefaultProject: ['src/__tests__/*.ts', 'vitest.setup.js'],
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 50,
         },
       },
     },
     plugins: {
-      import: await import('eslint-plugin-import'),
+      import: importPlugin,
     },
     rules: {
       // Core quality

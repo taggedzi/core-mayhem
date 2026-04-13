@@ -39,7 +39,7 @@ vi.mock('./systems/physics', () => ({ runPhysics: vi.fn() }));
 vi.mock('./systems/spawn', () => ({ runSpawn: vi.fn() }));
 vi.mock('./systems/triggers', () => ({ runTriggers: vi.fn() }));
 vi.mock('../banter', () => ({
-  BanterSystem: class { constructor(_o: any) {} step() {} },
+  BanterSystem: class { constructor(_o: any) {} step(): void {} },
   createCharacter: vi.fn((side: 'left'|'right', p: any, name: string) => ({ side, p, name })),
 }));
 vi.mock('../ui/banterControls', () => ({ readBanterPacing: vi.fn(() => ({ cooldownMs: 5000, sideMinGapMs: 12000 })) }));

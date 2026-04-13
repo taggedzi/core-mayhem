@@ -44,7 +44,7 @@ vi.mock('../app/systems/triggers', () => ({ runTriggers: vi.fn() }));
 
 // Banter basics
 vi.mock('../banter', () => ({
-  BanterSystem: class { constructor(_o: any) {} step() {} },
+  BanterSystem: class { constructor(_o: any) {} step(): void {} },
   createCharacter: vi.fn((side: 'left'|'right', p: any, name: string) => ({ id: side, personality: p, displayName: name })),
 }));
 
@@ -56,14 +56,14 @@ import { sim, resetSimState } from '../state';
 
 // simple 2D context stub
 function ctxStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const NOOP: (...args: unknown[]) => void = () => {};
+  const NOOP: (...args: unknown[]) => void = (): void => {};
   return new Proxy(
     { canvas, measureText: () => ({ width: 0 }) },
     { get: (t, p) => (p in t ? (t as any)[p] : NOOP) },
   ) as unknown as CanvasRenderingContext2D;
 }
 
-const labelFromKey = (k: string) => k.replace(/\s*Core$/i, '').trim();
+const labelFromKey = (k: string): string => k.replace(/\s*Core$/i, '').trim();
 
 describe('persona selection modes (random, tournament)', () => {
   beforeEach(() => {
@@ -98,8 +98,8 @@ describe('persona selection modes (random, tournament)', () => {
     expect((sim as any).banterR?.displayName).toBe(labelFromKey(kR));
 
     // Saved to localStorage
-    const savedL = JSON.parse(localStorage.getItem('cm_char_L') || '{}');
-    const savedR = JSON.parse(localStorage.getItem('cm_char_R') || '{}');
+    const savedL = JSON.parse(localStorage.getItem('cm_char_L') ?? '{}');
+    const savedR = JSON.parse(localStorage.getItem('cm_char_R') ?? '{}');
     expect(savedL.persona).toBe(kL);
     expect(savedR.persona).toBe(kR);
 

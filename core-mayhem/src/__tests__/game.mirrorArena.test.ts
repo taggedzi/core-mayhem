@@ -1,3 +1,4 @@
+import * as M from 'matter-js';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('matter-js', () => {
@@ -61,7 +62,7 @@ vi.mock('../app/systems/triggers', () => ({ runTriggers: vi.fn() }));
 
 // Banter minimal
 vi.mock('../banter', () => ({
-  BanterSystem: class { constructor(_o: any) {} step() {} },
+  BanterSystem: class { constructor(_o: any) {} step(): void {} },
   createCharacter: vi.fn((side: 'left'|'right', p: any, name: string) => ({ id: side, personality: p, displayName: name })),
 }));
 vi.mock('../ui/banterControls', () => ({ readBanterPacing: vi.fn(() => ({ cooldownMs: 5000, sideMinGapMs: 12000 })) }));
@@ -78,7 +79,6 @@ vi.mock('../audio', () => ({
 }));
 
 import { startGame } from '../app/game';
-import * as M from 'matter-js';
 import { sim } from '../state';
 
 // simple 2D context stub

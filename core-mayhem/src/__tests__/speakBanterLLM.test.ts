@@ -29,7 +29,7 @@ function seedSimBasics(): void {
   (sim as any).banterUI = { L: { text: '', t0: 0, until: 0 }, R: { text: '', t0: 0, until: 0 } };
 }
 
-function setLLMSettings(partial: any = {}, enabled = true) {
+function setLLMSettings(partial: any = {}, enabled = true): void {
   const base = {
     llmEnabled: true,
     provider: 'ollama',

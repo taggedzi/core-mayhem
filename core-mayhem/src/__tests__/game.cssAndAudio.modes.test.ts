@@ -49,7 +49,7 @@ vi.mock('../app/systems/triggers', () => ({ runTriggers: vi.fn() }));
 
 // Banter basics
 vi.mock('../banter', () => ({
-  BanterSystem: class { constructor(_o: any) {} step() {} },
+  BanterSystem: class { constructor(_o: any) {} step(): void {} },
   createCharacter: vi.fn((side: 'left'|'right', p: any, name: string) => ({ id: side, personality: p, displayName: name })),
 }));
 
@@ -72,13 +72,13 @@ vi.mock('../audio', () => {
 });
 
 import { startGame } from '../app/game';
-import { makeCore as mockMakeCore } from '../sim/core';
 import { audio as mockedAudio } from '../audio';
+import { makeCore as mockMakeCore } from '../sim/core';
 import { sim } from '../state';
 
 // simple 2D context stub
 function ctxStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const NOOP: (...args: unknown[]) => void = () => {};
+  const NOOP: (...args: unknown[]) => void = (): void => {};
   return new Proxy(
     { canvas, measureText: () => ({ width: 0 }) },
     { get: (t, p) => (p in t ? (t as any)[p] : NOOP) },

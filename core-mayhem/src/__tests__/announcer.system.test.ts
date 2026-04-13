@@ -10,11 +10,11 @@ vi.mock('../app/speakBanterLLM', () => ({
   speakBanterSmart: vi.fn(async () => {}),
 }));
 
-import { sim } from '../state';
-import { MATCH_LIMIT } from '../config';
 import { announcer } from '../announcer';
 import { speakBanterSmart } from '../app/speakBanterLLM';
 import { resetAnnouncerState, runAnnouncer } from '../app/systems/announcer';
+import { MATCH_LIMIT } from '../config';
+import { sim } from '../state';
 
 function seedMatch(coreL: Partial<any> = {}, coreR: Partial<any> = {}): void {
   (sim as any).matchIndex = ((sim as any).matchIndex | 0) + 1;
@@ -72,7 +72,7 @@ describe('systems/announcer runAnnouncer', () => {
     // Drop L to <= 15%
     (sim as any).coreL.centerHP = 14;
     runAnnouncer();
-    let trig = (announcer.trigger as unknown as vi.Mock).mock.calls.map((c) => c[0]);
+    const trig = (announcer.trigger as unknown as vi.Mock).mock.calls.map((c) => c[0]);
     expect(trig).toContain('core_in_danger_L');
     // Call again with still low: should not retrigger
     runAnnouncer();
