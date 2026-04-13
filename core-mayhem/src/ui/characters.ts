@@ -87,7 +87,7 @@ export function initCharactersControls(): void {
     pop.appendChild(d);
     const wrap = document.createElement('label'); wrap.className = 'audio-row'; wrap.textContent = 'Mode ';
     const sel = document.createElement('select'); sel.id = 'cm_mode_sel';
-    const cur = (() => { try { return localStorage.getItem(K_MODE) ?? 'manual'; } catch { return 'manual'; } })();
+    const cur = (() => { try { return localStorage.getItem(K_MODE) ?? 'tournament'; } catch { return 'tournament'; } })();
     const opts = [
       { value: 'manual', label: 'Manual (Use selections below)' },
       { value: 'random', label: 'Random Each Match' },
@@ -100,7 +100,7 @@ export function initCharactersControls(): void {
 
   modeRow();
 
-  const makeSide = (side: SideLR, title: string): void => {
+  const makeSide = (side: SideLR, title: string): HTMLElement[] => {
     pop.appendChild(section(title));
     const stored = loadProfile(side) ?? { persona: 'LightCore' } as StoredProfile;
     const base = (PERSONA_CATALOG[stored.persona] ?? PERSONA_CATALOG.LightCore)!;
@@ -117,6 +117,13 @@ export function initCharactersControls(): void {
     const sCap = slider('Quirk: RandomCaps', `${side}_cap`, cur.quirks?.randomCaps ?? 0);
     const sEmj = slider('Quirk: Emoji Chance', `${side}_emj`, cur.quirks?.emoji ?? 0);
     const selEmStyle = selectEmoji('Quirk: Emoji Style', `${side}_emjs`, String(cur.quirks?.emojiStyle ?? 'none'));
+    // Collect the ollama-only wrappers so callers can show/hide them
+    const ollamaWrappers: HTMLElement[] = [
+      sAgg.parentElement!, sHum.parentElement!, sFor.parentElement!,
+      sOpt.parentElement!, sSar.parentElement!, sEll.parentElement!,
+      sStc.parentElement!, sCap.parentElement!, sEmj.parentElement!,
+      selEmStyle.parentElement!,
+    ];
 
     const buttons = btnRow();
     const btnSave = document.createElement('button'); btnSave.type = 'button'; btnSave.textContent = 'Save';
@@ -164,10 +171,19 @@ export function initCharactersControls(): void {
       selEmStyle.value = String(p.quirks?.emojiStyle ?? 'none');
       saveProfile(side, { persona: selPersona.value as any });
     });
+
+    return ollamaWrappers;
   };
 
-  makeSide('L', 'Left Character');
-  makeSide('R', 'Right Character');
+  const allOllamaWrappers: HTMLElement[] = [
+    ...makeSide('L', 'Left Character'),
+    ...makeSide('R', 'Right Character'),
+  ];
+
+  const applyOllamaVisibility = (): void => {
+    const isOllama = (() => { try { return localStorage.getItem('cm_banterSource') === 'ollama'; } catch { return false; } })();
+    for (const el of allOllamaWrappers) { el.style.display = isOllama ? '' : 'none'; }
+  };
 
   document.body.appendChild(pop);
 
@@ -181,7 +197,7 @@ export function initCharactersControls(): void {
   let open = false;
   const close = (): void => { open = false; pop.style.display = 'none'; window.removeEventListener('resize', positionPopover); document.removeEventListener('click', onDocClick, true); };
   const onDocClick = (e: MouseEvent): void => { if (!open) return; const t = e.target as Node | null; if (t && (t === pop || pop.contains(t) || t === btn)) return; close(); };
-  const toggle = (): void => { open = !open; if (open) { pop.style.display = 'block'; positionPopover(); window.addEventListener('resize', positionPopover); document.addEventListener('click', onDocClick, true); } else close(); };
+  const toggle = (): void => { open = !open; if (open) { pop.style.display = 'block'; applyOllamaVisibility(); positionPopover(); window.addEventListener('resize', positionPopover); document.addEventListener('click', onDocClick, true); } else close(); };
   btn.addEventListener('click', (e) => { e.preventDefault(); toggle(); });
 }
 
