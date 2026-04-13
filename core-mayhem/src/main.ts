@@ -7,6 +7,7 @@ import { initAudioControls } from './ui/audioControls';
 import { initBanterControls } from './ui/banterControls';
 import { initCharactersControls } from './ui/characters';
 import { initHelpOverlay, openHelpOverlay } from './ui/help';
+import { initIntroOverlay } from './ui/intro';
 import { initStatsOverlay, openStatsOverlay } from './ui/stats';
 
 // ——— Types ———
@@ -176,6 +177,9 @@ function init(): void {
   initStatsOverlay();
   initAudioControls();
   initCharactersControls();
+
+  // Show the welcome/intro dialog on first load; Start button triggers game start
+  initIntroOverlay(start);
 }
 
 // Ensure DOM elements exist before wiring
