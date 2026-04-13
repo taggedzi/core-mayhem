@@ -1,6 +1,8 @@
 import { DEV_HELP_LINES } from '../app/devKeys';
 import { DEV_KEYS } from '../config';
 
+declare const __BUILD_DATE__: string;
+
 let overlayEl: HTMLElement | null = null;
 let contentEl: HTMLElement | null = null;
 let lastFocusEl: Element | null = null;
@@ -87,8 +89,25 @@ export function initHelpOverlay(): void {
     grid.appendChild(item);
   }
 
+  // Footer: website link + build date
+  const footer = document.createElement('div');
+  footer.className = 'help-footer';
+
+  const siteLink = document.createElement('a');
+  siteLink.href = 'https://core-mayhem.taggedz.me/';
+  siteLink.target = '_blank';
+  siteLink.rel = 'noopener noreferrer';
+  siteLink.textContent = 'core-mayhem.taggedz.me';
+
+  const buildSpan = document.createElement('span');
+  buildSpan.className = 'help-build';
+  const buildDate = new Date(__BUILD_DATE__);
+  buildSpan.textContent = `Built ${buildDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`;
+
+  footer.append(siteLink, buildSpan);
+
   body.append(p, grid);
-  panel.append(header, body);
+  panel.append(header, body, footer);
   overlay.append(backdrop, panel);
   document.body.appendChild(overlay);
 

@@ -248,6 +248,27 @@ button:disabled {
   opacity: 0.95;
 }
 
+/* Help overlay footer */
+#helpOverlay .help-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  opacity: 0.6;
+}
+#helpOverlay .help-footer a {
+  color: #7ab8ff;
+  text-decoration: none;
+}
+#helpOverlay .help-footer a:hover {
+  text-decoration: underline;
+}
+#helpOverlay .help-build {
+  color: #a0a8b8;
+}
+
 /* kbd pill styling */
 #helpOverlay kbd,
 #statsOverlay kbd {

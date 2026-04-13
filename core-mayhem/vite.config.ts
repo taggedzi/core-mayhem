@@ -5,4 +5,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+  },
 });
