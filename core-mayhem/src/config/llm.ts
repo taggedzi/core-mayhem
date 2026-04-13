@@ -36,8 +36,8 @@ export const DEFAULT_LLM: Readonly<LLMSettings> = {
   includeOpponentLast: true,
   emojiStyle: 'inherit',
   profanityFilter: 'mild',
-  cooldownMs: 5000,
-  sideMinGapMs: 12000,
+  cooldownMs: 8000,
+  sideMinGapMs: 25000,
   events: 'match_start,first_blood,big_hit,stagger,comeback,near_death,victory,taunt',
 };
 

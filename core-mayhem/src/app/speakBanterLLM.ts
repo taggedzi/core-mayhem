@@ -225,7 +225,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     }
   })();
   const sideTooSoon = now - (gate[side] ?? 0) < Math.max(0, pacing.sideMinGapMs | 0);
-  const crossMin = Math.max(800, Math.min(3500, Math.round(((pacing.sideMinGapMs ?? 2000)) * 0.4)));
+  const crossMin = Math.max(800, Math.round(((pacing.sideMinGapMs ?? 2000)) * 0.35));
   const anyTooSoon = now - (gate.lastAny ?? 0) < crossMin;
   if (sideTooSoon || anyTooSoon) {
     // Too soon to speak; invalidate older inflight by bumping gen, but do nothing else

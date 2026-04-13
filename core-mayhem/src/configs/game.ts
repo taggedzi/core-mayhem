@@ -27,7 +27,7 @@ export const GAMEOVER = {
 
 /** Developer key toggles (dev helpers in prod builds). */
 export const DEV_KEYS = {
-  enabledInProd: true,
+  enabledInProd: false,
 } as const;
 
 /** Armor behavior for damage spillover and chip chance. */
