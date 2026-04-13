@@ -1,6 +1,6 @@
 import { ollamaChat } from '../banter/llm/ollama';
-import { setBanter } from '../render/banter';
 import { setAvatarEmotion, banterToAvatarEmotion } from '../render/avatar';
+import { setBanter } from '../render/banter';
 import { sim } from '../state';
 import { readLLMSettings, readBanterPacing } from '../ui/banterControls';
 

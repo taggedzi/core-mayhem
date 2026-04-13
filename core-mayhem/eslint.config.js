@@ -1,6 +1,7 @@
 // eslint.config.js
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import globals from 'globals';
 
 export default tseslint.config(
   { ignores: ['dist', 'build', 'coverage', 'node_modules'] },
@@ -17,8 +18,10 @@ export default tseslint.config(
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        projectService: true, // lets rules read your tsconfig for type-aware checks
-        // If you don’t use a project tsconfig, swap to: tsconfigRootDir: import.meta.dirname
+        projectService: {
+          // Allow linting of test files and setup files excluded from tsconfig.json
+          allowDefaultProject: [‘src/__tests__/**/*.ts’, ‘vitest.setup.js’],
+        },
       },
     },
     plugins: {
@@ -65,10 +68,32 @@ export default tseslint.config(
 
   // Loosen a few rules in tests and Vitest setup
   {
-    files: ['src/__tests__/**/*.ts', 'vitest.setup.ts'],
+    files: ['src/__tests__/**/*.ts', 'vitest.setup.ts', 'vitest.setup.js'],
     rules: {
       '@typescript-eslint/no-empty-function': 'off',
       '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  // Vitest setup file needs browser globals (setTimeout, performance, etc.)
+  {
+    files: ['vitest.setup.js', 'vitest.setup.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+      },
+    },
+  },
+
+  // Node.js scripts: provide node globals + modern fetch/AbortController
+  {
+    files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        fetch: 'readonly',
+        AbortController: 'readonly',
+      },
     },
   },
 

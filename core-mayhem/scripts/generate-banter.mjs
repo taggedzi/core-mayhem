@@ -165,7 +165,7 @@ const PERSONAS = [
       'Mass budget blown.',
       'Abort vibes.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Trajectory off\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Trajectory off\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Midas',
@@ -179,7 +179,7 @@ const PERSONAS = [
       'Chatter brain.',
       'Zero\u2019s lost.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Your runout shows\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Your runout shows\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Rob',
@@ -193,7 +193,7 @@ const PERSONAS = [
       'Load\u2019s too much.',
       'Breaker brain.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'You short out\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'You short out\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Scrappy',
@@ -207,7 +207,7 @@ const PERSONAS = [
       'Rust brain.',
       'You squeak cheap.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Worthless alloy\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Worthless alloy\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Dredd',
@@ -221,7 +221,7 @@ const PERSONAS = [
       'Bad load path.',
       'Cracks already.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Your stance wobbles\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Your stance wobbles\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Milton',
@@ -235,7 +235,7 @@ const PERSONAS = [
       'Not in scope.',
       'Your synergy lags.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Circle back\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Circle back\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Jeff',
@@ -249,7 +249,7 @@ const PERSONAS = [
       'Your margin\u2019s thin.',
       'Bad cold call.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Weak pitch\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Weak pitch\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Mike',
@@ -263,7 +263,7 @@ const PERSONAS = [
       'Awkward click-through.',
       'Campaign flop.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Your brand is weak\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Your brand is weak\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Kevin',
@@ -277,7 +277,7 @@ const PERSONAS = [
       'Not in the manual.',
       'Bug between chair and keyboard.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Did you reboot\?',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Did you reboot\?',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Karren',
@@ -291,7 +291,7 @@ const PERSONAS = [
       'Violation spotted.',
       'Procedure ignored.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'That.s against policy\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'That.s against policy\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Steven',
@@ -305,7 +305,7 @@ const PERSONAS = [
       'Um, redo?',
       'Oops again!',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Oops.* sorry!',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Oops.* sorry!',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Jodi',
@@ -320,7 +320,7 @@ const PERSONAS = [
       'Phone\u2019s busy.',
     ],
     searchRegex:
-      /    tauntSoft: \[\n      'That.s not on my calendar\.',\n(?:      '.*',\n)+    \],/,
+      / {4}tauntSoft: \[\n {6}'That.s not on my calendar\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Flynn',
@@ -334,7 +334,7 @@ const PERSONAS = [
       'Balance wrong.',
       'Receipts missing.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Numbers don.t add up\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Numbers don.t add up\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Ellis',
@@ -348,7 +348,7 @@ const PERSONAS = [
       'Homework sloppy.',
       'Spelling error.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Pop quiz\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Pop quiz\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Jake',
@@ -377,7 +377,7 @@ const PERSONAS = [
       'Misquoted again.',
       'Logic error.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Actually.{1,3}',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Actually.{1,3}',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Angelina',
@@ -391,7 +391,7 @@ const PERSONAS = [
       'Empty swing.',
       'You\u2019re pale.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Shadows like you\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Shadows like you\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Chuck',
@@ -405,7 +405,7 @@ const PERSONAS = [
       'Hall pass?',
       'Suspension vibes.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Rule broken\.',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Rule broken\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Nicklewise',
@@ -419,7 +419,7 @@ const PERSONAS = [
       'Pop quiz\u2014psyche!',
       'Big goof energy.',
     ],
-    searchRegex: /    tauntSoft: \[\n      'Boink!',\n(?:      '.*',\n)+    \],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'Boink!',\n(?: {6}'.*',\n)+ {4}\],/,
   },
 ];
 

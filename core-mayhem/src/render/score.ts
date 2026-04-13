@@ -34,7 +34,7 @@ function buildScoreboard(container: HTMLElement): void {
 }
 
 export function updateScoreboard(): void {
-  if (!scoreContainer) scoreContainer = document.getElementById('score');
+  scoreContainer ??= document.getElementById('score');
   if (!scoreContainer) return;
   if (!leftWinsSpan) buildScoreboard(scoreContainer);
   const { leftWins, ties, rightWins } = getScoreData();

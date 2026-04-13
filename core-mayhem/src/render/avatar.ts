@@ -348,8 +348,8 @@ function _drawEye(
       if (s > 0.5) _px(cmds, ex, ey, s, s, color, alpha);
       break;
     }
-    default: {
-      // Idle: square dot with occasional blink
+    case 'idle': {
+      // Square dot with occasional blink
       const phase = (now % 4200) / 4200;
       const eyeH = phase > 0.93 ? px * 0.25 : px * 2;
       _px(cmds, ex, ey, px * 2, eyeH, color, alpha);

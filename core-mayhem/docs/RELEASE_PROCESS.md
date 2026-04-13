@@ -50,12 +50,7 @@ This runs `tsc -b && vite build` and outputs to `dist/`.
 - `dist/assets/music/` — background music tracks from `public/assets/music/`
 - `dist/assets/sprites/` — character/entity sprites from `public/assets/sprites/`
 - `dist/assets/llama/` — WASM LLM inference modules from `public/assets/llama/`
-- `dist/assets/transformers/` — Transformer.js models from `public/assets/transformers/`
 - `dist/_headers` — Netlify/Cloudflare Pages security and cache headers
-
-**Note on the build plugin:** The custom `managePublicDir` Vite plugin handles cleanup and copying of `public/` instead of Vite's defaults. This is intentional — it skips nested `.git` directories inside `public/assets/transformers/` (git-lfs managed models) which would otherwise cause permission errors on Windows.
-
-**Note on large assets:** `public/assets/transformers/` contains ~439 files of ML model weights. On first build these are copied to `dist/`. Subsequent builds skip the subdirectories and only re-copy flat files in `dist/assets/`, so incremental builds are fast.
 
 ### Preview Locally Before Deploying
 
@@ -113,7 +108,7 @@ wrangler pages deploy dist --project-name=core-mayhem
 
 ### Option C — GitHub Pages
 
-**Via GitHub Actions** (recommended — handles the large `transformers/` assets correctly):
+**Via GitHub Actions:**
 
 Create `.github/workflows/deploy.yml` in the repo root:
 
@@ -131,8 +126,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true           # required for transformer model files
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -237,5 +230,4 @@ npm run clean:build -- --dry # preview what would be removed without deleting
 
 - **Base URL:** `vite.config.ts` sets `base: './'` so all asset URLs are relative. The site works at domain root or any subpath without extra configuration.
 - **Ollama / LLM banter:** The CSP allows `connect-src *` because the Ollama URL is user-configured at runtime. If you disable the Ollama feature you can tighten this to `connect-src 'self'` in `public/_headers`.
-- **Transformer.js models:** These are large (hundreds of MB). Ensure your host supports large file deployments or uses git-lfs. Netlify and Cloudflare Pages both handle large static files correctly.
 - **Music playlist:** Add tracks to `public/assets/music/` and list them in `public/assets/music/playlist.json`. These are served statically and never bundled by Vite.
