@@ -1,4 +1,4 @@
-import { DEFAULT_LLM, type LLMSettings } from '../config/llm';
+import { DEFAULT_LLM, BANTER_CONFIG_VERSION, type LLMSettings } from '../config/llm';
 import { sim } from '../state';
 
 const K = {
@@ -18,7 +18,21 @@ const K = {
   cd: 'cm_banterCooldownMs',
   gap: 'cm_banterSideGapMs',
   ev: 'cm_banterEventMask',
+  ver: 'cm_banterConfigVersion',
 } as const;
+
+// Clear stale localStorage values when the config version changes so users
+// always get fresh defaults after an update.
+((): void => {
+  try {
+    const stored = Number(localStorage.getItem(K.ver));
+    if (stored !== BANTER_CONFIG_VERSION) {
+      const keys = Object.values(K).filter(k => k !== K.ver);
+      for (const k of keys) localStorage.removeItem(k);
+      localStorage.setItem(K.ver, String(BANTER_CONFIG_VERSION));
+    }
+  } catch { /* ignore */ }
+})();
 
 function loadBool(key: string, fallback: boolean): boolean {
   try { const v = localStorage.getItem(key); return v == null ? fallback : v === '1'; } catch { return fallback; }
@@ -227,7 +241,8 @@ export function initBanterControls(): void {
   const updateMixedContentWarning = (): void => {
     const onHttpsPage = window.location.protocol === 'https:';
     const urlIsHttp = elUrl.value.trim().toLowerCase().startsWith('http:');
-    mixedContentWarn.style.display = onHttpsPage && urlIsHttp ? 'block' : 'none';
+    const ollamaSelected = elProvider.value === 'ollama';
+    mixedContentWarn.style.display = ollamaSelected && onHttpsPage && urlIsHttp ? 'block' : 'none';
   };
   updateMixedContentWarning();
   const elModel = selectRow('Model', 'ollamaModel', [{ value: '', label: '(select model)' }], st.model || '');
@@ -302,6 +317,7 @@ export function initBanterControls(): void {
   elProvider.addEventListener('change', () => {
     save(K.src, elProvider.value);
     applyProviderVisibility();
+    updateMixedContentWarning();
   });
 
   elLLMOn.addEventListener('change', () => save(K.llmOn, !!(elLLMOn as HTMLInputElement).checked));

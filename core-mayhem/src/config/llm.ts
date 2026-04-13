@@ -1,4 +1,6 @@
 // Non-secret defaults for LLM-driven banter. Secrets must never be shipped.
+// Bump this when defaults change so stale localStorage values are cleared.
+export const BANTER_CONFIG_VERSION = 3;
 
 export type LLMProvider = 'deterministic' | 'ollama';
 
@@ -40,4 +42,3 @@ export const DEFAULT_LLM: Readonly<LLMSettings> = {
   sideMinGapMs: 25000,
   events: 'match_start,first_blood,big_hit,stagger,comeback,near_death,victory,taunt',
 };
-
