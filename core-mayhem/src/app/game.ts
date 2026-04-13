@@ -85,7 +85,9 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   try {
     const seed = Number(((sim as any).settings?.seed ?? 1337) | 0);
     const pacing = (() => { try { return readBanterPacing(); } catch { return { cooldownMs: 5000, sideMinGapMs: 12000 }; } })();
-    (sim as any).banter = new BanterSystem({ seed, cooldownMs: pacing.cooldownMs, sideMinGapMs: pacing.sideMinGapMs });
+    // sideMinGapMs is owned by the outer gate in speakBanterLLM (reads localStorage live),
+    // so BanterSystem's internal gap is set to 0 to avoid double-gating.
+    (sim as any).banter = new BanterSystem({ seed, cooldownMs: pacing.cooldownMs, sideMinGapMs: 0 });
     // --- Game mode selection: manual | random | tournament ---
     const mode = (() => {
       try { return ((localStorage.getItem('cm_game_mode') as any) ?? 'manual'); } catch { return 'manual'; }

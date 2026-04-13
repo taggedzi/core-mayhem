@@ -187,63 +187,52 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
   if (!cfgAll.enabled) return;
   const st = cfgAll.settings as ReturnType<typeof readLLMSettings>['settings'];
 
-  // If event not allowed, fallback immediately
-  if (!eventAllowed(ev, st.events)) {
-    try {
-      const out = b.speak(ev, me, them);
-      if (out) setBanter(side, stripEndearments(out.text));
-    } catch {
-      /* ignore */
-    }
-    return;
-  }
-
-  // Provider branch — LLM must be explicitly enabled; defaults to deterministic
-  if (!st.llmEnabled || st.provider !== 'ollama' || !st.model || !st.ollamaUrl) {
-    try {
-      const out = b.speak(ev, me, them);
-      if (out) setBanter(side, stripEndearments(out.text));
-    } catch {
-      /* ignore */
-    }
-    return;
-  }
-
-  // Per-side generation counter to drop stale async completions
-  const seq = (((sim as any).banterSeq ??= { L: 0, R: 0 }) as Record<SideLR, number>);
-  // Bump generation for every call so later calls supersede earlier ones
-  const myGen = ++seq[side];
-
-  // Local pacing guard for LLM path and fallback alike
+  // Pacing gate — applies to ALL paths (LLM and deterministic alike)
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const gate = (((sim as any).banterGate ??= { L: 0, R: 0, lastAny: 0 }) as any);
   const pacing = (() => {
     try {
       return readBanterPacing();
     } catch {
-      return { cooldownMs: 5000, sideMinGapMs: 12000 };
+      return { cooldownMs: 8000, sideMinGapMs: 25000 };
     }
   })();
   const sideTooSoon = now - (gate[side] ?? 0) < Math.max(0, pacing.sideMinGapMs | 0);
   const crossMin = Math.max(800, Math.round(((pacing.sideMinGapMs ?? 2000)) * 0.35));
   const anyTooSoon = now - (gate.lastAny ?? 0) < crossMin;
-  if (sideTooSoon || anyTooSoon) {
-    // Too soon to speak; invalidate older inflight by bumping gen, but do nothing else
-    return;
-  }
+  if (sideTooSoon || anyTooSoon) return;
 
-  if (inflight[side]) {
-    // Already querying; avoid piling up. Fallback to deterministic.
+  // Shared helper — speaks deterministic line and stamps the gate
+  const speakDeterministic = (): void => {
     try {
       const out = b.speak(ev, me, them);
       if (out) {
         setBanter(side, stripEndearments(out.text));
-        gate[side] = now;
-        gate.lastAny = now;
+        const t = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        gate[side] = t;
+        gate.lastAny = t;
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
+  };
+
+  // If event not in mask → deterministic fallback
+  if (!eventAllowed(ev, st.events)) {
+    speakDeterministic();
+    return;
+  }
+
+  // If LLM not configured → deterministic fallback
+  if (!st.llmEnabled || st.provider !== 'ollama' || !st.model || !st.ollamaUrl) {
+    speakDeterministic();
+    return;
+  }
+
+  // Per-side generation counter to drop stale async completions
+  const seq = (((sim as any).banterSeq ??= { L: 0, R: 0 }) as Record<SideLR, number>);
+  const myGen = ++seq[side];
+
+  if (inflight[side]) {
+    speakDeterministic();
     return;
   }
 
@@ -295,29 +284,10 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
       return;
     }
 
-    // Fallback
-    try {
-      const out = b.speak(ev, me, them);
-      if (out) {
-        setBanter(side, stripEndearments(out.text));
-        gate[side] = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        gate.lastAny = gate[side];
-      }
-    } catch {
-      /* ignore */
-    }
+    // LLM returned empty — fall back to deterministic
+    speakDeterministic();
   } catch {
-    try {
-      const out = b.speak(ev, me, them);
-      if (out) {
-        setBanter(side, stripEndearments(out.text));
-        const t = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        gate[side] = t;
-        gate.lastAny = t;
-      }
-    } catch {
-      /* ignore */
-    }
+    speakDeterministic();
   } finally {
     inflight[side] = false;
   }

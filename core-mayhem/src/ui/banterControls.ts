@@ -38,7 +38,7 @@ function loadBool(key: string, fallback: boolean): boolean {
   try { const v = localStorage.getItem(key); return v == null ? fallback : v === '1'; } catch { return fallback; }
 }
 function loadNum(key: string, fallback: number): number {
-  try { const v = Number(localStorage.getItem(key)); return Number.isFinite(v) ? v : fallback; } catch { return fallback; }
+  try { const raw = localStorage.getItem(key); if (raw == null) return fallback; const v = Number(raw); return Number.isFinite(v) ? v : fallback; } catch { return fallback; }
 }
 function loadStr(key: string, fallback: string): string {
   try { const v = localStorage.getItem(key); return v ?? fallback; } catch { return fallback; }
@@ -254,7 +254,8 @@ export function initBanterControls(): void {
   btnWrap.append(btnRefresh, btnTest, status);
   pop.appendChild(btnWrap);
 
-  pop.appendChild(headerRow('Quality & Limits'));
+  const hdrQuality = headerRow('Quality & Limits');
+  pop.appendChild(hdrQuality);
   const elTimeout = numberRow('Timeout (ms)', 'banterTimeout', st.timeoutMs, { min: 500, max: 8000, step: 100 });
   const elChars = numberRow('Max Chars', 'banterMaxChars', st.maxChars, { min: 60, max: 240, step: 10 });
   const elTemp = rangeRow('Temperature', 'banterTemp', st.temperature, { min: 0, max: 1, step: 0.01 });
@@ -293,10 +294,21 @@ export function initBanterControls(): void {
   // Initial provider UI state
   const applyProviderVisibility = (): void => {
     const showOllama = (elProvider.value === 'ollama');
-    elLLMOn.parentElement!.style.display = showOllama ? '' : 'none';
-    elUrl.parentElement!.style.display = showOllama ? '' : 'none';
-    elModel.parentElement!.style.display = showOllama ? '' : 'none';
-    btnWrap.style.display = showOllama ? '' : 'none';
+    const d = (el: HTMLElement): void => { el.style.display = showOllama ? '' : 'none'; };
+    // Ollama connection
+    d(elLLMOn.parentElement!);
+    d(elUrl.parentElement!);
+    d(elModel.parentElement!);
+    d(btnWrap);
+    // Quality & Limits — only meaningful for LLM calls
+    d(hdrQuality);
+    d(elTimeout.parentElement!);
+    d(elChars.parentElement!);
+    d(elTemp.parentElement!);
+    d(elTopP.parentElement!);
+    d(elRep.parentElement!);
+    // Include opponent's last line — only used in LLM prompt building
+    d(elIncl.parentElement!);
   };
   applyProviderVisibility();
 
@@ -385,13 +397,15 @@ export function initBanterControls(): void {
 
   if (st.provider === 'ollama') void populateModels();
 
-  // --- Reset to defaults ---
-  const resetWrap = document.createElement('div');
-  resetWrap.className = 'audio-row buttons';
+  // --- Save & Apply / Reset to defaults ---
+  const actionWrap = document.createElement('div');
+  actionWrap.className = 'audio-row buttons';
+  const btnSave = document.createElement('button');
+  btnSave.type = 'button'; btnSave.textContent = 'Save & Apply';
   const btnReset = document.createElement('button');
   btnReset.type = 'button'; btnReset.textContent = 'Reset to Defaults';
-  resetWrap.appendChild(btnReset);
-  pop.appendChild(resetWrap);
+  actionWrap.append(btnSave, btnReset);
+  pop.appendChild(actionWrap);
 
   const setUIFrom = (cfg: LLMSettings & { enabled: boolean }): void => {
     // Enabled
@@ -433,6 +447,34 @@ export function initBanterControls(): void {
     save(K.ev, cfg.events);
     refreshBtnLabel();
   };
+
+  btnSave.addEventListener('click', (e) => {
+    e.preventDefault();
+    // Persist every current UI value explicitly
+    save(K.on, elOn.checked);
+    save(K.src, elProvider.value);
+    save(K.llmOn, elLLMOn.checked);
+    save(K.url, elUrl.value.trim());
+    save(K.model, elModel.value);
+    save(K.to, Math.max(500, Number(elTimeout.value) | 0));
+    save(K.chars, Math.max(40, Number(elChars.value) | 0));
+    save(K.temp, Number(elTemp.value));
+    save(K.topp, Number(elTopP.value));
+    save(K.rep, Number(elRep.value));
+    save(K.incl, elIncl.checked);
+    save(K.emoji, elEmoji.value);
+    save(K.prof, elProf.value);
+    save(K.cd, Math.max(0, Number(elCd.value) | 0));
+    save(K.gap, Math.max(0, Number(elGap.value) | 0));
+    const evList = events.filter((ev) => !!evChecks[ev]?.checked);
+    save(K.ev, evList.length === events.length ? '*' : evList.join(','));
+    // Reset the in-game pacing gate so new timing takes effect immediately
+    try { (sim as any).banterGate = { L: 0, R: 0, lastAny: 0 }; } catch { /* ignore */ }
+    // Brief visual confirmation
+    const prev = btnSave.textContent;
+    btnSave.textContent = 'Saved ✓';
+    setTimeout(() => { btnSave.textContent = prev; }, 1200);
+  });
 
   btnReset.addEventListener('click', (e) => {
     e.preventDefault();
