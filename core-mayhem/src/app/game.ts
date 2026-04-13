@@ -322,6 +322,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     clearWorld();
     updateHUD();
     try { audio.stopLoop('alarm_L'); audio.stopLoop('alarm_R'); } catch { /* ignore */ void 0; }
+    try { audio.stopMusic(); } catch { /* ignore */ void 0; }
   };
 }
 
