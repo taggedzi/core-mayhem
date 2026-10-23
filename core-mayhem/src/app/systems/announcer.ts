@@ -43,14 +43,11 @@ export function resetAnnouncerState(): void {
 export function runAnnouncer(): void {
   const idx = (sim as any).matchIndex | 0;
   if (idx !== lastMatchIndex) {
+    resetAnnouncerState();
+    // Queue-service reset is separate from the complete detector reset.
     announcer.reset?.();
     // New match: seed state and fire pre-game + ready/go
     lastMatchIndex = idx;
-    didFirstCenterDamage = false;
-    dangerSpokenL = false;
-    dangerSpokenR = false;
-    countdown10 = false;
-    countdown3 = false;
     const cL: any = (sim as any).coreL;
     const cR: any = (sim as any).coreR;
     prevCenterL = Number(cL?.centerHP ?? 0);
