@@ -54,6 +54,10 @@ Built-in banter works without an AI service. For generated dialogue, the **Bante
 
 Ollama must be running with an available model, and the browser must be allowed to reach it. Neither Ollama nor a model download is required to play or build the game.
 
+Generated replies belong to the match and settings that requested them. Stop,
+restart, and settings changes cancel pending replies. Each side keeps its first
+pending request and ignores additional events until that request finishes.
+
 ## Run locally
 
 **Requirements:** Git, npm, and Node.js **22.12 or newer in the 22.x line, or Node.js 24+**, compatible with the installed Vite and Vitest dependencies.
