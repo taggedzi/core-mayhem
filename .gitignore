@@ -2,3 +2,4 @@ assets
 stats
 .vscode
 /unused/
+*.tsbuildinfo
