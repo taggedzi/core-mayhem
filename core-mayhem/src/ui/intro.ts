@@ -1,5 +1,7 @@
+import { activateModal } from './keyboard';
 // intro.ts — landing screen welcome dialog shown before the first game start
 let overlayEl: HTMLElement | null = null;
+let releaseModal: (() => void) | null = null;
 let onStartCb: (() => void) | null = null;
 
 export function initIntroOverlay(onStart: () => void): void {
@@ -95,8 +97,9 @@ export function initIntroOverlay(onStart: () => void): void {
   overlayEl = overlay;
 
   // Allow Enter/Space on the focused panel to start
-  window.addEventListener('keydown', (e: KeyboardEvent) => {
+  panel.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!overlayEl || overlayEl.style.display === 'none') return;
+    if (e.target !== panel || e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleStart();
@@ -104,6 +107,7 @@ export function initIntroOverlay(onStart: () => void): void {
   });
 
   // Focus the start button for keyboard accessibility
+  releaseModal = activateModal(overlay, panel);
   btnStart.focus();
 }
 
@@ -122,4 +126,6 @@ function closeIntroOverlay(): void {
   }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
+  releaseModal?.();
+  releaseModal = null;
 }

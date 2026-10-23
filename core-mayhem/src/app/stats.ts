@@ -23,6 +23,8 @@ const ALL_WEAPONS: readonly WeaponKind[] = ['cannon', 'laser', 'missile', 'morta
 interface WeaponAgg {
   shots: number;
   hits: number;
+  /** Shots that dealt armor or center damage. Exported as coreHitRate, separate from damage per shot. */
+  coreHits: number;
   misses: number;
   dmgShield: number;
   dmgSeg: number;
@@ -230,6 +232,7 @@ function ensureSessionShape(s: any): SessionStats {
       s.weapon[sk][w] = {
         shots: a.shots ?? 0,
         hits: a.hits ?? 0,
+        coreHits: a.coreHits ?? 0,
         misses: a.misses ?? 0,
         dmgShield: a.dmgShield ?? 0,
         dmgSeg: a.dmgSeg ?? 0,
@@ -292,11 +295,14 @@ export function initStats(): void {
     session = ensureSessionShape({});
     scheduleSave();
   }
+  publishScoreboard();
 }
 
 export function startNewMatch(): void {
   initStats();
   if (!session) return;
+  // Replacing an unfinished match drops its unflushed rows. It is not a tie.
+  if (inMatch) abortOpenMatch();
   const id = session.nextMatchId++;
   const startT = (sim as any).matchStart ?? performance.now();
   inMatch = {
@@ -340,6 +346,7 @@ function bumpHit(
   const sk = sideKey(side);
   const a = session!.weapon[sk][weapon];
   a.hits++;
+  if (dmgSeg > 0 || dmgCenter > 0) a.coreHits++;
   a.dmgShield += Math.max(0, dmgShield);
   a.dmgSeg += Math.max(0, dmgSeg);
   a.dmgCenter += Math.max(0, dmgCenter);
@@ -466,13 +473,13 @@ export function recordMatchEnd(): void {
   const coreL = (sim as any).coreL;
   const coreR = (sim as any).coreR;
   const sumSeg = (arr: number[] | null | undefined): number =>
-    Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
+    Array.isArray(arr) ? arr.reduce((a, b) => a + Number(b), 0) : 0;
   const leftSegHP = sumSeg(coreL?.segHP);
-  const leftCenterHP = coreL?.centerHP | 0;
-  const leftShieldHP = coreL?.shieldHP | 0;
+  const leftCenterHP = Number(coreL?.centerHP ?? 0);
+  const leftShieldHP = Number(coreL?.shieldHP ?? 0);
   const rightSegHP = sumSeg(coreR?.segHP);
-  const rightCenterHP = coreR?.centerHP | 0;
-  const rightShieldHP = coreR?.shieldHP | 0;
+  const rightCenterHP = Number(coreR?.centerHP ?? 0);
+  const rightShieldHP = Number(coreR?.shieldHP ?? 0);
 
   session!.matches.push({
     matchId,
@@ -514,7 +521,20 @@ export function recordMatchEnd(): void {
   // End the in-match state. History is saved once per match, not on every projectile.
   inMatch = null;
   trimHistory(session!);
+  publishScoreboard();
   scheduleSave(true);
+}
+
+/**
+ * Stop or replace a match that has no declared winner.
+ * Drops timeline, first-hit, and per-match mod rows for that match.
+ * Does not add a match summary and does not count a tie.
+ * Session totals (shots, deposits, buffs) already recorded stay.
+ */
+export function abortOpenMatch(): void {
+  if (!inMatch) return;
+  inMatch = null;
+  scheduleSave();
 }
 
 // --- CSV Export ---
@@ -561,7 +581,9 @@ export function buildCSVs(): Record<string, string> {
         const hitRate = shots ? hits / shots : 0;
         const missPct = shots ? misses / shots : 0;
         const coreDmg = a.dmgSeg + a.dmgCenter;
-        const coreHitRate = shots ? coreDmg / shots : 0;
+        // Share of shots that reached armor or the center, clamped to [0, 1].
+        // Average core damage stays in coreDmgPerShot and may exceed 1.
+        const coreHitRate = shots ? Math.min(1, (a.coreHits ?? 0) / shots) : 0;
         const coreDmgPerShot = shots ? coreDmg / shots : 0;
         rows.push(
           toCsvRow([
@@ -764,7 +786,9 @@ export function exportAllCSVs(): void {
 }
 
 export function resetStats(): void {
-  // Clear localStorage and start a fresh session
+  // Clear saved history. A match that is still being played starts a new
+  // collection so the eventual summary and timeline stay complete.
+  const resumeLiveMatch = inMatch != null;
   try {
     localStorage.removeItem(LS_KEY);
     localStorage.removeItem(LS_HISTORY_KEY);
@@ -778,6 +802,7 @@ export function resetStats(): void {
   persistenceError = null;
   persistenceWarned = false;
   initStats();
+  if (resumeLiveMatch) startNewMatch();
 }
 
 export function recordBuff(side: Side, kind: string): void {
@@ -805,6 +830,27 @@ export function recordDebuff(targetSide: Side, kind: WeaponKind | null): void {
   scheduleSave();
 }
 
+/** Copy declared match results onto sim.stats so older readers match the Stats panel. */
+function publishScoreboard(): void {
+  if (!session) return;
+  const { leftWins, rightWins, ties } = countDeclaredResults();
+  (sim as any).stats = { leftWins, rightWins, ties };
+}
+
+function countDeclaredResults(): { leftWins: number; rightWins: number; ties: number } {
+  let leftWins = 0;
+  let rightWins = 0;
+  let ties = 0;
+  if (Array.isArray(session?.matches)) {
+    for (const m of session.matches) {
+      if (m.winner === -1) leftWins++;
+      else if (m.winner === 1) rightWins++;
+      else if (m.winner === 0) ties++;
+    }
+  }
+  return { leftWins, rightWins, ties };
+}
+
 // Lightweight summary for UI
 export function getSummary(): {
   matches: number;
@@ -818,16 +864,7 @@ export function getSummary(): {
 } {
   ensure();
   const matches = Array.isArray(session!.matches) ? session!.matches.length : 0;
-  let leftWins = 0,
-    rightWins = 0,
-    ties = 0;
-  if (Array.isArray(session!.matches)) {
-    for (const m of session!.matches) {
-      if (m.winner === -1) leftWins++;
-      else if (m.winner === 1) rightWins++;
-      else ties++;
-    }
-  }
+  const { leftWins, rightWins, ties } = countDeclaredResults();
   const sumVals = (o: Record<string, number> | undefined): number =>
     o ? Object.values(o).reduce((a, b) => a + (b | 0), 0) : 0;
   const buffsL = sumVals(session!.buffCounts?.L);

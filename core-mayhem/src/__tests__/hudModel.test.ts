@@ -23,4 +23,12 @@ describe('getHudData (pure)', () => {
     const hud = getHudData();
     expect(hud.state).toBe('Game Over');
   });
+
+  it('reports Game Over for a time-limit tie with living cores', () => {
+    sim.gameOver = true;
+    sim.coreL = { centerHP: 10, segHP: [] } as any;
+    sim.coreR = { centerHP: 10, segHP: [] } as any;
+    expect(getHudData().state).toBe('Game Over');
+    sim.gameOver = false;
+  });
 });

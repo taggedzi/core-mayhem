@@ -140,4 +140,12 @@ describe('drawBanter', () => {
     // Should draw more than one line total across both sides
     expect(texts.length).toBeGreaterThan(2);
   });
+  it('draws no bubbles while banter is disabled', () => {
+    const ctx = new MockCtx();
+    (sim as any).banterEnabled = false;
+    (sim as any).banterUI = { L: { text: 'still pending', t0: 0, until: 2000 } };
+    drawBanter(ctx as unknown as CanvasRenderingContext2D);
+    expect(ctx.logs).toHaveLength(0);
+    (sim as any).banterEnabled = true;
+  });
 });

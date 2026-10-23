@@ -1,5 +1,7 @@
+import Matter, { Bodies, World } from 'matter-js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import { registerCollisions } from '../app/collisions';
 import {
   initStats,
   startNewMatch,
@@ -19,7 +21,11 @@ import {
   getPersistenceStatus,
   recordMissileFirstImpact,
   recordMissileCoreDelay,
+  abortOpenMatch,
 } from '../app/stats';
+import { runTriggers } from '../app/systems/triggers';
+import { getScoreData } from '../render/scoreModel';
+import { fireLaser } from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 import { initStatsOverlay, openStatsOverlay } from '../ui/stats';
@@ -59,6 +65,38 @@ describe('persisted statistics compatibility', () => {
       const restored = await import('../app/stats');
       restored.initStats();
       expect(restored.buildCSVs()).toEqual(initial.buildCSVs());
+    } finally {
+      localStorage.removeItem('coreMayhem.stats.v1');
+      vi.useRealTimers();
+    }
+  });
+
+  it('reloads header and panel from the same saved results', async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    localStorage.removeItem('coreMayhem.stats.v1');
+    try {
+      const state = await import('../state');
+      const initial = await import('../app/stats');
+      const score = await import('../render/scoreModel');
+      initial.resetStats();
+      (state.sim as any).matchStart = 1_000;
+      (state.sim as any).winner = SIDE.LEFT;
+      (state.sim as any).winnerAt = 1_500;
+      initial.startNewMatch();
+      initial.recordMatchEnd();
+      vi.runAllTimers();
+      expect(score.getScoreData()).toEqual({ leftWins: 1, rightWins: 0, ties: 0 });
+
+      vi.resetModules();
+      const restored = await import('../app/stats');
+      const restoredScore = await import('../render/scoreModel');
+      restored.initStats();
+      expect(restored.getSummary()).toMatchObject({ matches: 1, leftWins: 1, ties: 0 });
+      expect(restoredScore.getScoreData()).toEqual({ leftWins: 1, rightWins: 0, ties: 0 });
+      restored.resetStats();
+      expect(restored.getSummary()).toMatchObject({ matches: 0, leftWins: 0, ties: 0 });
+      expect(restoredScore.getScoreData()).toEqual({ leftWins: 0, rightWins: 0, ties: 0 });
     } finally {
       localStorage.removeItem('coreMayhem.stats.v1');
       vi.useRealTimers();
@@ -119,6 +157,218 @@ describe('stats recording + CSVs', () => {
     expect(files['first_hits.csv']).toMatch(/msToFirstHit/);
     expect(files['damage_timeline.csv']).toMatch(/dmgShield/);
   });
+
+  it('keeps recording a live match after reset and agrees with the header', () => {
+    initStats();
+    startNewMatch();
+    recordShotFired(SIDE.LEFT, 'cannon');
+    resetStats();
+    recordShotFired(SIDE.LEFT, 'cannon');
+    recordProjectileHit(SIDE.LEFT, 'cannon', 1.5, 2.25, 0, (sim as any).matchStart + 1500);
+    (sim as any).winner = SIDE.RIGHT;
+    (sim as any).winnerAt = (sim as any).matchStart + 2000;
+    recordMatchEnd();
+
+    const summary = getSummary();
+    expect(summary.matches).toBe(1);
+    expect(summary.rightWins).toBe(1);
+    expect(summary.ties).toBe(0);
+    expect(getScoreData()).toEqual({
+      leftWins: summary.leftWins,
+      rightWins: summary.rightWins,
+      ties: summary.ties,
+    });
+    const files = buildCSVs();
+    expect(files['weapon_agg.csv']).toMatch(/L,cannon,1,/);
+    expect(files['damage_timeline.csv']).toMatch(/1,1,L,cannon,1\.50,2\.25,0\.00/);
+    expect(files['matches.csv']).toMatch(/,1,/);
+  });
+
+  it('drops an unfinished stop without counting a tie, then records the next match', () => {
+    initStats();
+    startNewMatch();
+    recordProjectileHit(SIDE.LEFT, 'cannon', 4, 0, 0, (sim as any).matchStart + 100);
+    abortOpenMatch();
+    expect(getSummary()).toMatchObject({ matches: 0, ties: 0, leftWins: 0, rightWins: 0 });
+    const dropped = buildCSVs()['damage_timeline.csv'].trim().split('\n');
+    expect(dropped).toHaveLength(1);
+
+    startNewMatch();
+    recordProjectileHit(SIDE.RIGHT, 'laser', 0, 0, 3, (sim as any).matchStart + 400);
+    (sim as any).winner = SIDE.LEFT;
+    (sim as any).winnerAt = (sim as any).matchStart + 800;
+    recordMatchEnd();
+    expect(getSummary()).toMatchObject({ matches: 1, leftWins: 1, ties: 0 });
+    const timeline = buildCSVs()['damage_timeline.csv'];
+    expect(timeline).toMatch(/R,laser,0\.00,0\.00,3\.00/);
+    expect(timeline).not.toMatch(/cannon,4\.00/);
+  });
+});
+
+function csvRow(csv: string, prefix: string): Record<string, string> {
+  const [header, ...lines] = csv.trim().split('\n');
+  const cols = header.split(',');
+  const line = lines.find((row) => row.startsWith(prefix));
+  expect(line, prefix).toBeTruthy();
+  const vals = line!.split(',');
+  return Object.fromEntries(cols.map((col, i) => [col, vals[i] ?? '']));
+}
+
+function addBody(body: Matter.Body): Matter.Body {
+  World.add(sim.world as Matter.World, body);
+  return body;
+}
+
+describe('combat statistics', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Drop a leftover live match before clearing history so this setup's
+    // startNewMatch is the first id. Reset already resumes a live match.
+    abortOpenMatch();
+    resetStats();
+    resetSimState();
+    const eng = Matter.Engine.create();
+    sim.engine = eng;
+    sim.world = eng.world;
+    (sim as any).matchStart = 1_000;
+    (sim as any).coreL = {
+      center: { x: 100, y: 100 },
+      segHP: [1.2, 2.3],
+      segHPmax: 100,
+      centerHP: 4.5,
+      centerHPmax: 400,
+      shieldHP: 0.25,
+      shieldHPmax: 200,
+    };
+    (sim as any).coreR = {
+      center: { x: 540, y: 100 },
+      segHP: new Array(8).fill(100),
+      segHPmax: 100,
+      centerHP: 20.4,
+      centerHPmax: 400,
+      shieldHP: 40.5,
+      shieldHPmax: 200,
+    };
+    (sim as any).binsL = {
+      cannon: { fill: 0, cap: 10 },
+      laser: { fill: 0, cap: 10 },
+      missile: { fill: 0, cap: 10 },
+      mortar: { fill: 0, cap: 10 },
+      repair: { fill: 0, cap: 10 },
+      shield: { fill: 0, cap: 10 },
+      buff: { fill: 1, cap: 1 },
+      debuff: { fill: 1, cap: 1 },
+    };
+    (sim as any).binsR = {
+      cannon: { fill: 0, cap: 10 },
+      laser: { fill: 0, cap: 10 },
+      missile: { fill: 0, cap: 10 },
+      mortar: { fill: 0, cap: 10 },
+      repair: { fill: 0, cap: 10 },
+      shield: { fill: 0, cap: 10 },
+      buff: { fill: 0, cap: 10 },
+      debuff: { fill: 0, cap: 10 },
+    };
+    (sim as any).wepL = {
+      cannon: { pos: { x: 20, y: 20 } },
+      laser: { pos: { x: 25, y: 25 } },
+      missile: { pos: { x: 30, y: 30 } },
+      mortar: { pos: { x: 35, y: 35 } },
+    };
+    (sim as any).cooldowns = {
+      L: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
+      R: { cannon: 0, laser: 0, missile: 0, mortar: 0 },
+    };
+    startNewMatch();
+  });
+
+  it('records shield and penetrating damage once, including fractions', () => {
+    const det = registerCollisions(sim.engine!);
+    const center = addBody(Bodies.circle(540, 100, 8, { isSensor: true }));
+    (center as any).plugin = { kind: 'coreCenter', side: SIDE.RIGHT };
+
+    recordShotFired(SIDE.LEFT, 'cannon');
+    const absorbed = addBody(Bodies.circle(520, 100, 3));
+    (absorbed as any).plugin = {
+      kind: 'projectile',
+      ptype: 'cannon',
+      side: SIDE.LEFT,
+      dmg: 10.25,
+      spawnT: 0,
+    };
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: absorbed, bodyB: center }],
+    } as any);
+    expect((sim as any).coreR.shieldHP).toBeCloseTo(30.25);
+    expect((sim as any).coreR.centerHP).toBeCloseTo(20.4);
+
+    (sim as any).coreR.shieldHP = 5.25;
+    recordShotFired(SIDE.LEFT, 'cannon');
+    const breaking = addBody(Bodies.circle(520, 100, 3));
+    (breaking as any).plugin = {
+      kind: 'projectile',
+      ptype: 'cannon',
+      side: SIDE.LEFT,
+      dmg: 10.75,
+      spawnT: 0,
+    };
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: breaking, bodyB: center }],
+    } as any);
+
+    expect((sim as any).coreR.shieldHP).toBe(0);
+    expect((sim as any).coreR.centerHP).toBeCloseTo(14.9);
+
+    const row = csvRow(buildCSVs()['weapon_agg.csv'], 'L,cannon,');
+    expect(row.shots).toBe('2');
+    expect(row.hits).toBe('2');
+    expect(row.dmgShield).toBe('15.50');
+    expect(row.dmgSeg).toBe('0.00');
+    expect(row.dmgCenter).toBe('5.50');
+    expect(row.coreHitRate).toBe('0.5000');
+    expect(row.coreDmgPerShot).toBe('2.75');
+    expect(Number(row.coreHitRate)).toBeLessThanOrEqual(1);
+    det();
+  });
+
+  it('keeps fractional core totals in the match snapshot', () => {
+    (sim as any).winner = SIDE.LEFT;
+    (sim as any).winnerAt = 2_000;
+    recordMatchEnd();
+    const row = csvRow(buildCSVs()['matches.csv'], '1,');
+    expect(row.leftSegHP).toBe('3.5');
+    expect(row.leftCenterHP).toBe('4.5');
+    expect(row.leftShieldHP).toBe('0.25');
+  });
+
+  it('preserves fractional laser damage that depletes the center', () => {
+    (sim as any).coreR = {
+      center: { x: 540, y: 100 },
+      segHP: new Array(8).fill(100),
+      centerHP: 10.6,
+    };
+    fireLaser(SIDE.LEFT, { x: 0, y: 0 }, { x: 540, y: 100, _forceCenter: true } as any);
+    expect((sim as any).coreR.centerHP).toBe(0);
+    const row = csvRow(buildCSVs()['weapon_agg.csv'], 'L,laser,');
+    expect(row.shots).toBe('1');
+    expect(row.hits).toBe('1');
+    expect(row.dmgCenter).toBe('10.60');
+    expect(row.coreHitRate).toBe('1.0000');
+    expect(Number(row.coreDmgPerShot)).toBeGreaterThan(1);
+  });
+
+  it('counts buff and debuff bin cycles and their durations', () => {
+    runTriggers(1_500);
+    const files = buildCSVs()['bin_cycles.csv'];
+    const buff = csvRow(files, 'L,buff,');
+    const debuff = csvRow(files, 'L,debuff,');
+    expect(buff.cycles).toBe('1');
+    expect(buff.avgMs).toBe('500.0');
+    expect(debuff.cycles).toBe('1');
+    expect(debuff.avgMs).toBe('500.0');
+    expect((sim as any).binsL.buff.fill).toBe(0);
+    expect((sim as any).binsL.debuff.fill).toBe(0);
+  });
 });
 
 describe('bounded statistics persistence', () => {
@@ -136,6 +386,8 @@ describe('bounded statistics persistence', () => {
   beforeEach(() => {
     restoreSetItem();
     vi.useFakeTimers();
+    // A leftover live match would be resumed by reset and shift match ids.
+    abortOpenMatch();
     resetStats();
     vi.runAllTimers();
   });

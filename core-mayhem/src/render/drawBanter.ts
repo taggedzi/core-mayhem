@@ -2,6 +2,7 @@ import { AVATAR } from '../config';
 import { sim } from '../state';
 
 export function drawBanter(ctx: CanvasRenderingContext2D): void {
+  if ((sim as any).banterEnabled === false) return;
   const ui: any = (sim as any).banterUI;
   if (!ui) return;
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();

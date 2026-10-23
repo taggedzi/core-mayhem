@@ -5,10 +5,13 @@ import {
   getSummary,
   getPersistenceStatus,
 } from '../app/stats';
+import { updateScoreboard } from '../render/score';
+
+import { activateModal } from './keyboard';
 
 let overlayEl: HTMLElement | null = null;
 let panelEl: HTMLElement | null = null;
-let lastFocusEl: Element | null = null;
+let releaseModal: (() => void) | null = null;
 
 export function initStatsOverlay(): void {
   if (overlayEl) return;
@@ -104,9 +107,12 @@ export function initStatsOverlay(): void {
   const btnReset = document.createElement('button');
   btnReset.textContent = 'Reset Stats';
   btnReset.onclick = (): void => {
-    const ok = confirm('Reset all collected stats for this session? This clears localStorage.');
+    const ok = confirm(
+      'Reset all collected stats for this session? This clears saved statistics. If a match is in progress, recording starts over.',
+    );
     if (!ok) return;
     resetStats();
+    updateScoreboard();
     // Re-render links since data set changed
     renderLinks(list);
     renderSummary();
@@ -184,14 +190,6 @@ export function initStatsOverlay(): void {
     renderLinks(list);
     renderSummary();
   };
-
-  // Global key handling: Esc closes when stats overlay is open
-  window.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && overlayEl && overlayEl.style.display !== 'none') {
-      e.preventDefault();
-      closeStatsOverlay();
-    }
-  });
 }
 
 export function openStatsOverlay(): void {
@@ -203,10 +201,10 @@ export function openStatsOverlay(): void {
   } catch {
     /* ignore */ void 0;
   }
-  lastFocusEl = document.activeElement;
+  if (releaseModal) return;
   overlayEl.style.display = 'block';
   overlayEl.setAttribute('aria-hidden', 'false');
-  (panelEl as HTMLElement | null)?.focus?.();
+  if (panelEl) releaseModal = activateModal(overlayEl, panelEl, closeStatsOverlay);
 }
 
 function closeStatsOverlay(): void {
@@ -221,12 +219,6 @@ function closeStatsOverlay(): void {
   }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
-  // Restore focus to the trigger if possible
-  if (lastFocusEl && (lastFocusEl as HTMLElement).focus) {
-    try {
-      (lastFocusEl as HTMLElement).focus();
-    } catch {
-      /* ignore */ void 0;
-    }
-  }
+  releaseModal?.();
+  releaseModal = null;
 }
