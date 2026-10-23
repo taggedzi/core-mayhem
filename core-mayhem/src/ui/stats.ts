@@ -1,4 +1,5 @@
 import { buildCSVs, exportAllCSVs, resetStats, getSummary } from '../app/stats';
+import { updateScoreboard } from '../render/score';
 
 import { activateModal } from './keyboard';
 
@@ -89,9 +90,12 @@ export function initStatsOverlay(): void {
   const btnReset = document.createElement('button');
   btnReset.textContent = 'Reset Stats';
   btnReset.onclick = (): void => {
-    const ok = confirm('Reset all collected stats for this session? This clears localStorage.');
+    const ok = confirm(
+      'Reset all collected stats for this session? This clears saved statistics. If a match is in progress, recording starts over.',
+    );
     if (!ok) return;
     resetStats();
+    updateScoreboard();
     // Re-render links since data set changed
     renderLinks(list);
     renderSummary();

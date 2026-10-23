@@ -200,11 +200,14 @@ export function initStats(): void {
     session = ensureSessionShape({});
     scheduleSave();
   }
+  publishScoreboard();
 }
 
 export function startNewMatch(): void {
   initStats();
   if (!session) return;
+  // Replacing an unfinished match drops its unflushed rows. It is not a tie.
+  if (inMatch) abortOpenMatch();
   const id = session.nextMatchId++;
   const startT = (sim as any).matchStart ?? performance.now();
   inMatch = {
@@ -413,6 +416,19 @@ export function recordMatchEnd(): void {
   }
 
   // End the in-match state
+  inMatch = null;
+  publishScoreboard();
+  scheduleSave();
+}
+
+/**
+ * Stop or replace a match that has no declared winner.
+ * Drops timeline, first-hit, and per-match mod rows for that match.
+ * Does not add a match summary and does not count a tie.
+ * Session totals (shots, deposits, buffs) already recorded stay.
+ */
+export function abortOpenMatch(): void {
+  if (!inMatch) return;
   inMatch = null;
   scheduleSave();
 }
@@ -666,7 +682,9 @@ export function exportAllCSVs(): void {
 }
 
 export function resetStats(): void {
-  // Clear localStorage and start a fresh session
+  // Clear saved history. A match that is still being played starts a new
+  // collection so the eventual summary and timeline stay complete.
+  const resumeLiveMatch = inMatch != null;
   try {
     localStorage.removeItem(LS_KEY);
   } catch {
@@ -675,6 +693,7 @@ export function resetStats(): void {
   session = null;
   inMatch = null;
   initStats();
+  if (resumeLiveMatch) startNewMatch();
 }
 
 export function recordBuff(side: Side, kind: string): void {
@@ -702,6 +721,27 @@ export function recordDebuff(targetSide: Side, kind: WeaponKind | null): void {
   scheduleSave();
 }
 
+/** Copy declared match results onto sim.stats so older readers match the Stats panel. */
+function publishScoreboard(): void {
+  if (!session) return;
+  const { leftWins, rightWins, ties } = countDeclaredResults();
+  (sim as any).stats = { leftWins, rightWins, ties };
+}
+
+function countDeclaredResults(): { leftWins: number; rightWins: number; ties: number } {
+  let leftWins = 0;
+  let rightWins = 0;
+  let ties = 0;
+  if (Array.isArray(session?.matches)) {
+    for (const m of session.matches) {
+      if (m.winner === -1) leftWins++;
+      else if (m.winner === 1) rightWins++;
+      else if (m.winner === 0) ties++;
+    }
+  }
+  return { leftWins, rightWins, ties };
+}
+
 // Lightweight summary for UI
 export function getSummary(): {
   matches: number;
@@ -715,16 +755,7 @@ export function getSummary(): {
 } {
   ensure();
   const matches = Array.isArray(session!.matches) ? session!.matches.length : 0;
-  let leftWins = 0,
-    rightWins = 0,
-    ties = 0;
-  if (Array.isArray(session!.matches)) {
-    for (const m of session!.matches) {
-      if (m.winner === -1) leftWins++;
-      else if (m.winner === 1) rightWins++;
-      else ties++;
-    }
-  }
+  const { leftWins, rightWins, ties } = countDeclaredResults();
   const sumVals = (o: Record<string, number> | undefined): number =>
     o ? Object.values(o).reduce((a, b) => a + (b | 0), 0) : 0;
   const buffsL = sumVals(session!.buffCounts?.L);

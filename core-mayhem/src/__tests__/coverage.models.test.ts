@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { resetStats } from '../app/stats';
 import { runAudioMonitors } from '../app/systems/audioMonitors';
 import { runFXPrune } from '../app/systems/fx';
 import { audio } from '../audio';
@@ -45,6 +46,7 @@ describe('model boundary behavior', () => {
   it('uses zero HP and score defaults before cores or statistics exist', () => {
     sim.coreL = null as any;
     sim.coreR = null as any;
+    resetStats();
     (sim as any).stats = undefined;
     expect(getHudData()).toEqual({ leftHp: '0|Σ0', rightHp: '0|Σ0', state: 'Idle' });
     expect(getScoreData()).toEqual({ leftWins: 0, rightWins: 0, ties: 0 });
