@@ -4,11 +4,11 @@ import { setBanter } from '../render/banter';
 import { sim } from '../state';
 import { readLLMSettings, readBanterPacing } from '../ui/banterControls';
 
+import { beginBanterRequest, isCurrentBanterRequest, finishBanterRequest } from './banterRequests';
+
 import type { BanterEvent } from '../banter';
 
 type SideLR = 'L' | 'R';
-
-const inflight: Record<SideLR, boolean> = { L: false, R: false };
 
 // Debug guard for optional prompt logging
 const DBG_KEY = 'cm_banterDebug';
@@ -27,7 +27,7 @@ function dbg(...args: any[]): void {
 }
 
 function eventAllowed(ev: BanterEvent, mask: string): boolean {
-  if (!mask || mask === '*') return true;
+  if (mask === '*') return true;
   const set = new Set(
     mask
       .split(',')
@@ -246,16 +246,19 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     return;
   }
 
-  // Per-side generation counter to drop stale async completions
-  const seq = ((sim as any).banterSeq ??= { L: 0, R: 0 }) as Record<SideLR, number>;
-  const myGen = ++seq[side];
-
-  if (inflight[side]) {
-    speakDeterministic();
-    return;
-  }
-
-  inflight[side] = true;
+  const request = beginBanterRequest(side);
+  if (!request) return;
+  const settingsKey = JSON.stringify(st);
+  const fresh = (): boolean => {
+    if (!isCurrentBanterRequest(request) || sim.banterEnabled === false) return false;
+    if ((sim as any).banterL !== L || (sim as any).banterR !== R) return false;
+    const current = readLLMSettings();
+    return (
+      current.enabled &&
+      current.settings.llmEnabled &&
+      JSON.stringify(current.settings) === settingsKey
+    );
+  };
   try {
     const meHP =
       side === 'L'
@@ -281,7 +284,9 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
       prompt,
       { temperature: st.temperature, top_p: st.topP, repeat_penalty: st.repeatPenalty },
       st.timeoutMs,
+      request.controller.signal,
     );
+    if (!fresh()) return;
 
     let outText: string | null = null;
     if (typeof resp === 'string' && resp.trim()) {
@@ -292,20 +297,17 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     }
 
     if (outText) {
-      // Only apply if this completion is still the latest for this side
-      if ((((sim as any).banterSeq as Record<SideLR, number>)[side] | 0) === myGen) {
-        setBanter(side, outText);
-        gate[side] = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        gate.lastAny = gate[side];
-      }
+      setBanter(side, outText);
+      gate[side] = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      gate.lastAny = gate[side];
       return;
     }
 
     // LLM returned empty — fall back to deterministic
     speakDeterministic();
   } catch {
-    speakDeterministic();
+    if (fresh()) speakDeterministic();
   } finally {
-    inflight[side] = false;
+    finishBanterRequest(request);
   }
 }

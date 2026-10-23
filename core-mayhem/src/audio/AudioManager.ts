@@ -14,12 +14,18 @@ export class AudioManager {
   private ctx: Ctx | null = null;
   private master: GainNode | null = null;
   private bus: Record<Channel, GainNode | null> = { sfx: null, music: null, announcer: null };
+  private loading = new Map<string, Promise<AudioBuffer>>();
+  private pendingLoops = new Map<string, symbol>();
+  private musicWanted = false;
   private buffers = new Map<string, AudioBuffer>();
   private lastPlayAt = new Map<SoundKey, number>();
   private instances = new Map<SoundKey, number>();
   private loops = new Map<string, { src: AudioBufferSourceNode; gain: GainNode }>();
   private baseGain: Record<Channel, number> = { sfx: 1.0, music: 1.0, announcer: 1.0 };
-  private chanNodes: Record<Channel, Set<{ src: AudioBufferSourceNode; gain: GainNode }>> = {
+  private chanNodes: Record<
+    Channel,
+    Set<{ src: AudioBufferSourceNode; gain: GainNode; finish?: () => void }>
+  > = {
     sfx: new Set(),
     music: new Set(),
     announcer: new Set(),
@@ -113,11 +119,23 @@ export class AudioManager {
   private async loadBuffer(url: string): Promise<AudioBuffer> {
     if (!this.ctx) throw new Error('no ctx');
     if (this.buffers.has(url)) return this.buffers.get(url)!;
-    const res = await fetch(url);
-    const arr = await res.arrayBuffer();
-    const buf = await this.ctx.decodeAudioData(arr);
-    this.buffers.set(url, buf);
-    return buf;
+    const pending = this.loading.get(url);
+    if (pending) return pending;
+    const ctx = this.ctx;
+    const load = (async () => {
+      const res = await fetch(url);
+      if (!res.ok && res.status) throw new Error(`Audio load failed: ${res.status}`);
+      const arr = await res.arrayBuffer();
+      const buf = await ctx.decodeAudioData(arr);
+      this.buffers.set(url, buf);
+      return buf;
+    })();
+    this.loading.set(url, load);
+    try {
+      return await load;
+    } finally {
+      this.loading.delete(url);
+    }
   }
 
   setEnabled(on: boolean): void {
@@ -177,6 +195,8 @@ export class AudioManager {
   }
 
   async playMusic(): Promise<void> {
+    if (!this.enabled) return;
+    this.musicWanted = true;
     this.ensure();
     if (!this.ctx || !this.bus.music || this.playlist.length === 0) return;
     const url: string = this.playlist[this.plIndex % this.playlist.length] as string;
@@ -185,7 +205,9 @@ export class AudioManager {
       this.musicEl.preload = 'auto';
       this.musicEl.crossOrigin = 'anonymous';
       this.musicEl.loop = false;
-      this.musicEl.addEventListener('ended', () => this.nextTrack());
+      this.musicEl.addEventListener('ended', () => {
+        if (this.enabled && this.musicWanted) this.nextTrack();
+      });
       try {
         this.musicNode = this.ctx.createMediaElementSource(this.musicEl);
       } catch {
@@ -203,12 +225,14 @@ export class AudioManager {
     this.musicEl!.src = url;
     try {
       await this.musicEl!.play();
+      if (!this.enabled || !this.musicWanted) this.musicEl!.pause();
     } catch {
       /* will resume on user gesture */
     }
   }
 
   stopMusic(): void {
+    this.musicWanted = false;
     if (this.musicEl) {
       try {
         this.musicEl.pause();
@@ -222,13 +246,13 @@ export class AudioManager {
   nextTrack(): void {
     if (this.playlist.length === 0) return;
     this.plIndex = (this.plIndex + 1) % this.playlist.length;
-    void this.playMusic();
+    void this.playMusic().catch(() => void 0);
   }
 
   prevTrack(): void {
     if (this.playlist.length === 0) return;
     this.plIndex = (this.plIndex - 1 + this.playlist.length) % this.playlist.length;
-    void this.playMusic();
+    void this.playMusic().catch(() => void 0);
   }
 
   hasPlaylist(): boolean {
@@ -311,6 +335,9 @@ export class AudioManager {
 
   stopChannel(ch: Channel): void {
     this.channelEpoch[ch]++;
+    for (const [id, loop] of this.loops) {
+      if (this.chanNodes[ch].has(loop)) this.stopLoop(id);
+    }
     const set = this.chanNodes[ch];
     if (!set || set.size === 0) return;
     for (const pair of Array.from(set)) {
@@ -325,6 +352,7 @@ export class AudioManager {
       } catch {
         /* ignore */
       }
+      pair.finish?.();
       set.delete(pair);
     }
   }
@@ -338,86 +366,118 @@ export class AudioManager {
 
     // cooldown
     const nowMs = performance.now();
-    const last = this.lastPlayAt.get(key) ?? 0;
+    const last = this.lastPlayAt.get(key) ?? -Infinity;
     if ((spec.cooldownMs ?? 0) > 0 && nowMs - last < (spec.cooldownMs as number)) return;
 
     // concurrent limiter
     const current = this.instances.get(key) ?? 0;
     if ((spec.maxConcurrent ?? Infinity) <= current) return;
 
-    // load buffer
-    const buf = await this.loadBuffer(spec.src);
-    const src = this.ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = !!spec.loop;
-    // pitch/rate
-    const rate = overrides?.rate ?? spec.rate ?? 1.0;
-    const detune = overrides?.detune ?? spec.detune ?? 0;
-    try {
-      src.playbackRate.value = rate;
-    } catch {
-      /* ignore */
-    }
-    try {
-      if ((src as any).detune) {
-        (src as any).detune.value = detune;
-      }
-    } catch {
-      /* ignore */
-    }
-
-    const gain = this.ctx.createGain();
-    const vol = overrides?.volume ?? spec.volume ?? 1.0;
-    gain.gain.value = Math.max(0, Math.min(1, vol));
-
     const ch = spec.channel ?? 'sfx';
-    const bus = this.bus[ch];
-    if (!bus) return;
-    src.connect(gain);
-    gain.connect(bus);
-
-    // bookkeeping
+    const epoch = this.channelEpoch[ch];
     this.instances.set(key, current + 1);
-    src.addEventListener('ended', () => {
+    this.lastPlayAt.set(key, nowMs);
+    let released = false;
+    let started = false;
+    const release = (): void => {
+      if (released) return;
+      released = true;
       this.instances.set(key, Math.max(0, (this.instances.get(key) ?? 1) - 1));
+    };
+    try {
+      const buf = await this.loadBuffer(spec.src);
+      if (!this.enabled || epoch !== this.channelEpoch[ch]) return;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = !!spec.loop;
+      // pitch/rate
+      const rate = overrides?.rate ?? spec.rate ?? 1.0;
+      const detune = overrides?.detune ?? spec.detune ?? 0;
       try {
-        src.disconnect();
-        gain.disconnect();
+        src.playbackRate.value = rate;
       } catch {
         /* ignore */
       }
-    });
+      try {
+        if ((src as any).detune) {
+          (src as any).detune.value = detune;
+        }
+      } catch {
+        /* ignore */
+      }
 
-    if (typeof spec.duckMusic === 'number' && spec.duckMusic < 1) {
-      this.duckMusic(spec.duckMusic);
+      const gain = this.ctx.createGain();
+      const vol = overrides?.volume ?? spec.volume ?? 1.0;
+      gain.gain.value = Math.max(0, Math.min(1, vol));
+
+      const bus = this.bus[ch];
+      if (!bus) return;
+      src.connect(gain);
+      gain.connect(bus);
+
+      // bookkeeping
+      const pair = { src, gain, finish: release };
+      this.chanNodes[ch].add(pair);
+      src.addEventListener('ended', () => {
+        release();
+        this.chanNodes[ch].delete(pair);
+        try {
+          src.disconnect();
+          gain.disconnect();
+        } catch {
+          /* ignore */
+        }
+      });
+
+      if (typeof spec.duckMusic === 'number' && spec.duckMusic < 1) {
+        this.duckMusic(spec.duckMusic);
+      }
+
+      src.start();
+      started = true;
+    } finally {
+      if (!started) {
+        release();
+        if (this.lastPlayAt.get(key) === nowMs) this.lastPlayAt.delete(key);
+      }
     }
-
-    src.start();
-    this.lastPlayAt.set(key, nowMs);
   }
 
   async startLoop(id: string, key: SoundKey, volume?: number): Promise<void> {
     if (!this.enabled) return;
     this.ensure();
     if (!this.ctx) return;
-    if (this.loops.has(id)) return; // already looping
+    if (this.loops.has(id) || this.pendingLoops.has(id)) return; // already looping
     const spec = this.sounds[key];
     if (!spec) return;
-    const buf = await this.loadBuffer(spec.src);
-    const src = this.ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-    const gain = this.ctx.createGain();
-    gain.gain.value = Math.max(0, Math.min(1, volume ?? spec.volume ?? 1));
-    const bus = this.bus[spec.channel ?? 'sfx'];
-    if (!bus) return;
-    src.connect(gain);
-    gain.connect(bus);
-    src.start();
-    this.loops.set(id, { src, gain });
+    const token = Symbol(id);
+    this.pendingLoops.set(id, token);
+    const ch = spec.channel ?? 'sfx';
+    const epoch = this.channelEpoch[ch];
+    try {
+      const buf = await this.loadBuffer(spec.src);
+      if (!this.enabled || this.pendingLoops.get(id) !== token || epoch !== this.channelEpoch[ch])
+        return;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const gain = this.ctx.createGain();
+      gain.gain.value = Math.max(0, Math.min(1, volume ?? spec.volume ?? 1));
+      const bus = this.bus[spec.channel ?? 'sfx'];
+      if (!bus) return;
+      src.connect(gain);
+      gain.connect(bus);
+      src.start();
+      const pair = { src, gain };
+      this.loops.set(id, pair);
+      this.chanNodes[ch].add(pair);
+    } finally {
+      if (this.pendingLoops.get(id) === token) this.pendingLoops.delete(id);
+    }
   }
 
   stopLoop(id: string): void {
+    this.pendingLoops.delete(id);
     const l = this.loops.get(id);
     if (!l) return;
     try {
@@ -428,6 +488,7 @@ export class AudioManager {
       /* ignore */
     }
     this.loops.delete(id);
+    for (const nodes of Object.values(this.chanNodes)) nodes.delete(l);
   }
 
   // P5: remove the window-level resume listeners if they were never triggered.
@@ -441,15 +502,9 @@ export class AudioManager {
   }
 
   stopAll(): void {
-    for (const [, l] of this.loops) {
-      try {
-        l.src.stop();
-        l.src.disconnect();
-        l.gain.disconnect();
-      } catch {
-        /* ignore */
-      }
-    }
-    this.loops.clear();
+    this.pendingLoops.clear();
+    for (const id of this.loops.keys()) this.stopLoop(id);
+    for (const ch of ['sfx', 'music', 'announcer'] as const) this.stopChannel(ch);
+    this.stopMusic();
   }
 }

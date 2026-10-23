@@ -18,12 +18,21 @@ const K = {
   annOn: 'cm_annEnabled',
 } as const;
 
+// Persistence and slider controls use the same bounds.
+const RANGES: Record<string, { min: number; max: number; step: number }> = {
+  [K.viz]: { min: 0, max: 2, step: 0.05 },
+  [K.beat]: { min: 0.5, max: 2, step: 0.05 },
+  [K.annRel]: { min: 0.1, max: 2, step: 0.05 },
+  [K.annGap]: { min: 2, max: 8, step: 0.5 },
+};
+
 function load(key: string, fallback: number): number {
   try {
     const v = localStorage.getItem(key);
-    if (v == null) return fallback;
+    if (v == null || v.trim() === '') return fallback;
     const n = Number(v);
-    if (Number.isFinite(n)) return Math.min(1, Math.max(0, n));
+    const bounds = RANGES[key] ?? { min: 0, max: 1 };
+    if (Number.isFinite(n)) return Math.min(bounds.max, Math.max(bounds.min, n));
   } catch {
     /* ignore */
   }
@@ -144,8 +153,8 @@ export function initAudioControls(): void {
   })();
   const elSfx = row('SFX', 'sfxVol', sfx0);
   const elMusic = row('Music', 'musicVol', music0);
-  const elViz = row('Visualizer', 'vizSens', viz0, { min: 0, max: 2, step: 0.05 });
-  const elBeat = row('Beat Sens', 'beatSens', beat0, { min: 0.5, max: 2, step: 0.05 });
+  const elViz = row('Visualizer', 'vizSens', viz0, RANGES[K.viz]);
+  const elBeat = row('Beat Sens', 'beatSens', beat0, RANGES[K.beat]);
   const elChip = selectRow(
     'Chiptune',
     'chipMode',
@@ -175,8 +184,8 @@ export function initAudioControls(): void {
   const elAnnVol = row('Announcer Vol', 'annVol', annVol0, { min: 0, max: 1, step: 0.05 });
   const elAnnDuckM = row('Duck Music', 'annDuckM', annDuckM0, { min: 0, max: 1, step: 0.05 });
   const elAnnDuckS = row('Duck SFX', 'annDuckS', annDuckS0, { min: 0, max: 1, step: 0.05 });
-  const elAnnRel = row('Duck Release (s)', 'annRel', annRel0, { min: 0.1, max: 2, step: 0.05 });
-  const elAnnGap = row('VO Min Gap (s)', 'annGap', annGap0, { min: 2, max: 8, step: 0.5 });
+  const elAnnRel = row('Duck Release (s)', 'annRel', annRel0, RANGES[K.annRel]);
+  const elAnnGap = row('VO Min Gap (s)', 'annGap', annGap0, RANGES[K.annGap]);
 
   if (!RECORDED_ANNOUNCER_AVAILABLE) {
     elAnnToggle.checked = false;

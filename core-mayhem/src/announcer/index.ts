@@ -98,7 +98,8 @@ export class AnnouncerService {
     this.pending = true;
     this.forceNext = false;
     void Promise.resolve(
-      audio.playUrl(url, { channel: 'announcer', volume: this.settings.announcerVolume }),
+      // The announcer bus owns user volume; clips use unity gain.
+      audio.playUrl(url, { channel: 'announcer', volume: 1 }),
     )
       .then(() => {
         if (generation !== this.generation) return;

@@ -1,6 +1,10 @@
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
-import { sim } from '../state';
+import { invalidateBanterRequests } from '../app/banterRequests';
+import { BANTER_CONFIG_VERSION, DEFAULT_LLM, normalizeLLMSettings } from '../config/llm';
+import { sim, resetSimState } from '../state';
+
+import type { LLMSettings } from '../config/llm';
 
 // Mocks for dependencies
 vi.mock('../banter/llm/ollama', () => ({
@@ -71,6 +75,7 @@ function setPacing(p: { cooldownMs?: number; sideMinGapMs?: number } = {}): void
 describe('speakBanterSmart', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    invalidateBanterRequests();
     // import MUT after mocks are ready
     const mod = await import('../app/speakBanterLLM');
     speakBanterSmart = mod.speakBanterSmart;
@@ -84,6 +89,12 @@ describe('speakBanterSmart', () => {
   });
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('an empty event mask sends no generated request', async () => {
+    setLLMSettings({ events: '' });
+    await speakBanterSmart('taunt', 'L');
+    expect(ollama.ollamaChat).not.toHaveBeenCalled();
   });
 
   it('returns early when banter system or characters missing', async () => {
@@ -147,7 +158,7 @@ describe('speakBanterSmart', () => {
     expect(overlay.setBanter as unknown as vi.Mock).toHaveBeenCalled();
   });
 
-  it('infligth guard: second concurrent call uses fallback and first resolves later', async () => {
+  it('keeps the first request and drops repeated events until it resolves', async () => {
     // First call: keep the promise pending
     let resolveFirst: (v: any) => void;
     const first = new Promise<string>((res) => {
@@ -157,11 +168,72 @@ describe('speakBanterSmart', () => {
     const p1 = speakBanterSmart('taunt' as any, 'L');
     // Second call while inflight should use fallback path
     await speakBanterSmart('taunt' as any, 'L');
-    expect(overlay.setBanter as unknown as vi.Mock).toHaveBeenCalled();
+    expect(overlay.setBanter).not.toHaveBeenCalled();
+    expect(ollama.ollamaChat).toHaveBeenCalledTimes(1);
     // Now resolve first
     resolveFirst!('ok');
     await p1;
+    expect(overlay.setBanter).toHaveBeenCalledTimes(1);
   });
+  it.each(['reply', 'empty', 'error'])(
+    'discards stale %s completions across match reset',
+    async (outcome) => {
+      let resolve!: (text: string) => void;
+      let reject!: (error: Error) => void;
+      vi.mocked(ollama.ollamaChat).mockReturnValueOnce(
+        new Promise((done, fail) => {
+          resolve = done;
+          reject = fail;
+        }),
+      );
+      const task = speakBanterSmart('taunt', 'L');
+      const signal = vi.mocked(ollama.ollamaChat).mock.calls[0]![6]!;
+      resetSimState();
+      seedSimBasics();
+      expect(signal.aborted).toBe(true);
+      if (outcome === 'error') reject(new Error('late failure'));
+      else resolve(outcome === 'reply' ? 'old character reply' : '');
+      await task;
+      expect(overlay.setBanter).not.toHaveBeenCalled();
+    },
+  );
+
+  it('discards a pending reply after LLM calls are disabled', async () => {
+    let resolve!: (text: string) => void;
+    vi.mocked(ollama.ollamaChat).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const task = speakBanterSmart('taunt', 'L');
+    setLLMSettings({ llmEnabled: false });
+    resolve('late reply');
+    await task;
+    expect(overlay.setBanter).not.toHaveBeenCalled();
+  });
+
+  it('an old completion cannot clear the new match pending request', async () => {
+    const resolves: ((text: string) => void)[] = [];
+    vi.mocked(ollama.ollamaChat).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolves.push(done);
+        }),
+    );
+    const oldTask = speakBanterSmart('taunt', 'L');
+    resetSimState();
+    seedSimBasics();
+    const newTask = speakBanterSmart('taunt', 'L');
+    resolves[0]!('stale');
+    await oldTask;
+    await speakBanterSmart('taunt', 'L');
+    expect(ollama.ollamaChat).toHaveBeenCalledTimes(2);
+    resolves[1]!('current');
+    await newTask;
+    expect(overlay.setBanter).toHaveBeenCalledTimes(1);
+    expect(overlay.setBanter).toHaveBeenCalledWith('L', 'current.');
+  });
+
   it('allows both opening speakers immediately on a freshly loaded page', async () => {
     vi.mocked(performance.now).mockReturnValue(0);
     setLLMSettings({ provider: 'deterministic' });
@@ -198,5 +270,103 @@ describe('speakBanterSmart', () => {
     expect((sim as any).banterEnabled).toBe(false);
     localStorage.clear();
     document.body.innerHTML = '';
+  });
+});
+
+describe('banter settings validation and model state', () => {
+  let actualUI: { initBanterControls(): void; readLLMSettings(): { settings: LLMSettings } };
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    actualUI = await vi.importActual('../ui/banterControls');
+    localStorage.clear();
+    localStorage.setItem('cm_banterConfigVersion', String(BANTER_CONFIG_VERSION));
+    document.body.innerHTML = '<button id="btnBanter">Banter</button>';
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    localStorage.clear();
+    document.body.innerHTML = '';
+  });
+  const input = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement;
+  const button = (text: string): HTMLButtonElement =>
+    Array.from(document.querySelectorAll('button')).find(
+      (element) => element.textContent === text,
+    )!;
+
+  it('normalizes stored numeric bounds and rejects invalid URL protocols', () => {
+    expect(() =>
+      normalizeLLMSettings({ ...DEFAULT_LLM, ollamaUrl: 'javascript:alert(1)' }),
+    ).toThrow();
+    localStorage.setItem('cm_banterTimeoutMs', '99999');
+    localStorage.setItem('cm_banterMaxChars', '-10');
+    localStorage.setItem('cm_banterCooldownMs', '99999');
+    localStorage.setItem('cm_banterSideGapMs', '-1');
+    const { settings } = actualUI.readLLMSettings();
+    expect(settings).toMatchObject({
+      timeoutMs: 8000,
+      maxChars: 60,
+      cooldownMs: 20000,
+      sideMinGapMs: 2000,
+    });
+  });
+
+  it('Save, Test, Refresh and change all reject invalid URLs', () => {
+    actualUI.initBanterControls();
+    vi.stubGlobal('fetch', vi.fn());
+    input('ollamaUrl').value = 'file:///private';
+    input('ollamaUrl').dispatchEvent(new Event('change'));
+    for (const text of ['Save & Apply', 'Test', 'Refresh Models']) button(text).click();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(localStorage.getItem('cm_ollamaUrl')).toBeNull();
+    expect(input('ollamaUrl').validationMessage).toContain('http');
+  });
+
+  it('clamps Save values and persists an empty event selection', () => {
+    actualUI.initBanterControls();
+    input('banterTimeout').value = '99999';
+    input('banterMaxChars').value = '1';
+    for (const checkbox of document.querySelectorAll<HTMLInputElement>('[id^="ev_"]'))
+      checkbox.checked = false;
+    button('Save & Apply').click();
+    expect(input('banterTimeout').value).toBe('8000');
+    expect(input('banterMaxChars').value).toBe('60');
+    expect(actualUI.readLLMSettings().settings.events).toBe('');
+  });
+
+  it('persists automatic model selection and ignores out-of-order refresh responses', async () => {
+    actualUI.initBanterControls();
+    const resolves: ((response: any) => void)[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolves.push(resolve);
+          }),
+      ),
+    );
+    button('Refresh Models').click();
+    button('Refresh Models').click();
+    resolves[1]!({
+      ok: true,
+      json: async () => ({ models: [{ name: 'new' }, { name: 'chosen' }] }),
+    });
+    await vi.waitFor(() => expect(actualUI.readLLMSettings().settings.model).toBe('new'));
+    input('ollamaModel').value = 'chosen';
+    input('ollamaModel').dispatchEvent(new Event('change'));
+    resolves[0]!({ ok: true, json: async () => ({ models: [{ name: 'stale' }] }) });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(input('ollamaModel').value).toBe('chosen');
+    expect(actualUI.readLLMSettings().settings.model).toBe('chosen');
+    button('Test').click();
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[2]![1]!.body as string).model).toBe('chosen');
+    resolves[2]!({ ok: true, json: async () => ({ message: { content: 'ok' } }) });
+  });
+
+  it('retains the saved selected model after rebuilding controls', () => {
+    localStorage.setItem('cm_ollamaModel', 'saved-model');
+    actualUI.initBanterControls();
+    expect(input('ollamaModel').value).toBe('saved-model');
+    expect(actualUI.readLLMSettings().settings.model).toBe('saved-model');
   });
 });
