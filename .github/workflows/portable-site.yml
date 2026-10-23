@@ -1,0 +1,41 @@
+name: Portable site
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: core-mayhem
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: core-mayhem/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Formatting (existing baseline is advisory)
+        continue-on-error: true
+        run: npm run format
+      - run: npm run test:coverage
+      - run: npm run build:portable
+      - name: Verify music-free output
+        run: node --input-type=module -e "import {readdirSync,readFileSync} from 'node:fs'; import assert from 'node:assert/strict'; assert.deepEqual(readdirSync('dist/assets/music'), ['playlist.json']); assert.deepEqual(JSON.parse(readFileSync('dist/assets/music/playlist.json','utf8')), []);"
+      - name: Include deployment instructions
+        run: cp docs/RELEASE_PROCESS.md dist/DEPLOYMENT.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: core-mayhem-site
+          path: core-mayhem/dist/
+          if-no-files-found: error
+          retention-days: 30

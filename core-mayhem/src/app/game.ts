@@ -172,13 +172,13 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     void (async () => {
       try {
         if (!audio.hasPlaylist()) {
-          const res = await fetch('/assets/music/playlist.json', { cache: 'no-cache' });
+          const res = await fetch(`${import.meta.env.BASE_URL}assets/music/playlist.json`, { cache: 'no-cache' });
           if (res.ok) {
             const files = (await res.json()) as string[];
             const urls = Array.isArray(files)
               ? files
                   .filter((f) => typeof f === 'string' && /\.(mp3|ogg)$/i.test(f))
-                  .map((f) => `/assets/music/${f}`)
+                  .map((f) => `${import.meta.env.BASE_URL}assets/music/${f}`)
               : [];
             if (urls.length) {
               audio.setMusicPlaylist(urls);
@@ -191,8 +191,8 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
         if (!audio.isMusicPlaying()) {
           if (!audio.hasPlaylist()) {
             // Fallback: try a default track
-            const probe = await fetch('/assets/music/main_theme.mp3', { method: 'HEAD' });
-            if (probe.ok) audio.setMusicPlaylist(['/assets/music/main_theme.mp3']);
+            const probe = await fetch(`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`, { method: 'HEAD' });
+            if (probe.ok) audio.setMusicPlaylist([`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`]);
           }
           if (audio.hasPlaylist()) audio.playMusic();
         }

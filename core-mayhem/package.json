@@ -11,6 +11,7 @@
     "prebuild": "node scripts/sync-license-notices.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:portable": "npm run build -- --mode portable",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",

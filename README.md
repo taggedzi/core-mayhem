@@ -2,6 +2,9 @@
 
 **An idle combat game where pachinko physics fuel a race to destroy the opposing core.**
 
+[![CI: tests and build](https://github.com/taggedzi/core-mayhem/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/taggedzi/core-mayhem/actions/workflows/ci.yml)
+[![Portable site build](https://github.com/taggedzi/core-mayhem/actions/workflows/portable-site.yml/badge.svg)](https://github.com/taggedzi/core-mayhem/actions/workflows/portable-site.yml)
+
 [![Play Core Mayhem](https://img.shields.io/badge/Play-Core%20Mayhem-e85d35?style=for-the-badge)](https://core-mayhem.taggedz.me/)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?logo=typescript&logoColor=white)](core-mayhem/package.json)
 [![Vite](https://img.shields.io/badge/Build-Vite-646CFF?logo=vite&logoColor=white)](core-mayhem/vite.config.ts)
@@ -173,3 +176,14 @@ texts ship alongside it in `licenses/`. Asset folders are excluded by the
 root `.gitignore`; the original generated effects are tracked separately
 under `src/audio/`. No Helton Yan recordings remain in the active game or
 production build. The music is not licensed for redistribution by downstream users.
+
+### Download and customize a built site
+
+GitHub's **Actions → Portable site** workflow produces a music-free static
+site ZIP on manual runs and version tags (`v*`). Download `core-mayhem-site`
+from a successful run, extract it, add your own tracks and
+`assets/music/playlist.json`, then upload the site to your host. No rebuild is
+needed. See the [deployment guide](core-mayhem/docs/RELEASE_PROCESS.md).
+
+Use `npm run build:portable` for the same music-free output locally. Ordinary
+`npm run build` still includes your ignored local music for personal deployments.
