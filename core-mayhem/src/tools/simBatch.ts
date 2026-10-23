@@ -1,11 +1,15 @@
+import { Runner } from 'matter-js';
+
 import { buildCSVs, resetStats, getSummary, initStats } from '../app/stats';
 import { declareWinner } from '../app/systems/match';
 import { bootWithCanvas } from '../boot';
-import { DEFAULTS } from '../config';
+import { DEFAULTS, MATCH_LIMIT } from '../config';
+import { advanceFixedSimClock, setFixedSimClock, simNowMs } from '../sim/clock';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
+const FIXED_STEP_MS = 1000 / 60;
 const TRUE_FLAGS = new Set(['true', '1', 'yes', 'on']);
 const FALSE_FLAGS = new Set(['false', '0', 'no', 'off']);
 
@@ -89,6 +93,24 @@ function ensureDOM(): HTMLCanvasElement {
 
 type BootFn = (canvas: HTMLCanvasElement) => { stop: () => void };
 
+function declareByRemainingHp(): void {
+  try {
+    const cL: any = (sim as any).coreL;
+    const cR: any = (sim as any).coreR;
+    const sumSeg = (arr: number[] | null | undefined): number =>
+      Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
+    const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
+    const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
+    if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);
+    else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
+    else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
+    else
+      declareWinner(lhs > rhs ? (SIDE.LEFT as any) : rhs > lhs ? (SIDE.RIGHT as any) : (0 as any));
+  } catch {
+    /* ignore */ void 0;
+  }
+}
+
 async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts, boot: BootFn): Promise<void> {
   // Refresh state for a clean match
   resetSimState();
@@ -102,6 +124,13 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts, boot: BootFn):
     ...(typeof opts.targetAmmo === 'number' ? { targetAmmo: opts.targetAmmo } : {}),
   } as any;
 
+  // Each batch match starts from the same index so a seed replays without
+  // depending on how many matches this process already ran.
+  (sim as any).matchIndex = 0;
+  setFixedSimClock(true);
+  // resetSimState keeps the previous engine. Only a boot that replaces it
+  // started the Matter runner for this match.
+  const engineBefore = sim.engine;
   let stop: () => void = () => {
     return;
   };
@@ -165,40 +194,41 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts, boot: BootFn):
       /* ignore */ void 0;
     }
 
-    // Poll until gameOver. The deadline used to resolve without clearing this
-    // interval, so the next match could reset gameOver and leave the poll running.
-    await new Promise<void>((resolve) => {
-      const finish = (): void => {
-        clearWatch();
-        resolve();
-      };
-      if (!opts.fullLength) {
-        deadlineId = setTimeout(() => {
-          // Forced end if taking too long: pick winner by current HP
-          try {
-            const cL: any = (sim as any).coreL;
-            const cR: any = (sim as any).coreR;
-            const sumSeg = (arr: number[] | null | undefined): number =>
-              Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
-            const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
-            const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
-            if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);
-            else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
-            else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
-            else
-              declareWinner(
-                lhs > rhs ? (SIDE.LEFT as any) : rhs > lhs ? (SIDE.RIGHT as any) : (0 as any),
-              );
-          } catch {
-            /* ignore */ void 0;
-          }
-          finish();
-        }, 2000);
+    const runner = sim.runner as { isFixed?: boolean; delta?: number } | null;
+    const engine = sim.engine;
+    if (runner && engine && engine !== engineBefore) {
+      // Seeded replay steps the Matter runner at a fixed 60 Hz. Timescale is
+      // applied once by the engine, not again here.
+      Runner.stop(runner as never);
+      runner.isFixed = true;
+      runner.delta = FIXED_STEP_MS;
+      const budgetMs = opts.fullLength ? MATCH_LIMIT.ms : 2000;
+      const maxSteps = Math.max(1, Math.round(budgetMs / FIXED_STEP_MS));
+      let steps = 0;
+      while (!(sim as any).gameOver && steps < maxSteps) {
+        advanceFixedSimClock(FIXED_STEP_MS);
+        Runner.tick(runner as never, engine, simNowMs());
+        steps += 1;
       }
-      intervalId = setInterval(() => {
-        if ((sim as any).gameOver) finish();
-      }, 10);
-    });
+      if (!(sim as any).gameOver && !opts.fullLength) declareByRemainingHp();
+    } else {
+      // Boots that do not start the engine still need a cleared deadline poll.
+      await new Promise<void>((resolve) => {
+        const finish = (): void => {
+          clearWatch();
+          resolve();
+        };
+        if (!opts.fullLength) {
+          deadlineId = setTimeout(() => {
+            declareByRemainingHp();
+            finish();
+          }, 2000);
+        }
+        intervalId = setInterval(() => {
+          if ((sim as any).gameOver) finish();
+        }, 10);
+      });
+    }
   } finally {
     try {
       stop();
@@ -214,6 +244,7 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts, boot: BootFn):
     }
     (sim as any).restartTO = 0;
     clearWatch();
+    setFixedSimClock(false);
   }
 }
 

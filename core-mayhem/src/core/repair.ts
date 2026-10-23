@@ -1,4 +1,5 @@
 import { REPAIR_EFFECT } from '../config';
+import { gameplayRandom } from '../sim/rng';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
@@ -32,7 +33,7 @@ export function repair(side: Side): void {
     core.segHP[idx] = Math.min(core.segHPmax, cur + REPAIR_EFFECT.segHealAmount);
   }
   // occasional center repair
-  if (Math.random() < REPAIR_EFFECT.centerChance) {
+  if (gameplayRandom() < REPAIR_EFFECT.centerChance) {
     core.centerHP = Math.min(core.centerHPmax, core.centerHP + REPAIR_EFFECT.centerAmount);
   }
 }

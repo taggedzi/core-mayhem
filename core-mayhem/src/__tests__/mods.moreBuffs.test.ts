@@ -9,6 +9,7 @@ import {
   applyRandomBuff,
   currentDmgMul,
 } from '../app/mods';
+import { useGameplayRandom } from '../sim/rng';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
@@ -45,19 +46,22 @@ describe('additional buffs behavior', () => {
 
   it('random buff selects from pool (damage/shield/binBoost)', () => {
     // pick index 0 → 'damage'
-    vi.spyOn(Math, 'random').mockReturnValue(0.0);
+    let restore = useGameplayRandom(() => 0.0);
     applyRandomBuff(SIDE.LEFT);
     expect(currentDmgMul(SIDE.LEFT)).toBeGreaterThan(1);
+    restore();
 
     // pick index 1 → 'shield'
-    vi.spyOn(Math, 'random').mockReturnValue(0.4);
+    restore = useGameplayRandom(() => 0.4);
     const before = (sim as any).coreR.shieldHP;
     applyRandomBuff(SIDE.RIGHT);
     expect((sim as any).coreR.shieldHP).toBeGreaterThanOrEqual(before);
+    restore();
 
     // pick index 2 → 'binBoost'
-    vi.spyOn(Math, 'random').mockReturnValue(0.8);
+    restore = useGameplayRandom(() => 0.8);
     applyRandomBuff(SIDE.LEFT);
     expect(currentBinFillMul(SIDE.LEFT)).toBeGreaterThan(1);
+    restore();
   });
 });

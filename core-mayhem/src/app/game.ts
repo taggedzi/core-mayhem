@@ -11,13 +11,15 @@ import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { updateScoreboard } from '../render/score';
 import { buildLanes } from '../sim/channels';
+import { simNowMs } from '../sim/clock';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { makeCore } from '../sim/core';
 import { mirrorArena } from '../sim/mirrorArena';
 import { makePipe, placeObstaclesFromSpecs } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
+import { resetGameplayRng } from '../sim/rng';
 import { makeWeapons } from '../sim/weapons';
-import { cancelWeaponTimers } from '../sim/weaponTimers';
+import { cancelWeaponTimers, flushWeaponShots } from '../sim/weaponTimers';
 import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
 import { SIDE } from '../types';
@@ -25,7 +27,7 @@ import { readBanterPacing } from '../ui/banterControls';
 import { readCharacterProfiles } from '../ui/characters';
 
 import { invalidateBanterRequests } from './banterRequests';
-import { registerCollisions } from './collisions';
+import { registerCollisions, resetExplosionLimiter } from './collisions';
 import { attachDevHotkeys } from './devKeys';
 import { startMusicForMatch } from './musicStartup';
 import { abortOpenMatch, startNewMatch } from './stats';
@@ -87,7 +89,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   (sim as any).winner = null;
   (sim as any).winnerAt = 0;
   (sim as any).banterGate = undefined;
-  (sim as any).matchStart = performance.now(); // ⬅️ stamp match start
+  (sim as any).matchStart = simNowMs();
   // Start a new stats match session
   startNewMatch();
 
@@ -223,6 +225,11 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     typeof window !== 'undefined' && (window as any).AudioContext !== undefined;
   const cancelMusicStartup = canUseWebAudio ? startMusicForMatch() : null;
 
+  // Gameplay RNG is separate from persona picks and from cosmetic star/avatar draws.
+  const layoutSeed = Number(((sim as any).settings?.seed ?? 1337) | 0);
+  resetGameplayRng((layoutSeed ^ ((sim as any).matchIndex | 0) ^ 0x6d2b79f5) >>> 0);
+  resetExplosionLimiter();
+
   // Edge pipes
   const pipeL = makePipe(SIDE.LEFT);
   const pipeR = makePipe(SIDE.RIGHT);
@@ -296,6 +303,8 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     // stop all game logic once over
     if ((sim as any).gameOver) return;
 
+    flushWeaponShots(simNowMs());
+
     // Time-limit
     checkTimeLimit();
     if (sim.gameOver) return;
@@ -307,7 +316,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     } catch {
       /* ignore */
     }
-    runFXPrune(performance.now());
+    runFXPrune(simNowMs());
     runSpawn(dtMs);
     runTriggers();
     runAudioMonitors();

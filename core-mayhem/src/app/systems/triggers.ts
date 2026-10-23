@@ -2,6 +2,7 @@ import { audio } from '../../audio';
 import { COOLDOWN_MS, WEAPON_WINDUP_MS, MODS } from '../../config';
 import { SHIELD } from '../../config';
 import { repair } from '../../core/repair';
+import { simNowMs } from '../../sim/clock';
 import {
   queueFireCannon,
   queueFireLaser,
@@ -58,7 +59,7 @@ function releaseWeapon(
   }
 }
 
-export function runTriggers(now = performance.now()): void {
+export function runTriggers(now = simNowMs()): void {
   const doSide = (side: Side, bins: Bins | null, wep: WeaponsType | null): void => {
     if (!bins || !wep) return;
     const color = side === SIDE.LEFT ? css('--left') : css('--right');

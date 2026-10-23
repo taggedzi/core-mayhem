@@ -1,7 +1,8 @@
+import { simNowMs } from '../../sim/clock';
 import { sim } from '../../state';
 // typed via sim fields; no direct type imports needed here
 
-export function runFXPrune(now = performance.now()): void {
+export function runFXPrune(now = simNowMs()): void {
   // wind-up rings
   sim.fxArm = (sim.fxArm ?? []).filter((fx) => (fx?.until ?? 0) > now);
 

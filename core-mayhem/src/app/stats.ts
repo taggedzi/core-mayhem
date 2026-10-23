@@ -1,4 +1,5 @@
 // Centralized stats collection and CSV export
+import { simNowMs } from '../sim/clock';
 import { sim } from '../state';
 
 import type { Side, WeaponKind } from '../types';
@@ -340,7 +341,7 @@ function bumpHit(
   dmgShield: number,
   dmgSeg: number,
   dmgCenter: number,
-  now = performance.now(),
+  now = simNowMs(),
 ): void {
   ensure();
   const sk = sideKey(side);
@@ -384,7 +385,7 @@ export function recordProjectileHit(
   dmgShield: number,
   dmgSeg: number,
   dmgCenter: number,
-  now = performance.now(),
+  now = simNowMs(),
 ): void {
   bumpHit(side, weapon, dmgShield, dmgSeg, dmgCenter, now);
 }
@@ -394,7 +395,7 @@ export function recordLaserHit(
   dmgShield: number,
   dmgSeg: number,
   dmgCenter: number,
-  now = performance.now(),
+  now = simNowMs(),
 ): void {
   bumpHit(side, 'laser', dmgShield, dmgSeg, dmgCenter, now);
 }
@@ -444,7 +445,7 @@ export function recordBinDeposit(side: Side, bin: BinId, amount: number, _now?: 
   }
 }
 
-export function recordBinCap(side: Side, bin: BinId, now = performance.now()): void {
+export function recordBinCap(side: Side, bin: BinId, now = simNowMs()): void {
   ensure();
   if (!inMatch) return;
   const sk = sideKey(side);

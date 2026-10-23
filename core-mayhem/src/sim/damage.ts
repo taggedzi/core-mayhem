@@ -1,5 +1,7 @@
 import { ARMOR } from '../config';
 
+import { gameplayRandom } from './rng';
+
 interface Vec2 {
   x: number;
   y: number;
@@ -50,7 +52,7 @@ export function applyCoreDamage(
 
   if (ARMOR.spillover && overflow > 0) {
     core.centerHP = Math.max(0, core.centerHP - overflow);
-  } else if ((ARMOR.chipChance ?? 0) > 0 && Math.random() < ARMOR.chipChance) {
+  } else if ((ARMOR.chipChance ?? 0) > 0 && gameplayRandom() < ARMOR.chipChance) {
     core.centerHP = Math.max(0, core.centerHP - 1);
   }
 }

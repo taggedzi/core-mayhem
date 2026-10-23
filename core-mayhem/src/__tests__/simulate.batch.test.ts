@@ -3,7 +3,12 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { startGame } from '../app/game';
 import { startNewMatch } from '../app/stats';
+import { DEFAULTS } from '../config';
+import { buildAvatarCmds, setAvatarEmotion } from '../render/avatar';
+import { setFixedSimClock } from '../sim/clock';
+import { gameplayRandom, resetGameplayRng } from '../sim/rng';
 import { resetSimState, sim } from '../state';
 import { coerceBoolean, runBatch } from '../tools/simBatch';
 import { SIDE } from '../types';
@@ -11,6 +16,73 @@ import { SIDE } from '../types';
 afterEach(() => {
   vi.useRealTimers();
   resetSimState();
+});
+
+function stubCanvas(): HTMLCanvasElement {
+  document.body.innerHTML = '<canvas id="view" width="900" height="620"></canvas>';
+  const canvas = document.getElementById('view') as HTMLCanvasElement;
+  const realGet = canvas.getContext.bind(canvas);
+  canvas.getContext = ((type: string) => {
+    if (type !== '2d') return realGet(type);
+    const noop = (): void => {
+      return;
+    };
+    return new Proxy(
+      { canvas, measureText: () => ({ width: 0 }) },
+      { get: (target, key) => (key in target ? (target as never)[key] : noop) },
+    );
+  }) as typeof canvas.getContext;
+  document.documentElement.style.setProperty('--left', '#5cf');
+  document.documentElement.style.setProperty('--right', '#f76');
+  return canvas;
+}
+
+describe('seeded gameplay', () => {
+  it('builds the same arena for the same seed and ignores avatar draws', () => {
+    const layout = (): number[] => {
+      resetSimState();
+      sim.matchIndex = 0;
+      sim.settings = { ...DEFAULTS, seed: 99 };
+      setFixedSimClock(true);
+      const stop = startGame(stubCanvas());
+      const spins = sim.rotors.map((rotor) => rotor.angularVelocity);
+      const phases = sim.paddles.map((paddle) =>
+        Number((paddle as { plugin?: { t?: number } }).plugin?.t),
+      );
+      stop();
+      setFixedSimClock(false);
+      return [...spins, ...phases];
+    };
+    expect(layout()).toEqual(layout());
+
+    resetGameplayRng(5);
+    const before = [gameplayRandom(), gameplayRandom(), gameplayRandom()];
+    resetGameplayRng(5);
+    setAvatarEmotion('L', 'near_death');
+    buildAvatarCmds(1000, 900, 620);
+    buildAvatarCmds(2000, 900, 620);
+    expect([gameplayRandom(), gameplayRandom(), gameplayRandom()]).toEqual(before);
+  });
+
+  it('replays a fixed-step batch to the same outcome and statistics', async () => {
+    const opts = {
+      matches: 1,
+      seed: 12345,
+      timescale: 3,
+      hpScale: 0.4,
+      primeVolley: true,
+      fullLength: false,
+      spawnRate: 26,
+      targetAmmo: 80,
+      altOrderMode: 'LR' as const,
+      mirrorArena: false,
+    };
+    const first = await runBatch(opts);
+    const second = await runBatch(opts);
+    expect(first.summary.matches).toBe(1);
+    expect(second.summary).toEqual(first.summary);
+    expect(second.files).toEqual(first.files);
+  });
 });
 
 describe('coerceBoolean', () => {
