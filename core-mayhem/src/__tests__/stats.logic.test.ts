@@ -19,6 +19,48 @@ import {
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
+describe('persisted statistics compatibility', () => {
+  it.each([
+    null,
+    {},
+    { weapon: {}, bins: {}, buffCounts: {}, debuffCounts: {}, matches: 'invalid' },
+  ])('restores incomplete saved data: %j', async (saved) => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    localStorage.setItem('coreMayhem.stats.v1', JSON.stringify(saved));
+    try {
+      const stats = await import('../app/stats');
+      stats.initStats();
+      expect(stats.getSummary().matches).toBe(0);
+      const files = stats.buildCSVs();
+      expect(Object.keys(files).length).toBeGreaterThan(0);
+      vi.runAllTimers();
+    } finally {
+      localStorage.removeItem('coreMayhem.stats.v1');
+      vi.useRealTimers();
+    }
+  });
+
+  it('round-trips populated statistics without losing weapon counters', async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    localStorage.removeItem('coreMayhem.stats.v1');
+    try {
+      const initial = await import('../app/stats');
+      initial.initStats();
+      initial.recordShotFired(SIDE.LEFT, 'cannon');
+      vi.runAllTimers();
+      vi.resetModules();
+      const restored = await import('../app/stats');
+      restored.initStats();
+      expect(restored.buildCSVs()).toEqual(initial.buildCSVs());
+    } finally {
+      localStorage.removeItem('coreMayhem.stats.v1');
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('stats recording + CSVs', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -73,4 +115,3 @@ describe('stats recording + CSVs', () => {
     expect(files['damage_timeline.csv']).toMatch(/dmgShield/);
   });
 });
-

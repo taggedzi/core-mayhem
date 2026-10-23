@@ -24,7 +24,9 @@ class MockAnalyser {
   maxDecibels = 0;
   frequencyBinCount = 512;
   connect = vi.fn();
-  getByteFrequencyData = vi.fn((out: Uint8Array) => { if (out.length) out[0] = 1; });
+  getByteFrequencyData = vi.fn((out: Uint8Array) => {
+    if (out.length) out[0] = 1;
+  });
 }
 
 type EndListener = (() => void) | null;
@@ -35,10 +37,16 @@ class MockBufferSource {
   detune = { value: 0 } as any;
   connect = vi.fn();
   _onEnd: EndListener = null;
-  start = vi.fn(() => { /* autoplay, end when stopped */ });
-  stop = vi.fn(() => { this._onEnd?.(); });
+  start = vi.fn(() => {
+    /* autoplay, end when stopped */
+  });
+  stop = vi.fn(() => {
+    this._onEnd?.();
+  });
   disconnect = vi.fn();
-  addEventListener = vi.fn((ev: string, cb: () => void) => { if (ev === 'ended') this._onEnd = cb; });
+  addEventListener = vi.fn((ev: string, cb: () => void) => {
+    if (ev === 'ended') this._onEnd = cb;
+  });
 }
 
 const createdSources: MockBufferSource[] = [];
@@ -46,9 +54,15 @@ const createdSources: MockBufferSource[] = [];
 class MockAudioContext {
   currentTime = 1;
   destination = {} as any;
-  createGain(): any { return new MockGainNode(); }
-  createBufferSource(): any { const s = new MockBufferSource(); createdSources.push(s); return s; }
-  decodeAudioData = async (_arr: ArrayBuffer): Promise<any> => ({ duration: 1 } as any);
+  createGain(): any {
+    return new MockGainNode();
+  }
+  createBufferSource(): any {
+    const s = new MockBufferSource();
+    createdSources.push(s);
+    return s;
+  }
+  decodeAudioData = async (_arr: ArrayBuffer): Promise<any> => ({ duration: 1 }) as any;
   createMediaElementSource = (_el: HTMLAudioElement): any => ({ connect: vi.fn() });
   createAnalyser = (): any => new MockAnalyser();
   resume = vi.fn(async () => {});
@@ -63,14 +77,25 @@ class MockHTMLAudioElement {
   paused = true;
   currentTime = 0;
   private endedCb: (() => void) | null = null;
-  addEventListener = (ev: string, cb: () => void): void => { if (ev === 'ended') this.endedCb = cb; };
-  play = vi.fn(async () => { this.paused = false; });
-  pause = vi.fn(() => { this.paused = true; });
-  triggerEnded = (): void => { this.endedCb?.(); };
+  addEventListener = (ev: string, cb: () => void): void => {
+    if (ev === 'ended') this.endedCb = cb;
+  };
+  play = vi.fn(async () => {
+    this.paused = false;
+  });
+  pause = vi.fn(() => {
+    this.paused = true;
+  });
+  triggerEnded = (): void => {
+    this.endedCb?.();
+  };
 }
 
 // ---- Test helpers --------------------------------------------------------
-const makeMgr = (sounds: Record<SoundKey, SoundSpec>, defaults?: Partial<ConstructorParameters<typeof AudioManager>[1]>): AudioManager => {
+const makeMgr = (
+  sounds: Record<SoundKey, SoundSpec>,
+  defaults?: Partial<ConstructorParameters<typeof AudioManager>[1]>,
+): AudioManager => {
   const def = {
     enabled: true,
     masterVolume: 1,
@@ -154,7 +179,12 @@ describe('AudioManager', () => {
 
   it('does not start an interrupted announcement when its fetch finishes', async () => {
     let complete!: (response: Response) => void;
-    vi.mocked(globalThis.fetch).mockImplementationOnce(() => new Promise<Response>(resolve => { complete = resolve; }));
+    vi.mocked(globalThis.fetch).mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          complete = resolve;
+        }),
+    );
     const mgr = makeMgr({} as any);
     const loading = mgr.playUrl('interrupted.wav', { channel: 'announcer' });
     mgr.stopChannel('announcer');
@@ -177,6 +207,103 @@ describe('AudioManager', () => {
     mgr.stopAll();
   });
 
+  it.each(['disabled', 'unsupported'] as const)('safely skips audio when %s', async (mode) => {
+    if (mode === 'unsupported') (window as any).AudioContext = undefined;
+    const mgr = makeMgr({} as any, { enabled: mode !== 'disabled' });
+    await mgr.preloadAll();
+    await mgr.play('fire_cannon');
+    await mgr.playUrl('missing.wav');
+    await mgr.startLoop('alarm', 'core_low_hp_alarm');
+    mgr.setMasterVolume(0.5);
+    mgr.setBusVolume('sfx', 0.5);
+    mgr.duckMusic(0.5);
+    mgr.duckBus('sfx', 0.5);
+    await mgr.playMusic();
+    mgr.nextTrack();
+    mgr.prevTrack();
+    mgr.stopMusic();
+    mgr.stopLoop('absent');
+    mgr.cancelResume();
+    expect(mgr.getMusicBinCount()).toBe(0);
+    expect(mgr.getMusicSpectrum(new Uint8Array(1))).toBe(false);
+    expect(mgr.isMusicPlaying()).toBe(false);
+    expect(createdSources).toHaveLength(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('uses sound defaults, overrides, and frees concurrency after a source ends', async () => {
+    const mgr = makeMgr({
+      fire_cannon: { src: 'a.wav', maxConcurrent: 1, volume: 0.3, rate: 0.8, detune: -10 },
+    } as any);
+    await mgr.play('fire_cannon');
+    expect(createdSources[0]!.playbackRate.value).toBe(0.8);
+    expect(createdSources[0]!.detune.value).toBe(-10);
+    await mgr.play('fire_cannon');
+    expect(createdSources).toHaveLength(1);
+    createdSources[0]!.stop();
+    await mgr.play('fire_cannon', { rate: 1.5, detune: 20, volume: 2 });
+    expect(createdSources).toHaveLength(2);
+    expect(createdSources[1]!.playbackRate.value).toBe(1.5);
+    expect(createdSources[1]!.detune.value).toBe(20);
+    await mgr.play('core_low_hp_alarm');
+    await mgr.startLoop('unknown', 'core_low_hp_alarm');
+    expect(createdSources).toHaveLength(2);
+    mgr.cancelResume();
+    mgr.cancelResume();
+  });
+
+  it('clamps volumes and ducks buses back to their configured level', () => {
+    const mgr = makeMgr({} as any);
+    mgr.setMasterVolume(2);
+    expect((mgr as any).master.gain.value).toBe(1);
+    mgr.setMasterVolume(-1);
+    expect((mgr as any).master.gain.value).toBe(0);
+    mgr.setBusVolume('sfx', 0.4);
+    mgr.duckBus('sfx', 0.5);
+    const gain = (mgr as any).bus.sfx.gain;
+    expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.2, 1.04);
+    expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.4, 1.6);
+    mgr.duckMusic(2);
+    mgr.cancelResume();
+  });
+
+  it('cancels queued URL playback when disabled during loading', async () => {
+    let finish!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const mgr = makeMgr({} as any);
+    const pending = mgr.playUrl('a.wav');
+    mgr.setEnabled(false);
+    finish({ arrayBuffer: async () => new ArrayBuffer(8) } as Response);
+    await pending;
+    expect(createdSources).toHaveLength(0);
+    mgr.setEnabled(true);
+    await mgr.playUrl('a.wav');
+    expect(createdSources).toHaveLength(1);
+    expect(createdSources[0]!.playbackRate.value).toBe(1);
+    expect(createdSources[0]!.detune.value).toBe(0);
+    mgr.cancelResume();
+  });
+
+  it('continues when preloading fails and gracefully handles a failed context', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));
+    const mgr = makeMgr({ fire_cannon: { src: 'a.wav' } } as any);
+    await expect(mgr.preloadAll()).resolves.toBeUndefined();
+    mgr.cancelResume();
+    (window as any).AudioContext = class {
+      constructor() {
+        throw new Error('unavailable');
+      }
+    };
+    const failed = makeMgr({} as any);
+    await expect(failed.playUrl('x.wav')).resolves.toBeUndefined();
+    expect(createdSources).toHaveLength(0);
+  });
+
   it('playlist playback and analyser API', async () => {
     const mgr = makeMgr({} as any);
     mgr.setMusicPlaylist(['t1.mp3', 't2.mp3']);
@@ -197,4 +324,3 @@ describe('AudioManager', () => {
     expect(out[0]).toBe(1);
   });
 });
-

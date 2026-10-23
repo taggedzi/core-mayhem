@@ -10,7 +10,7 @@ vi.mock('../audio', () => ({
   },
 }));
 
-import { AnnouncerService } from '../announcer';
+import { AnnouncerService, announcerControls } from '../announcer';
 import { CLIP_DURATION_MS, POOLS } from '../announcer/config';
 import { audio } from '../audio';
 
@@ -124,6 +124,67 @@ describe('announcer playback queue', () => {
     service.run(now);
     await flush();
     service.run(now);
+    expect(audio.playUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates settings through the public controls and ignores absent updates', () => {
+    announcerControls.updateSettings({ announcerVolume: 0.4, minGapMs: 123 });
+    expect(announcerControls.getSettings()).toMatchObject({ announcerVolume: 0.4, minGapMs: 123 });
+    expect(audio.setAnnouncerVolume).toHaveBeenCalledWith(0.4);
+    announcerControls.updateSettings(null as any);
+    announcerControls.setEnabled(false);
+    expect(audio.stopAnnouncer).toHaveBeenCalledOnce();
+    announcerControls.setEnabled(true);
+  });
+
+  it('ignores disabled and unknown events and drops expired countdowns', () => {
+    const service = new AnnouncerService();
+    service.setEnabled(false);
+    service.trigger('pre_game');
+    service.run();
+    service.setEnabled(true);
+    service.trigger('unknown' as any);
+    service.trigger('time_countdown_10');
+    now = 1600;
+    service.run();
+    expect(audio.playUrl).not.toHaveBeenCalled();
+  });
+
+  it('avoids an immediate repeat and respects combat chatter spacing', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const service = new AnnouncerService();
+    service.updateSettings({ minGapMs: 10000 });
+    service.trigger('high_damage');
+    service.run();
+    await flush();
+    const first = lastUrl();
+    now = 3000;
+    service.trigger('high_damage', { priorityBoost: 5 });
+    service.run();
+    expect(audio.playUrl).toHaveBeenCalledOnce();
+    now = 11000;
+    service.trigger('high_damage', { urgent: true });
+    service.run();
+    await flush();
+    expect(lastUrl()).not.toBe(first);
+  });
+
+  it('ignores completion of audio interrupted during loading', async () => {
+    let finish!: () => void;
+    vi.mocked(audio.playUrl).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const service = new AnnouncerService();
+    service.trigger('pre_game');
+    service.run();
+    service.reset();
+    finish();
+    await flush();
+    service.trigger('match_start_go');
+    service.run();
     expect(audio.playUrl).toHaveBeenCalledTimes(2);
   });
 });
