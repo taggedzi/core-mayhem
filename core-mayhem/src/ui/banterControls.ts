@@ -1,3 +1,4 @@
+import { invalidateBanterRequests } from '../app/banterRequests';
 import {
   DEFAULT_LLM,
   BANTER_CONFIG_VERSION,
@@ -70,7 +71,9 @@ function loadStr(key: string, fallback: string): string {
 }
 function save(key: string, v: string | number | boolean): void {
   try {
-    localStorage.setItem(key, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
+    const next = typeof v === 'boolean' ? (v ? '1' : '0') : String(v);
+    if (localStorage.getItem(key) !== next) invalidateBanterRequests();
+    localStorage.setItem(key, next);
   } catch {
     /* ignore */
   }

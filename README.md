@@ -65,6 +65,10 @@ Clearing every event checkbox disables generated requests for those events;
 built-in dialogue remains available. Save, Test, and Refresh accept only HTTP(S)
 server URLs and apply the numeric limits shown by the controls.
 
+Generated replies belong to the match and settings that requested them. Stop,
+restart, and settings changes cancel pending replies. Each side keeps its first
+pending request and ignores additional events until that request finishes.
+
 ## Run locally
 
 **Requirements:** Git, npm, and Node.js **22.12 or newer in the 22.x line, or Node.js 24+**, compatible with the installed Vite and Vitest dependencies.

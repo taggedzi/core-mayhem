@@ -1,7 +1,8 @@
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
+import { invalidateBanterRequests } from '../app/banterRequests';
 import { BANTER_CONFIG_VERSION, DEFAULT_LLM, normalizeLLMSettings } from '../config/llm';
-import { sim } from '../state';
+import { sim, resetSimState } from '../state';
 
 import type { LLMSettings } from '../config/llm';
 
@@ -73,6 +74,7 @@ function setPacing(p: { cooldownMs?: number; sideMinGapMs?: number } = {}): void
 describe('speakBanterSmart', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    invalidateBanterRequests();
     // import MUT after mocks are ready
     const mod = await import('../app/speakBanterLLM');
     speakBanterSmart = mod.speakBanterSmart;
@@ -155,7 +157,7 @@ describe('speakBanterSmart', () => {
     expect(overlay.setBanter as unknown as vi.Mock).toHaveBeenCalled();
   });
 
-  it('infligth guard: second concurrent call uses fallback and first resolves later', async () => {
+  it('keeps the first request and drops repeated events until it resolves', async () => {
     // First call: keep the promise pending
     let resolveFirst: (v: any) => void;
     const first = new Promise<string>((res) => {
@@ -165,10 +167,70 @@ describe('speakBanterSmart', () => {
     const p1 = speakBanterSmart('taunt' as any, 'L');
     // Second call while inflight should use fallback path
     await speakBanterSmart('taunt' as any, 'L');
-    expect(overlay.setBanter as unknown as vi.Mock).toHaveBeenCalled();
+    expect(overlay.setBanter).not.toHaveBeenCalled();
+    expect(ollama.ollamaChat).toHaveBeenCalledTimes(1);
     // Now resolve first
     resolveFirst!('ok');
     await p1;
+    expect(overlay.setBanter).toHaveBeenCalledTimes(1);
+  });
+  it.each(['reply', 'empty', 'error'])(
+    'discards stale %s completions across match reset',
+    async (outcome) => {
+      let resolve!: (text: string) => void;
+      let reject!: (error: Error) => void;
+      vi.mocked(ollama.ollamaChat).mockReturnValueOnce(
+        new Promise((done, fail) => {
+          resolve = done;
+          reject = fail;
+        }),
+      );
+      const task = speakBanterSmart('taunt', 'L');
+      const signal = vi.mocked(ollama.ollamaChat).mock.calls[0]![6]!;
+      resetSimState();
+      seedSimBasics();
+      expect(signal.aborted).toBe(true);
+      if (outcome === 'error') reject(new Error('late failure'));
+      else resolve(outcome === 'reply' ? 'old character reply' : '');
+      await task;
+      expect(overlay.setBanter).not.toHaveBeenCalled();
+    },
+  );
+
+  it('discards a pending reply after LLM calls are disabled', async () => {
+    let resolve!: (text: string) => void;
+    vi.mocked(ollama.ollamaChat).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const task = speakBanterSmart('taunt', 'L');
+    setLLMSettings({ llmEnabled: false });
+    resolve('late reply');
+    await task;
+    expect(overlay.setBanter).not.toHaveBeenCalled();
+  });
+
+  it('an old completion cannot clear the new match pending request', async () => {
+    const resolves: ((text: string) => void)[] = [];
+    vi.mocked(ollama.ollamaChat).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolves.push(done);
+        }),
+    );
+    const oldTask = speakBanterSmart('taunt', 'L');
+    resetSimState();
+    seedSimBasics();
+    const newTask = speakBanterSmart('taunt', 'L');
+    resolves[0]!('stale');
+    await oldTask;
+    await speakBanterSmart('taunt', 'L');
+    expect(ollama.ollamaChat).toHaveBeenCalledTimes(2);
+    resolves[1]!('current');
+    await newTask;
+    expect(overlay.setBanter).toHaveBeenCalledTimes(1);
+    expect(overlay.setBanter).toHaveBeenCalledWith('L', 'current.');
   });
 });
 

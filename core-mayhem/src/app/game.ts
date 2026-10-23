@@ -6,6 +6,7 @@ import { LightCore, DarkCore } from '../banter/personalities';
 import { PERSONA_CATALOG } from '../banter/personas';
 import { DEFAULTS } from '../config';
 import { readGameMode } from '../gameMode';
+import { clearBanter } from '../render/banter';
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { updateScoreboard } from '../render/score';
@@ -23,6 +24,7 @@ import { SIDE } from '../types';
 import { readBanterPacing } from '../ui/banterControls';
 import { readCharacterProfiles } from '../ui/characters';
 
+import { invalidateBanterRequests } from './banterRequests';
 import { registerCollisions } from './collisions';
 import { attachDevHotkeys } from './devKeys';
 import { startMusicForMatch } from './musicStartup';
@@ -50,6 +52,8 @@ function assertEngine(e: Engine | null): asserts e is Engine {
 // explodeAt moved to app/collisions.ts
 
 export function startGame(canvas: HTMLCanvasElement): () => void {
+  invalidateBanterRequests();
+  clearBanter();
   cancelWeaponTimers();
   clearWorld();
   initWorld(canvas);
@@ -333,6 +337,8 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   raf = requestAnimationFrame(loop);
 
   return function stop(): void {
+    invalidateBanterRequests();
+    clearBanter();
     cancelMusicStartup?.();
     cancelWeaponTimers();
     sim.started = false;
