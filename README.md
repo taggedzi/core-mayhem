@@ -126,7 +126,7 @@ core-mayhem/                 # Repository root
 - Edit `src/configs/` for gameplay defaults, arena layout, core behavior, weapons, and effects. `src/config.ts` re-exports these modules.
 - Edit `src/audio/config.ts` to map audio events to files and adjust playback defaults.
 - Edit `src/config/llm.ts` for default banter-provider settings.
-- Edit `batch.config.json`, then run `npm run sim` to compare simulation outcomes. Reports are written under the application's `stats/` directory.
+- Edit `batch.config.json`, then run `npm run sim` to compare simulation outcomes. Reports are written under the application's `stats/` directory. `mirrorArena`, `fullLength`, and `primeVolley` accept JSON booleans. The matching environment variables `MIRROR`, `FULL_LENGTH`, and `PRIME_VOLLEY` accept `true` or `false`.
 
 During development, press **H** to see the available hotkeys. For example, `c / l / m / o` fire the left core's cannon, laser, missiles, or mortar; uppercase versions fire the right core's weapons. `[` and `]` adjust simulation speed.
 
