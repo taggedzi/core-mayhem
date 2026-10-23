@@ -103,10 +103,10 @@ to include local music automatically.
 ## Workflows
 
 CI runs formatting, type checks, lint, versioning tests, coverage tests, and a
-production build on pull requests, pushes to `main`, and manual runs. Portable
-site packages a temporary music-free Actions artifact on `v*` tags or manual
-runs. Release builds and publishes the permanent ZIP when requested. None of
-these workflows deploys to a website or needs hosting credentials.
+production build on pull requests, pushes to `main`, and manual runs. Release
+builds and publishes the permanent music-free ZIP when requested, or validates
+a test build without publishing via `npm run release:check`. Neither workflow
+deploys to a website or needs hosting credentials.
 
 Workflow files are in the repository root's `.github/workflows/`; npm commands
 run in the inner application directory. Generated sound effects and announcer

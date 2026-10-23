@@ -3,7 +3,7 @@
 **An idle combat game where pachinko physics fuel a race to destroy the opposing core.**
 
 [![CI: tests and build](https://github.com/taggedzi/core-mayhem/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/taggedzi/core-mayhem/actions/workflows/ci.yml)
-[![Portable site build](https://github.com/taggedzi/core-mayhem/actions/workflows/portable-site.yml/badge.svg)](https://github.com/taggedzi/core-mayhem/actions/workflows/portable-site.yml)
+[![Release](https://github.com/taggedzi/core-mayhem/actions/workflows/release.yml/badge.svg)](https://github.com/taggedzi/core-mayhem/actions/workflows/release.yml)
 
 [![Play Core Mayhem](https://img.shields.io/badge/Play-Core%20Mayhem-e85d35?style=for-the-badge)](https://core-mayhem.taggedz.me/)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?logo=typescript&logoColor=white)](core-mayhem/package.json)
