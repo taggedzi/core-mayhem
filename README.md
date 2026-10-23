@@ -54,6 +54,11 @@ Built-in banter works without an AI service. For generated dialogue, the **Bante
 
 Ollama must be running with an available model, and the browser must be allowed to reach it. Neither Ollama nor a model download is required to play or build the game.
 
+The selected model is saved after refresh and used by both Test and gameplay.
+Clearing every event checkbox disables generated requests for those events;
+built-in dialogue remains available. Save, Test, and Refresh accept only HTTP(S)
+server URLs and apply the numeric limits shown by the controls.
+
 ## Run locally
 
 **Requirements:** Git, npm, and Node.js **22.12 or newer in the 22.x line, or Node.js 24+**, compatible with the installed Vite and Vitest dependencies.
