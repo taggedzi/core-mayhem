@@ -3,6 +3,7 @@ import { MESMER } from '../config';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import { sim } from '../state';
 import { SIDE } from '../types';
+import { allowGameShortcut } from '../ui/keyboard';
 
 import { runTriggers } from './systems/triggers';
 
@@ -50,7 +51,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
   };
 
   const onKey = (e: KeyboardEvent): void => {
-    if (!devKeysOn || sim.gameOver) return;
+    if (!devKeysOn || sim.gameOver || !allowGameShortcut(e)) return;
 
     const L = SIDE.LEFT,
       R = SIDE.RIGHT;

@@ -47,6 +47,8 @@ a new match never resumes a previous match's unfinished volleys.
 | **Help** or **H** | Open the developer hotkey reference.                 |
 
 Developer hotkeys are enabled in development builds and disabled in production by default.
+Help and developer shortcuts pause while editing settings or using a dialog.
+Dialog keyboard focus stays inside the open panel and returns to its opener on close.
 
 ### Optional generated banter
 
