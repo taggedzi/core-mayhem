@@ -106,4 +106,14 @@ describe('deterministic dialogue clarity', () => {
       }
     }
   });
+  it('applies pacing changes to an existing system immediately', () => {
+    const system = new BanterSystem({ seed: 47, cooldownMs: 10000, sideMinGapMs: 10000 });
+    const me = createCharacter('L', personality, 'Speaker');
+    const them = createCharacter('R', personality, 'Opponent');
+    expect(system.speak('match_start', me, them)).not.toBeNull();
+    system.step(100);
+    expect(system.speak('taunt', me, them)).toBeNull();
+    system.updatePacing({ cooldownMs: 500, sideMinGapMs: 0 });
+    expect(system.speak('taunt', me, them)).not.toBeNull();
+  });
 });

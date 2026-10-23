@@ -1,6 +1,8 @@
+import Matter from 'matter-js';
 import { describe, it, beforeEach, expect, vi } from 'vitest';
 
 // Mock side-effectful modules used by match.ts
+vi.mock('../audio', () => ({ audio: { stopLoop: vi.fn() } }));
 vi.mock('../announcer', () => ({
   announcer: {
     trigger: vi.fn(),
@@ -28,6 +30,7 @@ import { speakBanterSmart } from '../app/speakBanterLLM';
 import { recordMatchEnd, resetStats, startNewMatch } from '../app/stats';
 import * as matchMod from '../app/systems/match';
 import { declareWinner, maybeEndMatch, checkTimeLimit } from '../app/systems/match';
+import { audio } from '../audio';
 import { MATCH_LIMIT, GAMEOVER } from '../config';
 import { updateScoreboard } from '../render/score';
 import { sim, resetSimState } from '../state';
@@ -63,6 +66,19 @@ describe('systems/match unit', () => {
     declareWinner(0);
     expect((announcer.trigger as unknown as vi.Mock).mock.calls[0][0]).toBe('match_end_generic');
     expect((sim as any).winner).toBe(0);
+  });
+
+  it('completes once and freezes the engine while preserving the result', () => {
+    sim.engine = Matter.Engine.create();
+    declareWinner(SIDE.LEFT);
+    declareWinner(SIDE.RIGHT);
+    expect(sim.winner).toBe(SIDE.LEFT);
+    expect(sim.engine.timing.timeScale).toBe(0);
+    expect(recordMatchEnd).toHaveBeenCalledTimes(1);
+    expect((sim as any).stats.leftWins).toBe(1);
+    expect((sim as any).stats.rightWins).toBe(0);
+    expect(audio.stopLoop).toHaveBeenCalledWith('alarm_L');
+    expect(audio.stopLoop).toHaveBeenCalledWith('alarm_R');
   });
 
   it('increments stats and calls updateScoreboard + recordMatchEnd', () => {

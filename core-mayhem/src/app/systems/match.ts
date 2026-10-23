@@ -1,4 +1,7 @@
+import { Runner } from 'matter-js';
+
 import { announcer } from '../../announcer';
+import { audio } from '../../audio';
 import { GAMEOVER, MATCH_LIMIT } from '../../config';
 import { readGameMode } from '../../gameMode';
 import { setAvatarEmotion } from '../../render/avatar';
@@ -15,6 +18,18 @@ function isDead(core: any): boolean {
 }
 
 export function declareWinner(winner: Side | 0): void {
+  if (sim.gameOver) return;
+  sim.gameOver = true;
+  sim.winner = winner;
+  sim.winnerAt = performance.now();
+  if (sim.runner) Runner.stop(sim.runner);
+  if (sim.engine) sim.engine.timing.timeScale = 0;
+  try {
+    audio.stopLoop('alarm_L');
+    audio.stopLoop('alarm_R');
+  } catch {
+    /* Audio failure must not prevent completion. */
+  }
   cancelWeaponTimers();
   // Announcer first: play end-of-match VO immediately so it starts before the banner shows
   try {
@@ -24,10 +39,6 @@ export function declareWinner(winner: Side | 0): void {
   } catch {
     // ignore announcer errors
   }
-  (sim as any).winner = winner; // 0 = tie
-  (sim as any).gameOver = true;
-  (sim as any).winnerAt = performance.now();
-
   // Banter: winner speaks a victory line (LLM with fallback)
   try {
     if (winner === SIDE.LEFT) void speakBanterSmart('victory' as any, 'L');

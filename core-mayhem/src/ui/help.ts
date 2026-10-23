@@ -1,10 +1,12 @@
 import { DEV_HELP_LINES, isDevModeEnabled, setDevModeEnabled } from '../app/devKeys';
 
+import { activateModal, allowGameShortcut } from './keyboard';
+
 declare const __BUILD_DATE__: string;
 
 let overlayEl: HTMLElement | null = null;
 let contentEl: HTMLElement | null = null;
-let lastFocusEl: Element | null = null;
+let releaseModal: (() => void) | null = null;
 
 function refreshDevModeControls(): void {
   const enabled = isDevModeEnabled();
@@ -147,11 +149,10 @@ export function initHelpOverlay(): void {
 
   // Global key handling
   window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (!allowGameShortcut(e)) return;
     if (e.key === 'h' || e.key === 'H') {
       e.preventDefault();
       openHelpOverlay();
-    } else if (e.key === 'Escape') {
-      if (isOpen()) closeHelpOverlay();
     }
   });
 }
@@ -159,13 +160,13 @@ export function initHelpOverlay(): void {
 export function openHelpOverlay(): void {
   if (!overlayEl) initHelpOverlay();
   if (!overlayEl) return;
-  lastFocusEl = document.activeElement;
+  if (isOpen()) return;
   overlayEl.style.display = 'block';
   overlayEl.setAttribute('aria-hidden', 'false');
   // refresh enabled flag text
   refreshDevModeControls();
   // focus for esc handling accessibility
-  (contentEl as HTMLElement | null)?.focus?.();
+  if (contentEl) releaseModal = activateModal(overlayEl, contentEl, closeHelpOverlay);
 }
 
 function closeHelpOverlay(): void {
@@ -180,14 +181,8 @@ function closeHelpOverlay(): void {
   }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
-  // Restore focus back to the opener if possible
-  if (lastFocusEl && (lastFocusEl as HTMLElement).focus) {
-    try {
-      (lastFocusEl as HTMLElement).focus();
-    } catch {
-      /* ignore */ void 0;
-    }
-  }
+  releaseModal?.();
+  releaseModal = null;
 }
 
 function isOpen(): boolean {
