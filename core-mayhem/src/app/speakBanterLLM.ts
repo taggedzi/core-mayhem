@@ -27,7 +27,7 @@ function dbg(...args: any[]): void {
 }
 
 function eventAllowed(ev: BanterEvent, mask: string): boolean {
-  if (!mask || mask === '*') return true;
+  if (mask === '*') return true;
   const set = new Set(
     mask
       .split(',')
