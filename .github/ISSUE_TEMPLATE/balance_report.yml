@@ -1,0 +1,37 @@
+name: Simulation or balance report
+description: Report matchup imbalance, physics anomalies, or surprising simulation results.
+title: "[Simulation]: "
+body:
+  - type: textarea
+    id: observation
+    attributes:
+      label: Observed and expected behavior
+      description: Describe the result and why you believe it indicates a simulation or balance issue.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Matchup and configuration
+      description: Include characters, weapons, changed settings, and relevant configuration or batch.config.json contents. Say if you used defaults.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps and seed
+      description: Explain how to reproduce the result. Include a seed if available; otherwise say it is unknown.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Game URL or version
+      description: Include the deployed URL, release version, or local commit if known.
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Results and evidence
+      description: Include rounds played, win rates, simulation reports, console output, or recordings. For browser issues, include browser and operating system.

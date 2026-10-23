@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a crash, broken control, or other unexpected behavior.
+title: "[Bug]: "
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the game and select ...
+        2. Start a match with ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      placeholder: Chrome 141 on Windows 11
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Game URL or version
+      description: Include the deployed URL, release version, or local commit if known.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Console errors, screenshots, or recordings
+      description: Paste relevant browser console errors or attach visual evidence. Remove private information.
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Relevant settings
+      description: Include character matchups, changed configuration, seed, or optional Ollama settings when relevant. Leave out credentials.
