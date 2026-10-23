@@ -1565,10 +1565,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
             if (obj && typeof obj.persona === 'string') personaKey = obj.persona;
           }
         } catch { /* ignore */ }
-        const personaLabel = (personaKey || '').replace(/\s*Core$/i, '').trim();
+        const personaLabel = (personaKey ?? '').replace(/\s*Core$/i, '').trim();
         const pName0 = String(c.personality?.name ?? '').trim();
         const fallbackLabel = pName0.replace(/\s*Core$/i, '').trim();
-        const inParens = personaLabel || fallbackLabel;
+        const inParens = personaLabel.length > 0 ? personaLabel : fallbackLabel;
         // Base name: use Personality.name if present; fallback to displayName; else readable side label
         let baseName = String(c.personality?.name ?? '').trim();
         if (!baseName) baseName = String(c.displayName ?? '').trim();
