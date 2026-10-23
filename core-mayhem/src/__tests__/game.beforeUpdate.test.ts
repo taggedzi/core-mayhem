@@ -70,4 +70,17 @@ describe('game beforeUpdate loop', () => {
     expect(maybeEndMatch).toHaveBeenCalled();
     stop();
   });
+
+  it('runs no gameplay after the time limit declares a result', () => {
+    vi.clearAllMocks();
+    const stop = startGame(document.getElementById('c') as HTMLCanvasElement);
+    vi.mocked(checkTimeLimit).mockImplementationOnce(() => {
+      sim.gameOver = true;
+    });
+    Matter.Events.trigger(sim.engine!, 'beforeUpdate', {});
+    expect(runPhysics).not.toHaveBeenCalled();
+    expect(runSpawn).not.toHaveBeenCalled();
+    expect(runTriggers).not.toHaveBeenCalled();
+    stop();
+  });
 });
