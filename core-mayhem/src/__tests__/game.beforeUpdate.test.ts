@@ -24,7 +24,8 @@ vi.mock('../app/stats', () => ({
 }));
 
 import { startGame } from '../app/game';
-import { checkTimeLimit } from '../app/systems/match';
+import { runFXPrune } from '../app/systems/fx';
+import { checkTimeLimit, maybeEndMatch } from '../app/systems/match';
 import { runPhysics } from '../app/systems/physics';
 import { runSpawn } from '../app/systems/spawn';
 import { runTriggers } from '../app/systems/triggers';
@@ -76,6 +77,23 @@ describe('game beforeUpdate loop', () => {
     expect(runSpawn).toHaveBeenCalledWith(20 * timescale);
     expect(engine.timing.lastDelta).toBeCloseTo(20 * timescale);
     expect(runTriggers).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it('runs the frame systems on one 1.5x step', () => {
+    vi.clearAllMocks();
+    sim.settings.timescale = 1.5;
+    const stop = startGame(document.getElementById('c') as HTMLCanvasElement);
+    Matter.Engine.update(sim.engine!, 20);
+    expect(runPhysics).toHaveBeenCalled();
+    const dt = (runPhysics as unknown as { mock: { calls: number[][] } }).mock.calls[0]![0]!;
+    // 20ms updated at 1.5x is 30ms after Matter scales the delta once.
+    expect(dt).toBeCloseTo(30, 3);
+    expect(checkTimeLimit).toHaveBeenCalled();
+    expect(runFXPrune).toHaveBeenCalled();
+    expect(runSpawn).toHaveBeenCalled();
+    expect(runTriggers).toHaveBeenCalled();
+    expect(maybeEndMatch).toHaveBeenCalled();
     stop();
   });
 
