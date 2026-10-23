@@ -64,7 +64,7 @@ async function main() {
     if (ext !== '.js' && !name.endsWith('.js.map') && !name.endsWith('.d.ts')) continue;
 
     // Skip known source JS files that are not TS outputs
-    if (name === 'eslint.config.js' || name === 'vitest.setup.js') continue;
+    if (name === 'eslint.config.js') continue;
 
     const bases = hasTsSiblingCandidates(file);
     let tsNeighbor = false;

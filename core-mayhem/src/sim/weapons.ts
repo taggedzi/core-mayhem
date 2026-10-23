@@ -490,7 +490,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
         side: from,
         dmg: DAMAGE.mortar * currentDmgMul(from),
         spawnT: performance.now(),
-        gExtra: MORTAR_ANGLE.extraGravity || 0,
+        gExtra: MORTAR_ANGLE.extraGravity,
         didDamage: false,
       };
       {
@@ -630,6 +630,18 @@ export function tickHoming(dtMs: number): void {
         /* ignore */ void 0;
       }
     }
+  }
+}
+
+/** Add mortar gExtra to vy once per physics step. Zero and missing values do nothing. */
+export function tickMortarGravity(): void {
+  const bodies = sim.world?.bodies;
+  if (!bodies) return;
+  for (const body of bodies) {
+    const extra = (body as any).plugin?.gExtra;
+    if (typeof extra !== 'number' || extra === 0) continue;
+    const v = body.velocity;
+    Body.setVelocity(body, { x: v.x, y: v.y + extra });
   }
 }
 

@@ -42,10 +42,10 @@ export function applyCoreDamage(
   // Overflow that wasn’t absorbed by segments
   let overflow = dmg - (a0 + a1);
 
-  // If both segments were already broken and there’s *no* arithmetic overflow
-  // (because d0Aim/d1Aim were 0 against 0 HP), optionally leak full damage.
-  if (overflow <= 1e-6 && h0 <= 0 && h1 <= 0) {
-    overflow = dmg * (ARMOR.leakWhenBroken ?? 1.0);
+  // Both adjacent segments are already broken, so nothing can absorb the hit.
+  // leakWhenBroken scales the whole hit into the center (1 keeps a full leak; 0 seals it).
+  if (h0 <= 0 && h1 <= 0) {
+    overflow = dmg * ARMOR.leakWhenBroken;
   }
 
   if (ARMOR.spillover && overflow > 0) {

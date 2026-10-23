@@ -196,6 +196,7 @@ export function initCharactersControls(): void {
     const sFor = slider('Formality', `${side}_for`, cur.formality);
     const sOpt = slider('Optimism', `${side}_opt`, cur.optimism);
     const sSar = slider('Sarcasm', `${side}_sar`, cur.sarcasm);
+    // Ellipsis, staccato, and randomCaps go to the LLM persona. Template lines keep authored punctuation.
     const sEll = slider('Quirk: Ellipsis', `${side}_ell`, cur.quirks?.ellipsis ?? 0);
     const sStc = slider('Quirk: Staccato', `${side}_stc`, cur.quirks?.staccato ?? 0);
     const sCap = slider('Quirk: RandomCaps', `${side}_cap`, cur.quirks?.randomCaps ?? 0);

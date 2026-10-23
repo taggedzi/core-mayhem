@@ -20,7 +20,7 @@ export default tseslint.config(
       parser: tseslint.parser,
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['src/__tests__/*.ts', 'vitest.setup.js'],
+          allowDefaultProject: ['src/__tests__/*.ts'],
           maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 50,
         },
       },
@@ -69,7 +69,7 @@ export default tseslint.config(
 
   // Loosen a few rules in tests and Vitest setup
   {
-    files: ['src/__tests__/**/*.ts', 'vitest.setup.ts', 'vitest.setup.js'],
+    files: ['src/__tests__/**/*.ts', 'vitest.setup.ts'],
     rules: {
       '@typescript-eslint/no-empty-function': 'off',
       '@typescript-eslint/no-require-imports': 'off',
@@ -78,7 +78,7 @@ export default tseslint.config(
 
   // Vitest setup file needs browser globals (setTimeout, performance, etc.)
   {
-    files: ['vitest.setup.js', 'vitest.setup.ts'],
+    files: ['vitest.setup.ts'],
     languageOptions: {
       globals: {
         ...globals.browser,

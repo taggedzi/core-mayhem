@@ -1132,6 +1132,9 @@ function applyQuirks(
   // reaction can contradict the first, even when both fit the event separately.
   if (/\p{Extended_Pictographic}/u.test(line) || !/[\p{L}\p{N}]/u.test(line)) return line;
 
+  // Ellipsis, staccato, and randomCaps stay off template lines so authored punctuation
+  // is preserved. Those three sliders are carried in the LLM persona prompt instead.
+
   // Emoji/kaomoji
   if (q.emojiStyle !== 'none' && rng() < q.emoji) {
     const pos = mood === 'positive';

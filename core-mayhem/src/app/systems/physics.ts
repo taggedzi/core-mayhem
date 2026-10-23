@@ -1,7 +1,7 @@
 import { beforeUpdateAmmo } from '../../sim/ammo';
 import { applyGelForces } from '../../sim/gel';
 import { applyPipeForces, tickPaddles } from '../../sim/obstacles';
-import { tickHoming } from '../../sim/weapons';
+import { tickHoming, tickMortarGravity } from '../../sim/weapons';
 import { sim } from '../../state';
 
 export function runPhysics(dtMs: number): void {
@@ -11,6 +11,7 @@ export function runPhysics(dtMs: number): void {
   applyPipeForces(sim.pipes);
   tickPaddles(dt);
   tickHoming(dtMs);
+  tickMortarGravity();
 
   // Advance core rotation
   const cL = sim.coreL as any;

@@ -161,4 +161,17 @@ describe('speakBanterSmart', () => {
     resolveFirst!('ok');
     await p1;
   });
+
+  it('includes character quirk sliders in the LLM system prompt', async () => {
+    (sim as any).banterR.personality.quirks = { ellipsis: 0.4, staccato: 0.2, randomCaps: 0.1 };
+    await speakBanterSmart('taunt' as any, 'R');
+    const system = String((ollama.ollamaChat as unknown as vi.Mock).mock.calls[0][2]);
+    expect(system).toContain('ellipsis:0.4, staccato:0.2, randomCaps:0.1');
+  });
+
+  it('renders zero quirks when the personality omits them', async () => {
+    await speakBanterSmart('taunt' as any, 'L');
+    const system = String((ollama.ollamaChat as unknown as vi.Mock).mock.calls[0][2]);
+    expect(system).toContain('ellipsis:0, staccato:0, randomCaps:0');
+  });
 });
