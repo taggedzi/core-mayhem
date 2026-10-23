@@ -13,6 +13,8 @@ vi.mock('../audio', () => ({
 import { AnnouncerService, announcerControls } from '../announcer';
 import { CLIP_DURATION_MS, POOLS } from '../announcer/config';
 import { audio } from '../audio';
+import { sim } from '../state';
+import { initAudioControls } from '../ui/audioControls';
 
 let now = 0;
 const flush = async (): Promise<void> => {
@@ -186,5 +188,61 @@ describe('announcer playback queue', () => {
     service.trigger('match_start_go');
     service.run();
     expect(audio.playUrl).toHaveBeenCalledTimes(2);
+  });
+  it('applies announcer volume once at the bus', () => {
+    const service = new AnnouncerService();
+    service.updateSettings({ announcerVolume: 0.5 });
+    service.trigger('pre_game');
+    service.run(now);
+    expect(audio.setAnnouncerVolume).toHaveBeenCalledWith(0.5);
+    expect(audio.playUrl).toHaveBeenCalledWith(expect.any(String), {
+      channel: 'announcer',
+      volume: 1,
+    });
+  });
+
+  it.each([0, 0.5, 1])(
+    'preserves supported slider ranges after reload (position %s)',
+    (position) => {
+      localStorage.clear();
+      document.body.innerHTML = '<button id="btnAudio">Audio</button>';
+      const sliders = [
+        ['cm_sfxVolume', 'sfxVol', 0, 1],
+        ['cm_musicVolume', 'musicVol', 0, 1],
+        ['cm_vizSens', 'vizSens', 0, 2],
+        ['cm_beatSens', 'beatSens', 0.5, 2],
+        ['cm_announcerVol', 'annVol', 0, 1],
+        ['cm_annDuckMusic', 'annDuckM', 0, 1],
+        ['cm_annDuckSfx', 'annDuckS', 0, 1],
+        ['cm_annDuckRelease', 'annRel', 0.1, 2],
+        ['cm_annMinGap', 'annGap', 2, 8],
+      ] as const;
+      for (const [key, , min, max] of sliders)
+        localStorage.setItem(key, String(min + position * (max - min)));
+      initAudioControls();
+      for (const [, id, min, max] of sliders)
+        expect(Number((document.getElementById(id) as HTMLInputElement).value)).toBeCloseTo(
+          min + position * (max - min),
+        );
+      expect(announcerControls.getSettings().minGapMs).toBeCloseTo((2 + position * 6) * 1000);
+      expect(announcerControls.getSettings().duckReleaseMs).toBeCloseTo(
+        (0.1 + position * 1.9) * 1000,
+      );
+      expect((sim as any).vizSens).toBeCloseTo(position * 2);
+      localStorage.clear();
+    },
+  );
+
+  it('clamps invalid stored values to each slider range', () => {
+    localStorage.clear();
+    document.body.innerHTML = '<button id="btnAudio">Audio</button>';
+    localStorage.setItem('cm_annMinGap', '999');
+    localStorage.setItem('cm_annDuckRelease', '-10');
+    localStorage.setItem('cm_vizSens', '1.8');
+    initAudioControls();
+    expect(announcerControls.getSettings().minGapMs).toBe(8000);
+    expect(announcerControls.getSettings().duckReleaseMs).toBe(100);
+    expect((sim as any).vizSens).toBe(1.8);
+    localStorage.clear();
   });
 });

@@ -1,8 +1,9 @@
-import { Events, World, Body, Query, Composite } from 'matter-js';
+import { Events, Body, Query, Composite } from 'matter-js';
 
 import { audio } from '../audio';
 import { EXPLOSION, FX_MS, PROJECTILE_STYLE } from '../config';
 import { simNowMs } from '../sim/clock';
+import { consumeBody } from '../sim/consumeBody';
 import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from '../sim/damage';
 import { gameplayRandom } from '../sim/rng';
@@ -98,9 +99,7 @@ function explodeAt(
       Body.applyForce(b, b.position, { x: dx * k * b.mass, y: dy * k * b.mass });
 
       if (plug.kind === 'ammo' && gameplayRandom() < EXPLOSION.ammoDestroyPct) {
-        World.remove(w, b);
-        if (plug.side === SIDE.LEFT) sim.ammoL = Math.max(0, sim.ammoL - 1);
-        else if (plug.side === SIDE.RIGHT) sim.ammoR = Math.max(0, sim.ammoR - 1);
+        consumeBody(b);
       }
     }
   }
@@ -111,9 +110,7 @@ function deposit(ammo: any, container: any): void {
   if (!accept.includes(ammo.plugin.type)) return;
   const w = sim.world;
   assertWorld(w);
-  World.remove(w, ammo);
-  if (ammo.plugin.side === SIDE.LEFT) sim.ammoL--;
-  else sim.ammoR--;
+  if (!consumeBody(ammo)) return;
   const bins = (container.plugin.side === SIDE.LEFT ? sim.binsL : sim.binsR) as any;
   const key = container.plugin.label as string;
   if (bins[key]) {
@@ -137,6 +134,9 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   const coreMaybe = side === SIDE.LEFT ? sim.coreL : sim.coreR;
   assertCoreFull(coreMaybe);
   const core = coreMaybe;
+  if (!consumeBody(proj)) return;
+  proj.plugin.didDamage = true;
+  const shieldStart = Number(core.shieldHP ?? 0);
   let dmg = proj?.plugin?.dmg ?? 8;
   const isCenter = coreBody.plugin.kind === 'coreCenter';
 
@@ -198,11 +198,10 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
           0,
           0,
         );
-        proj.plugin.didDamage = true;
       } catch {
         /* ignore */ void 0;
       }
-      World.remove(w, proj);
+
       onPostHit?.();
       return;
     }
@@ -225,17 +224,17 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 
   // Snapshot before
   const segBeforeArr = core.segHP.slice();
-  const segBefore = segBeforeArr.reduce((a, b) => a + (b | 0), 0);
-  const centerBefore = core.centerHP | 0;
+  const segBefore = segBeforeArr.reduce((a, b) => a + Number(b), 0);
+  const centerBefore = Number(core.centerHP ?? 0);
   if (isCenter) core.centerHP = Math.max(0, core.centerHP - dmg);
   else applyCoreDamage(core, proj.position, dmg, angleToSeg);
   const segAfterArr = core.segHP.slice();
-  const segAfter = segAfterArr.reduce((a, b) => a + (b | 0), 0);
+  const segAfter = segAfterArr.reduce((a, b) => a + Number(b), 0);
   // Armor segment break detection: any index crossed >0 -> 0
   try {
     for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-      const before = (segBeforeArr[i] ?? 0) | 0;
-      const after = (segAfterArr[i] ?? 0) | 0;
+      const before = Number(segBeforeArr[i] ?? 0);
+      const after = Number(segAfterArr[i] ?? 0);
       if (before > 0 && after <= 0) {
         void speakBanterSmart('armor_break' as any, side === SIDE.LEFT ? 'L' : 'R');
         break;
@@ -244,16 +243,17 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   } catch {
     /* ignore */
   }
-  const centerAfter = core.centerHP | 0;
+  const centerAfter = Number(core.centerHP ?? 0);
   try {
+    // One record for a breaking shot: shield absorbed plus damage that reached the core.
     recordProjectileHit(
       proj?.plugin?.side,
       proj?.plugin?.ptype ?? 'cannon',
-      0,
+      Math.max(0, shieldStart - core.shieldHP),
       Math.max(0, segBefore - segAfter),
       Math.max(0, centerBefore - centerAfter),
     );
-    proj.plugin.didDamage = true;
+
     // Diagnostics: time from missile spawn to first core damage
     try {
       if (proj?.plugin?.ptype === 'missile' && proj?.plugin && !proj?.plugin?._coreHitLogged) {
@@ -293,7 +293,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     ringColor2,
     Number(dmg) || undefined,
   );
-  World.remove(w, proj);
+
   // choose impact sound based on where damage landed
   try {
     const segDelta = Math.max(0, segBefore - segAfter);
@@ -314,10 +314,12 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void }): () => void {
   const onStart = (e: IEventCollision<Engine>): void => {
     for (const p of e.pairs) {
+      if (sim.gameOver) return;
       const A = p.bodyA as any,
         B = p.bodyB as any;
       const a = A.plugin ?? {},
         b = B.plugin ?? {};
+      if (a.consumed || b.consumed) continue;
 
       // Ammo interacts with paddles: bounce off top or underside and add sideways shove
       const batAmmo = (ammo: any, paddle: any): void => {
@@ -404,7 +406,7 @@ export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void 
 
       const explodeIf = (proj: any, other: any): void => {
         const pp = proj?.plugin ?? {};
-        if (pp.kind !== 'projectile') return;
+        if (pp.kind !== 'projectile' || pp.consumed) return;
         if (other?.plugin?.kind === 'weaponMount') return;
         if (simNowMs() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
         // Record first impact kind for missiles if not already recorded
@@ -417,6 +419,7 @@ export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void 
         } catch {
           /* ignore */ void 0;
         }
+        if (!consumeBody(proj)) return;
         const ptype = String(pp.ptype ?? 'cannon');
         const sty = (PROJECTILE_STYLE as any)[ptype];
         const ringColor = sty?.glow ?? (pp.side === SIDE.LEFT ? css('--left') : css('--right'));
@@ -429,7 +432,7 @@ export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void 
         );
         const w = sim.world;
         assertWorld(w);
-        World.remove(w, proj);
+
         // count miss if no damage was recorded
         try {
           if (!pp.didDamage) recordMiss(pp.side, pp.ptype ?? 'cannon');

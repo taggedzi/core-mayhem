@@ -18,12 +18,13 @@ import { MISSILE_STAGGER_MS } from '../config';
 import { HOMING, HOMING_ENABLED } from '../config';
 import { MORTAR_ANGLE } from '../config';
 import { SHIELD } from '../config';
-import { WEAPON_MOUNTS_LEFT } from '../config';
+import { BINS_LEFT, WEAPON_MOUNTS_LEFT } from '../config';
 import { angleToSeg } from '../sim/core';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { simNowMs } from './clock';
+import { consumeBody } from './consumeBody';
 import { applyCoreDamage } from './damage';
 import { gameplayRandom } from './rng';
 import { scheduleWeaponShot } from './weaponTimers';
@@ -279,21 +280,21 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
       /* ignore */
     }
 
-    const centerBefore = (enemyCore as any).centerHP | 0;
+    const centerBefore = Number((enemyCore as any).centerHP ?? 0);
     const segBeforeArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segBefore = Array.isArray(segBeforeArr)
-      ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segBeforeArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     // Apply damage to core exactly once (your helper handles center/segments)
     applyCoreDamage(enemyCore as any, aim, toCore, angleToSeg);
-    const centerAfter = (enemyCore as any).centerHP | 0;
+    const centerAfter = Number((enemyCore as any).centerHP ?? 0);
     const segAfterArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segAfter = Array.isArray(segAfterArr)
-      ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segAfterArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     try {
       recordLaserHit(
@@ -309,7 +310,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     try {
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
         for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-          if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+          if (Number(segBeforeArr[i]) > 0 && Number(segAfterArr[i]) <= 0) {
             const victimSide = side === SIDE.LEFT ? 'R' : 'L';
             void speakBanterSmart('armor_break' as any, victimSide);
             break;
@@ -321,20 +322,20 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     }
   } else {
     // No shield pool: all to core
-    const centerBefore = (enemyCore as any).centerHP | 0;
+    const centerBefore = Number((enemyCore as any).centerHP ?? 0);
     const segBeforeArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segBefore = Array.isArray(segBeforeArr)
-      ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segBeforeArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     applyCoreDamage(enemyCore as any, aim, base, angleToSeg);
-    const centerAfter = (enemyCore as any).centerHP | 0;
+    const centerAfter = Number((enemyCore as any).centerHP ?? 0);
     const segAfterArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segAfter = Array.isArray(segAfterArr)
-      ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segAfterArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     try {
       recordLaserHit(
@@ -350,7 +351,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     try {
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
         for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-          if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+          if (Number(segBeforeArr[i]) > 0 && Number(segAfterArr[i]) <= 0) {
             const victimSide = side === SIDE.LEFT ? 'R' : 'L';
             void speakBanterSmart('armor_break' as any, victimSide);
             break;
@@ -542,7 +543,7 @@ export function tickHoming(dtMs: number): void {
     }
 
     const plug = (m as any).plugin ?? {};
-    if (plug.ptype !== 'missile') {
+    if (plug.consumed || plug.ptype !== 'missile') {
       sim.homing.splice(i, 1);
       continue;
     }
@@ -552,9 +553,8 @@ export function tickHoming(dtMs: number): void {
       {
         const w = sim.world;
         assertWorld(w);
-        World.remove(w, m);
+        consumeBody(m);
       }
-      sim.homing.splice(i, 1);
       try {
         if (!plug.didDamage) recordMiss(plug.side, 'missile');
       } catch {
@@ -614,10 +614,9 @@ export function tickHoming(dtMs: number): void {
       {
         const w = sim.world;
         assertWorld(w);
-        World.remove(w, m);
+        consumeBody(m);
       }
 
-      sim.homing.splice(i, 1);
       // (visual pop only; real damage still comes from collisions)
       (sim.fxImp ||= []).push({
         x: target.x,
@@ -641,29 +640,50 @@ interface WeapType {
   mount: Body;
 }
 export interface WeaponsType {
-  cannon: WeapType;
-  laser: WeapType;
-  missile: WeapType;
-  mortar: WeapType;
+  cannon?: WeapType | undefined;
+  laser?: WeapType | undefined;
+  missile?: WeapType | undefined;
+  mortar?: WeapType | undefined;
+}
+
+const MOUNT_IDS = ['cannon', 'laser', 'missile', 'mortar'] as const;
+
+/** Warn when a weapon bin and its mount disagree. Startup still builds the enabled side. */
+export function reportWeaponBinMismatches(): string[] {
+  const messages: string[] = [];
+  for (const id of MOUNT_IDS) {
+    const binOn = BINS_LEFT.some((spec) => spec.id === id && spec.enabled !== false);
+    const mountOn = WEAPON_MOUNTS_LEFT.some((spec) => spec.id === id && spec.enabled !== false);
+    if (binOn === mountOn) continue;
+    messages.push(
+      `${id} bin is ${binOn ? 'enabled' : 'disabled'} but its mount is ${mountOn ? 'enabled' : 'disabled'}`,
+    );
+  }
+  for (const message of messages) console.warn(`[core-mayhem] ${message}`);
+  return messages;
 }
 
 export function makeWeapons(side: Side): WeaponsType {
-  const specs = WEAPON_MOUNTS_LEFT.filter((s) => s.enabled !== false);
-  const result: Partial<WeaponsType> = {};
-  for (const s of specs) {
-    const [xBL0, yBL] = s.pos;
-    const r = Math.max(1, Math.floor(s.r));
+  if (side === SIDE.LEFT) reportWeaponBinMismatches();
+  const result: WeaponsType = {};
+  for (const spec of WEAPON_MOUNTS_LEFT) {
+    if (spec.enabled === false) {
+      result[spec.id] = undefined;
+      continue;
+    }
+    const [xBL0, yBL] = spec.pos;
+    const r = Math.max(1, Math.floor(spec.r));
     const xBL = side === SIDE.LEFT ? xBL0 : sim.W - xBL0 - 2 * r;
     const cx = xBL + r;
     const cy = sim.H - (yBL + r);
     const mount = Bodies.circle(cx, cy, r, { isStatic: true, isSensor: true });
-    (mount as any).plugin = { kind: 'weaponMount', side, label: s.id };
+    (mount as any).plugin = { kind: 'weaponMount', side, label: spec.id };
     {
       const w = sim.world;
       assertWorld(w);
       World.add(w, mount);
     }
-    (result as any)[s.id] = { pos: { x: cx, y: cy }, mount };
+    result[spec.id] = { pos: { x: cx, y: cy }, mount };
   }
-  return result as WeaponsType;
+  return result;
 }

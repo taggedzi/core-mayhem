@@ -10,6 +10,18 @@ import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
 const FIXED_STEP_MS = 1000 / 60;
+const TRUE_FLAGS = new Set(['true', '1', 'yes', 'on']);
+const FALSE_FLAGS = new Set(['false', '0', 'no', 'off']);
+
+/** Accept a JSON boolean or an environment string such as "true" or "false". */
+export function coerceBoolean(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim().toLowerCase();
+  if (TRUE_FLAGS.has(text)) return true;
+  if (FALSE_FLAGS.has(text)) return false;
+  return undefined;
+}
 
 interface BatchOpts {
   matches: number;
@@ -79,7 +91,27 @@ function ensureDOM(): HTMLCanvasElement {
   return canvas;
 }
 
-async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void> {
+type BootFn = (canvas: HTMLCanvasElement) => { stop: () => void };
+
+function declareByRemainingHp(): void {
+  try {
+    const cL: any = (sim as any).coreL;
+    const cR: any = (sim as any).coreR;
+    const sumSeg = (arr: number[] | null | undefined): number =>
+      Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
+    const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
+    const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
+    if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);
+    else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
+    else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
+    else
+      declareWinner(lhs > rhs ? (SIDE.LEFT as any) : rhs > lhs ? (SIDE.RIGHT as any) : (0 as any));
+  } catch {
+    /* ignore */ void 0;
+  }
+}
+
+async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts, boot: BootFn): Promise<void> {
   // Refresh state for a clean match
   resetSimState();
   (sim as any).settings = {
@@ -96,17 +128,23 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
   // depending on how many matches this process already ran.
   (sim as any).matchIndex = 0;
   setFixedSimClock(true);
+  // resetSimState keeps the previous engine. Only a boot that replaces it
+  // started the Matter runner for this match.
+  const engineBefore = sim.engine;
   let stop: () => void = () => {
     return;
   };
+  let intervalId: ReturnType<typeof setInterval> | undefined;
+  let deadlineId: ReturnType<typeof setTimeout> | undefined;
+  const clearWatch = (): void => {
+    clearInterval(intervalId);
+    clearTimeout(deadlineId);
+    intervalId = undefined;
+    deadlineId = undefined;
+  };
+
   try {
-    ({ stop } = bootWithCanvas(canvas));
-    const runner = sim.runner as { isFixed?: boolean; delta?: number } | null;
-    if (runner) {
-      Runner.stop(runner as never);
-      runner.isFixed = true;
-      runner.delta = FIXED_STEP_MS;
-    }
+    ({ stop } = boot(canvas));
 
     // Optional: reduce core HP to accelerate match resolution
     const hpScale = Math.max(0.05, Math.min(1, opts.hpScale ?? (opts.fullLength ? 1 : 0.5)));
@@ -156,32 +194,40 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
       /* ignore */ void 0;
     }
 
-    const budgetMs = opts.fullLength ? MATCH_LIMIT.ms : 2000;
-    const maxSteps = Math.max(1, Math.round(budgetMs / FIXED_STEP_MS));
-    let steps = 0;
-    while (!(sim as any).gameOver && steps < maxSteps) {
-      advanceFixedSimClock(FIXED_STEP_MS);
-      if (sim.runner && sim.engine) Runner.tick(sim.runner, sim.engine, simNowMs());
-      steps += 1;
-    }
-    if (!(sim as any).gameOver && !opts.fullLength) {
-      try {
-        const cL: any = (sim as any).coreL;
-        const cR: any = (sim as any).coreR;
-        const sumSeg = (arr: number[] | null | undefined): number =>
-          Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
-        const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
-        const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
-        if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);
-        else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
-        else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
-        else
-          declareWinner(
-            lhs > rhs ? (SIDE.LEFT as any) : rhs > lhs ? (SIDE.RIGHT as any) : (0 as any),
-          );
-      } catch {
-        /* ignore */ void 0;
+    const runner = sim.runner as { isFixed?: boolean; delta?: number } | null;
+    const engine = sim.engine;
+    if (runner && engine && engine !== engineBefore) {
+      // Seeded replay steps the Matter runner at a fixed 60 Hz. Timescale is
+      // applied once by the engine, not again here.
+      Runner.stop(runner as never);
+      runner.isFixed = true;
+      runner.delta = FIXED_STEP_MS;
+      const budgetMs = opts.fullLength ? MATCH_LIMIT.ms : 2000;
+      const maxSteps = Math.max(1, Math.round(budgetMs / FIXED_STEP_MS));
+      let steps = 0;
+      while (!(sim as any).gameOver && steps < maxSteps) {
+        advanceFixedSimClock(FIXED_STEP_MS);
+        Runner.tick(runner as never, engine, simNowMs());
+        steps += 1;
       }
+      if (!(sim as any).gameOver && !opts.fullLength) declareByRemainingHp();
+    } else {
+      // Boots that do not start the engine still need a cleared deadline poll.
+      await new Promise<void>((resolve) => {
+        const finish = (): void => {
+          clearWatch();
+          resolve();
+        };
+        if (!opts.fullLength) {
+          deadlineId = setTimeout(() => {
+            declareByRemainingHp();
+            finish();
+          }, 2000);
+        }
+        intervalId = setInterval(() => {
+          if ((sim as any).gameOver) finish();
+        }, 10);
+      });
     }
   } finally {
     try {
@@ -189,18 +235,22 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
     } catch {
       /* ignore */ void 0;
     }
+    // Drop the auto-restart handle and zero it so the next match can arm a new one.
     try {
-      if ((sim as any).restartTO) clearTimeout((sim as any).restartTO);
+      const pending = (sim as any).restartTO;
+      if (pending) clearTimeout(pending);
     } catch {
       /* ignore */ void 0;
     }
     (sim as any).restartTO = 0;
+    clearWatch();
     setFixedSimClock(false);
   }
 }
 
 export async function runBatch(
   opts: BatchOpts,
+  boot: BootFn = bootWithCanvas,
 ): Promise<{ summary: ReturnType<typeof getSummary> } & { files: Record<string, string> }> {
   const canvas = ensureDOM();
   // fresh stats session
@@ -211,7 +261,7 @@ export async function runBatch(
   for (let i = 0; i < N; i++) {
     // vary seed a bit if provided; otherwise let defaults roll
     const seed = typeof opts.seed === 'number' ? (opts.seed + i * 1337) | 0 : undefined;
-    await runOne(canvas, { ...opts, seed });
+    await runOne(canvas, { ...opts, seed }, boot);
   }
 
   const summary = getSummary();

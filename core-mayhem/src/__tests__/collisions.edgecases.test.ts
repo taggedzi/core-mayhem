@@ -1,7 +1,10 @@
-import Matter, { Bodies, World } from 'matter-js';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import Matter, { Bodies, World, Events } from 'matter-js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { registerCollisions } from '../app/collisions';
+import * as stats from '../app/stats';
+import { EXPLOSION } from '../config';
+import { tickHoming } from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
@@ -138,5 +141,113 @@ describe('collisions edge cases', () => {
     expect(sim.world!.bodies.includes(proj)).toBe(false);
     expect((sim.fxImp ?? []).length).toBeGreaterThan(0);
     det();
+  });
+});
+
+describe('collision terminal outcomes', () => {
+  beforeEach(() => {
+    resetSimState();
+    sim.engine = Matter.Engine.create();
+    sim.world = sim.engine.world;
+    sim.coreR = {
+      center: { x: 100, y: 100 },
+      segHP: new Array(8).fill(100),
+      segHPmax: 100,
+      centerHP: 200,
+      centerHPmax: 200,
+      shieldHP: 0,
+      shieldHPmax: 200,
+    } as any;
+    sim.binsL = { cannon: { fill: 0 } } as any;
+    registerCollisions(sim.engine);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  function collide(a: Matter.Body, b: Matter.Body): void {
+    Events.trigger(sim.engine!, 'collisionStart', {
+      pairs: [
+        { bodyA: a, bodyB: b },
+        { bodyA: b, bodyB: a },
+      ],
+    });
+  }
+
+  function missile(): Matter.Body {
+    const body = Bodies.circle(100, 100, 3);
+    body.plugin = {
+      kind: 'projectile',
+      ptype: 'missile',
+      side: SIDE.LEFT,
+      dmg: 10,
+      spawnT: -10_000,
+    };
+    World.add(sim.world!, body);
+    sim.homing.push(body);
+    return body;
+  }
+
+  it('deposits one resource once across duplicate and reversed pairs', () => {
+    const deposit = vi.spyOn(stats, 'recordBinDeposit');
+    const ammo = Bodies.circle(0, 0, 3);
+    ammo.plugin = { kind: 'ammo', side: SIDE.LEFT, type: 'basic' };
+    const bin = Bodies.rectangle(0, 0, 10, 10);
+    bin.plugin = { kind: 'container', side: SIDE.LEFT, accept: ['basic'], label: 'cannon' };
+    sim.ammoL = 1;
+    World.add(sim.world!, [ammo, bin]);
+    collide(ammo, bin);
+    collide(ammo, bin);
+    expect(sim.ammoL).toBe(0);
+    expect(sim.binsL!.cannon.fill).toBe(1);
+    expect(deposit).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('records a hit once, even with statistics failure=%s', (fail) => {
+    const hit = vi.spyOn(stats, 'recordProjectileHit');
+    if (fail)
+      hit.mockImplementation(() => {
+        throw new Error('stats unavailable');
+      });
+    const miss = vi.spyOn(stats, 'recordMiss');
+    const projectile = missile();
+    const core = Bodies.circle(100, 100, 20);
+    core.plugin = { kind: 'coreCenter', side: SIDE.RIGHT };
+    collide(projectile, core);
+    collide(projectile, core);
+    tickHoming(16);
+    expect(sim.coreR!.centerHP).toBe(190);
+    expect(projectile.plugin.didDamage).toBe(true);
+    expect(sim.homing).toHaveLength(0);
+    expect(hit).toHaveBeenCalledTimes(1);
+    expect(miss).not.toHaveBeenCalled();
+  });
+
+  it('removes impacted missiles from homing and never counts TTL as a second miss', () => {
+    const miss = vi.spyOn(stats, 'recordMiss');
+    const projectile = missile();
+    collide(projectile, Bodies.rectangle(100, 100, 10, 10));
+    tickHoming(16);
+    expect(sim.homing).toHaveLength(0);
+    expect(miss).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not deposit ammo destroyed by an earlier explosion in the event', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const projectile = missile();
+    const ammo = Bodies.circle(100, 100, 3);
+    ammo.plugin = { kind: 'ammo', side: SIDE.LEFT, type: 'basic' };
+    const bin = Bodies.rectangle(100, 100, 10, 10);
+    bin.plugin = { kind: 'container', side: SIDE.LEFT, accept: ['basic'], label: 'cannon' };
+    World.add(sim.world!, [ammo, bin]);
+    sim.ammoL = 1;
+    expect(EXPLOSION.ammoDestroyPct).toBeGreaterThan(0);
+    Events.trigger(sim.engine!, 'collisionStart', {
+      pairs: [
+        { bodyA: projectile, bodyB: Bodies.rectangle(100, 100, 10, 10) },
+        { bodyA: ammo, bodyB: bin },
+      ],
+    });
+    expect(ammo.plugin.consumed).toBe(true);
+    expect(sim.ammoL).toBe(0);
+    expect(sim.binsL!.cannon.fill).toBe(0);
   });
 });

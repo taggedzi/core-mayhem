@@ -1,3 +1,4 @@
+import { invalidateBanterRequests } from './app/banterRequests';
 import { cancelWeaponTimers } from './sim/weaponTimers';
 
 // state.ts
@@ -266,7 +267,13 @@ export const sim: SimState = createSimState();
 
 // Optional: utility to wipe transient/volatile parts between runs
 export function resetSimState(s: SimState = sim): void {
-  if (s === sim) cancelWeaponTimers();
+  if (s === sim) {
+    cancelWeaponTimers();
+    invalidateBanterRequests();
+  }
+  (s as any).banterSeq = { L: 0, R: 0 };
+  (s as any).banterGate = undefined;
+  (s as any).banterUI = { L: { text: '', t0: 0, until: 0 }, R: { text: '', t0: 0, until: 0 } };
   s.gels.length = 0;
   s.rotors.length = 0;
   s.paddles.length = 0;

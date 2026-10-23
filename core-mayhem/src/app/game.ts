@@ -1,4 +1,4 @@
-import { Events, Body, Composite } from 'matter-js';
+import { Events } from 'matter-js';
 
 import { audio } from '../audio';
 import { BanterSystem, createCharacter } from '../banter';
@@ -6,6 +6,7 @@ import { LightCore, DarkCore } from '../banter/personalities';
 import { PERSONA_CATALOG } from '../banter/personas';
 import { DEFAULTS } from '../config';
 import { readGameMode } from '../gameMode';
+import { clearBanter } from '../render/banter';
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { updateScoreboard } from '../render/score';
@@ -13,6 +14,7 @@ import { buildLanes } from '../sim/channels';
 import { simNowMs } from '../sim/clock';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { makeCore } from '../sim/core';
+import { mirrorArena } from '../sim/mirrorArena';
 import { makePipe, placeObstaclesFromSpecs } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
 import { resetGameplayRng } from '../sim/rng';
@@ -24,9 +26,11 @@ import { SIDE } from '../types';
 import { readBanterPacing } from '../ui/banterControls';
 import { readCharacterProfiles } from '../ui/characters';
 
+import { invalidateBanterRequests } from './banterRequests';
 import { registerCollisions, resetExplosionLimiter } from './collisions';
 import { attachDevHotkeys } from './devKeys';
-import { startNewMatch } from './stats';
+import { startMusicForMatch } from './musicStartup';
+import { abortOpenMatch, startNewMatch } from './stats';
 import { runAnnouncer } from './systems/announcer';
 import { runAudioMonitors } from './systems/audioMonitors';
 import { runFXPrune } from './systems/fx';
@@ -50,6 +54,8 @@ function assertEngine(e: Engine | null): asserts e is Engine {
 // explodeAt moved to app/collisions.ts
 
 export function startGame(canvas: HTMLCanvasElement): () => void {
+  invalidateBanterRequests();
+  clearBanter();
   cancelWeaponTimers();
   clearWorld();
   initWorld(canvas);
@@ -73,7 +79,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   (sim as any).tick = 0;
   (sim as any).matchIndex = ((sim as any).matchIndex | 0) + 1;
   (sim as any).stats = (sim as any).stats ?? { leftWins: 0, rightWins: 0, ties: 0 };
-  updateScoreboard(); // draw initial 0–0
+  updateScoreboard(); // draw the session scoreboard, including restored results
 
   if ((sim as any).restartTO) {
     clearTimeout((sim as any).restartTO);
@@ -82,6 +88,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   (sim as any).gameOver = false;
   (sim as any).winner = null;
   (sim as any).winnerAt = 0;
+  (sim as any).banterGate = undefined;
   (sim as any).matchStart = simNowMs();
   // Start a new stats match session
   startNewMatch();
@@ -216,46 +223,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // Skip in non-web-audio environments (e.g., tests/JS DOM) to avoid network calls
   const canUseWebAudio =
     typeof window !== 'undefined' && (window as any).AudioContext !== undefined;
-  if (canUseWebAudio) {
-    void (async () => {
-      try {
-        if (!audio.hasPlaylist()) {
-          const res = await fetch(`${import.meta.env.BASE_URL}assets/music/playlist.json`, {
-            cache: 'no-cache',
-          });
-          if (res.ok) {
-            const files = (await res.json()) as string[];
-            const urls = Array.isArray(files)
-              ? files
-                  .filter((f) => typeof f === 'string' && /\.(mp3|ogg)$/i.test(f))
-                  .map((f) => `${import.meta.env.BASE_URL}assets/music/${f}`)
-              : [];
-            if (urls.length) {
-              audio.setMusicPlaylist(urls);
-            }
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      try {
-        // Start music only if not already playing
-        if (!audio.isMusicPlaying()) {
-          if (!audio.hasPlaylist()) {
-            // Fallback: try a default track
-            const probe = await fetch(`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`, {
-              method: 'HEAD',
-            });
-            if (probe.ok)
-              audio.setMusicPlaylist([`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`]);
-          }
-          if (audio.hasPlaylist()) audio.playMusic();
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-  }
+  const cancelMusicStartup = canUseWebAudio ? startMusicForMatch() : null;
 
   // Gameplay RNG is separate from persona picks and from cosmetic star/avatar draws.
   const layoutSeed = Number(((sim as any).settings?.seed ?? 1337) | 0);
@@ -327,10 +295,11 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // deposit() and hit() moved to app/collisions.ts
 
   // Game update
-  Events.on(eng, 'beforeUpdate', (): void => {
+  Events.on(eng, 'beforeUpdate', (event): void => {
     // tick counter for alternate order testing
     (sim as any).tick = ((sim as any).tick | 0) + 1;
-    const dtMs = sim.engine?.timing?.lastDelta ?? 16.6;
+    const dtMs =
+      (event as typeof event & { delta?: number }).delta ?? sim.engine?.timing?.lastDelta ?? 16.6;
     // stop all game logic once over
     if ((sim as any).gameOver) return;
 
@@ -338,20 +307,17 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
 
     // Time-limit
     checkTimeLimit();
+    if (sim.gameOver) return;
 
-    // Apply configurable time scale (slow down/speed up sim)
-    const stg = (sim as any).settings ?? DEFAULTS;
-    const scaled = dtMs * (stg.timescale ?? 1);
-    if (sim.engine) sim.engine.timing.timeScale = stg.timescale ?? 1;
-
-    runPhysics(scaled);
+    // Matter has already scaled this update delta. Share it without scaling again.
+    runPhysics(dtMs);
     try {
-      (sim as any).banter?.step(scaled);
+      (sim as any).banter?.step(dtMs);
     } catch {
       /* ignore */
     }
     runFXPrune(simNowMs());
-    runSpawn(scaled);
+    runSpawn(dtMs);
     runTriggers();
     runAudioMonitors();
     runAnnouncer();
@@ -381,7 +347,16 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   raf = requestAnimationFrame(loop);
 
   return function stop(): void {
+    invalidateBanterRequests();
+    clearBanter();
+    cancelMusicStartup?.();
     cancelWeaponTimers();
+    // Unfinished matches are discarded. They are not recorded as ties.
+    try {
+      abortOpenMatch();
+    } catch {
+      /* ignore */ void 0;
+    }
     sim.started = false;
     cancelAnimationFrame(raf);
     detachHotkeys?.();
@@ -415,43 +390,5 @@ const css = (name: string): string =>
 function maybeMirrorArena(): void {
   const stg = (sim as any).settings ?? DEFAULTS;
   if (!stg?.mirrorArena) return;
-  const wld = sim.world as any;
-  if (!wld) return;
-  const W = sim.W;
-  const bodies = Composite.allBodies(wld);
-  // Prefer using Matter namespaces if available in this module
-  // Fallback: scan known bodies by hand if Composite is not in scope
-  const all: any[] = Array.isArray(bodies) && bodies.length ? bodies : [];
-  for (const b of all) {
-    const x = b?.position?.x;
-    const y = b?.position?.y;
-    if (typeof x === 'number' && typeof y === 'number') Body.setPosition(b, { x: W - x, y });
-  }
-  // Core centers
-  if (sim.coreL?.center) sim.coreL.center.x = W - sim.coreL.center.x;
-  if (sim.coreR?.center) sim.coreR.center.x = W - sim.coreR.center.x;
-  // Weapon mount positions
-  const fixW = (w: any): void => {
-    if (!w) return;
-    if (w.cannon?.pos) w.cannon.pos.x = W - w.cannon.pos.x;
-    if (w.laser?.pos) w.laser.pos.x = W - w.laser.pos.x;
-    if (w.missile?.pos) w.missile.pos.x = W - w.missile.pos.x;
-    if (w.mortar?.pos) w.mortar.pos.x = W - w.mortar.pos.x;
-  };
-  fixW(sim.wepL);
-  fixW(sim.wepR);
-  // Bin model positions (and their bodies)
-  const fixBins = (bins: any): void => {
-    if (!bins) return;
-    for (const b of Object.values(bins as Record<string, any>)) {
-      if (!b) continue;
-      if (b.pos) b.pos.x = W - b.pos.x;
-      const by = b.box?.position?.y ?? 0;
-      const iy = b.intake?.position?.y ?? 0;
-      if (b.box) Body.setPosition(b.box, { x: W - (b.box.position?.x ?? 0), y: by });
-      if (b.intake) Body.setPosition(b.intake, { x: W - (b.intake.position?.x ?? 0), y: iy });
-    }
-  };
-  fixBins(sim.binsL);
-  fixBins(sim.binsR);
+  mirrorArena();
 }

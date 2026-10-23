@@ -1,6 +1,7 @@
 import { Bodies, Engine } from 'matter-js';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { BINS_LEFT } from '../config';
 import { buildLanes } from '../sim/channels';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { resetSimState, sim } from '../state';
@@ -53,6 +54,22 @@ describe('container positioning guards', () => {
       expect(onlyIntake.position.x).toBe(expected);
     },
   );
+
+  it('omits a disabled bin and still builds the others', () => {
+    const spec = BINS_LEFT.find((entry) => entry.id === 'cannon');
+    expect(spec).toBeTruthy();
+    spec!.enabled = false;
+    try {
+      const bins = makeBins(SIDE.LEFT, 0, 0);
+      expect(bins.cannon).toBeUndefined();
+      expect(bins.laser?.key).toBe('laser');
+      expect(bins.laser?.box).toBeTruthy();
+      expect(bins.laser?.intake).toBeTruthy();
+      expect(bins.laser?.fill).toBe(0);
+    } finally {
+      delete spec!.enabled;
+    }
+  });
 
   it('fails fast when world-dependent builders run before initialization', () => {
     sim.world = null;

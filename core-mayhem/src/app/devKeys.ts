@@ -1,8 +1,10 @@
 import { DEV_KEYS, DEFAULTS } from '../config';
 import { MESMER } from '../config';
+import { clearBanter } from '../render/banter';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import { sim } from '../state';
 import { SIDE } from '../types';
+import { allowGameShortcut } from '../ui/keyboard';
 
 import { runTriggers } from './systems/triggers';
 
@@ -50,7 +52,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
   };
 
   const onKey = (e: KeyboardEvent): void => {
-    if (!devKeysOn || sim.gameOver) return;
+    if (!devKeysOn || sim.gameOver || !allowGameShortcut(e)) return;
 
     const L = SIDE.LEFT,
       R = SIDE.RIGHT;
@@ -63,30 +65,30 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
     switch (e.key) {
       // Left side (lowercase)
       case 'c':
-        fireCannon(L, wepL.cannon.pos, cR, 16);
+        if (wepL.cannon) fireCannon(L, wepL.cannon.pos, cR, 16);
         break;
       case 'l':
-        fireLaser(L, wepL.laser.pos, cRCore);
+        if (wepL.laser) fireLaser(L, wepL.laser.pos, cRCore);
         break;
       case 'm':
-        fireMissiles(L, wepL.missile.pos, 5);
+        if (wepL.missile) fireMissiles(L, wepL.missile.pos, 5);
         break;
       case 'o':
-        fireMortar(L, wepL.mortar.pos, 3);
+        if (wepL.mortar) fireMortar(L, wepL.mortar.pos, 3);
         break;
 
       // Right side (uppercase)
       case 'C':
-        fireCannon(R, wepR.cannon.pos, cL, 16);
+        if (wepR.cannon) fireCannon(R, wepR.cannon.pos, cL, 16);
         break;
       case 'L':
-        fireLaser(R, wepR.laser.pos, cLCore);
+        if (wepR.laser) fireLaser(R, wepR.laser.pos, cLCore);
         break;
       case 'M':
-        fireMissiles(R, wepR.missile.pos, 5);
+        if (wepR.missile) fireMissiles(R, wepR.missile.pos, 5);
         break;
       case 'O':
-        fireMortar(R, wepR.mortar.pos, 3);
+        if (wepR.mortar) fireMortar(R, wepR.mortar.pos, 3);
         break;
 
       // Visuals: cycle mesmer mode Off → Low → Always
@@ -107,16 +109,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
         (sim as any).banterEnabled = !(sim as any).banterEnabled;
         const on = (sim as any).banterEnabled !== false;
         toast(`Banter: ${on ? 'on' : 'off'}`);
-        if (!on) {
-          try {
-            const elL = document.getElementById('banterL');
-            const elR = document.getElementById('banterR');
-            if (elL) elL.textContent = '';
-            if (elR) elR.textContent = '';
-          } catch {
-            /* ignore */
-          }
-        }
+        if (!on) clearBanter();
         break;
       }
 
@@ -124,12 +117,14 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       case '[': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
         stg.timescale = Math.max(0.5, Math.min(1.5, (stg.timescale ?? 1) - 0.1));
+        if (sim.engine) sim.engine.timing.timeScale = stg.timescale;
         toast(`Time x${(stg.timescale ?? 1).toFixed(2)}`);
         break;
       }
       case ']': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
         stg.timescale = Math.max(0.5, Math.min(1.5, (stg.timescale ?? 1) + 0.1));
+        if (sim.engine) sim.engine.timing.timeScale = stg.timescale;
         toast(`Time x${(stg.timescale ?? 1).toFixed(2)}`);
         break;
       }
