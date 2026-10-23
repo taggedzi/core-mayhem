@@ -1,10 +1,15 @@
+import { Runner } from 'matter-js';
+
 import { buildCSVs, resetStats, getSummary, initStats } from '../app/stats';
 import { declareWinner } from '../app/systems/match';
 import { bootWithCanvas } from '../boot';
-import { DEFAULTS } from '../config';
+import { DEFAULTS, MATCH_LIMIT } from '../config';
+import { advanceFixedSimClock, setFixedSimClock, simNowMs } from '../sim/clock';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
+
+const FIXED_STEP_MS = 1000 / 60;
 
 interface BatchOpts {
   matches: number;
@@ -87,103 +92,110 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
     ...(typeof opts.targetAmmo === 'number' ? { targetAmmo: opts.targetAmmo } : {}),
   } as any;
 
-  const { stop } = bootWithCanvas(canvas);
-
-  // Optional: reduce core HP to accelerate match resolution
-  const hpScale = Math.max(0.05, Math.min(1, opts.hpScale ?? (opts.fullLength ? 1 : 0.5)));
+  // Each batch match starts from the same index so a seed replays without
+  // depending on how many matches this process already ran.
+  (sim as any).matchIndex = 0;
+  setFixedSimClock(true);
+  let stop: () => void = () => {
+    return;
+  };
   try {
-    const cL: any = (sim as any).coreL;
-    const cR: any = (sim as any).coreR;
-    const wepL: any = (sim as any).wepL;
-    const wepR: any = (sim as any).wepR;
-    if (cL) {
-      cL.centerHP = Math.max(1, Math.round((cL.centerHP | 0) * hpScale));
-      if (Array.isArray(cL.segHP))
-        cL.segHP = cL.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
+    ({ stop } = bootWithCanvas(canvas));
+    const runner = sim.runner as { isFixed?: boolean; delta?: number } | null;
+    if (runner) {
+      Runner.stop(runner as never);
+      runner.isFixed = true;
+      runner.delta = FIXED_STEP_MS;
     }
-    if (cR) {
-      cR.centerHP = Math.max(1, Math.round((cR.centerHP | 0) * hpScale));
-      if (Array.isArray(cR.segHP))
-        cR.segHP = cR.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
-    }
-    // Fire an opening volley immediately to accelerate first contact (optional)
-    if ((opts.primeVolley ?? !opts.fullLength) && wepL && wepR && cL && cR) {
-      try {
-        fireCannon(SIDE.LEFT as any, wepL.cannon.pos, cR.center, 18);
-        fireLaser(SIDE.LEFT as any, wepL.laser.pos, cR as any);
-        fireMissiles(SIDE.LEFT as any, wepL.missile.pos, 5);
-        fireMortar(SIDE.LEFT as any, wepL.mortar.pos, 1);
 
-        fireCannon(SIDE.RIGHT as any, wepR.cannon.pos, cL.center, 18);
-        fireLaser(SIDE.RIGHT as any, wepR.laser.pos, cL as any);
-        fireMissiles(SIDE.RIGHT as any, wepR.missile.pos, 5);
-        fireMortar(SIDE.RIGHT as any, wepR.mortar.pos, 1);
+    // Optional: reduce core HP to accelerate match resolution
+    const hpScale = Math.max(0.05, Math.min(1, opts.hpScale ?? (opts.fullLength ? 1 : 0.5)));
+    try {
+      const cL: any = (sim as any).coreL;
+      const cR: any = (sim as any).coreR;
+      const wepL: any = (sim as any).wepL;
+      const wepR: any = (sim as any).wepR;
+      if (cL) {
+        cL.centerHP = Math.max(1, Math.round((cL.centerHP | 0) * hpScale));
+        if (Array.isArray(cL.segHP))
+          cL.segHP = cL.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
+      }
+      if (cR) {
+        cR.centerHP = Math.max(1, Math.round((cR.centerHP | 0) * hpScale));
+        if (Array.isArray(cR.segHP))
+          cR.segHP = cR.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
+      }
+      // Fire an opening volley immediately to accelerate first contact (optional)
+      if ((opts.primeVolley ?? !opts.fullLength) && wepL && wepR && cL && cR) {
+        try {
+          fireCannon(SIDE.LEFT as any, wepL.cannon.pos, cR.center, 18);
+          fireLaser(SIDE.LEFT as any, wepL.laser.pos, cR as any);
+          fireMissiles(SIDE.LEFT as any, wepL.missile.pos, 5);
+          fireMortar(SIDE.LEFT as any, wepL.mortar.pos, 1);
+
+          fireCannon(SIDE.RIGHT as any, wepR.cannon.pos, cL.center, 18);
+          fireLaser(SIDE.RIGHT as any, wepR.laser.pos, cL as any);
+          fireMissiles(SIDE.RIGHT as any, wepR.missile.pos, 5);
+          fireMortar(SIDE.RIGHT as any, wepR.mortar.pos, 1);
+        } catch {
+          /* ignore */ void 0;
+        }
+      }
+      // Prime bins to trigger next volleys quickly (optional)
+      if (opts.primeVolley ?? !opts.fullLength) {
+        const prime = (bins: any): void => {
+          if (!bins) return;
+          for (const k of ['cannon', 'laser', 'missile', 'mortar']) {
+            if (bins[k]) bins[k].fill = bins[k].cap;
+          }
+        };
+        prime((sim as any).binsL);
+        prime((sim as any).binsR);
+      }
+    } catch {
+      /* ignore */ void 0;
+    }
+
+    const budgetMs = opts.fullLength ? MATCH_LIMIT.ms : 2000;
+    const maxSteps = Math.max(1, Math.round(budgetMs / FIXED_STEP_MS));
+    let steps = 0;
+    while (!(sim as any).gameOver && steps < maxSteps) {
+      advanceFixedSimClock(FIXED_STEP_MS);
+      if (sim.runner && sim.engine) Runner.tick(sim.runner, sim.engine, simNowMs());
+      steps += 1;
+    }
+    if (!(sim as any).gameOver && !opts.fullLength) {
+      try {
+        const cL: any = (sim as any).coreL;
+        const cR: any = (sim as any).coreR;
+        const sumSeg = (arr: number[] | null | undefined): number =>
+          Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
+        const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
+        const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
+        if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);
+        else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
+        else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
+        else
+          declareWinner(
+            lhs > rhs ? (SIDE.LEFT as any) : rhs > lhs ? (SIDE.RIGHT as any) : (0 as any),
+          );
       } catch {
         /* ignore */ void 0;
       }
     }
-    // Prime bins to trigger next volleys quickly (optional)
-    if (opts.primeVolley ?? !opts.fullLength) {
-      const prime = (bins: any): void => {
-        if (!bins) return;
-        for (const k of ['cannon', 'laser', 'missile', 'mortar']) {
-          if (bins[k]) bins[k].fill = bins[k].cap;
-        }
-      };
-      prime((sim as any).binsL);
-      prime((sim as any).binsR);
+  } finally {
+    try {
+      stop();
+    } catch {
+      /* ignore */ void 0;
     }
-  } catch {
-    /* ignore */ void 0;
-  }
-
-  // Poll until gameOver
-  await new Promise<void>((resolve) => {
-    const startDeadline = (): ReturnType<typeof setTimeout> | null =>
-      opts.fullLength
-        ? null
-        : setTimeout(() => {
-            // Forced end if taking too long: pick winner by current HP
-            try {
-              const cL: any = (sim as any).coreL;
-              const cR: any = (sim as any).coreR;
-              const sumSeg = (arr: number[] | null | undefined): number =>
-                Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
-              const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
-              const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
-              if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);
-              else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
-              else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
-              else
-                declareWinner(
-                  lhs > rhs ? (SIDE.LEFT as any) : rhs > lhs ? (SIDE.RIGHT as any) : (0 as any),
-                );
-            } catch {
-              /* ignore */ void 0;
-            }
-            resolve();
-          }, 2000);
-    const deadline = startDeadline();
-    const id = setInterval(() => {
-      if ((sim as any).gameOver) {
-        clearInterval(id);
-        if (deadline) clearTimeout(deadline);
-        resolve();
-      }
-    }, 10);
-  });
-
-  // Stop and cleanup
-  try {
-    stop();
-  } catch {
-    /* ignore */ void 0;
-  }
-  // Clear any pending auto-restart timeout
-  try {
-    if ((sim as any).restartTO) clearTimeout((sim as any).restartTO);
-  } catch {
-    /* ignore */ void 0;
+    try {
+      if ((sim as any).restartTO) clearTimeout((sim as any).restartTO);
+    } catch {
+      /* ignore */ void 0;
+    }
+    (sim as any).restartTO = 0;
+    setFixedSimClock(false);
   }
 }
 

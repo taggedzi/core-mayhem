@@ -2,6 +2,7 @@ import { audio } from '../../audio';
 import { COOLDOWN_MS, WEAPON_WINDUP_MS, MODS } from '../../config';
 import { SHIELD } from '../../config';
 import { repair } from '../../core/repair';
+import { simNowMs } from '../../sim/clock';
 import {
   queueFireCannon,
   queueFireLaser,
@@ -22,7 +23,7 @@ function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-export function runTriggers(now = performance.now()): void {
+export function runTriggers(now = simNowMs()): void {
   const doSide = (side: Side, bins: any, wep: any): void => {
     if (!bins || !wep) return;
     const key = side === SIDE.LEFT ? 'L' : 'R';

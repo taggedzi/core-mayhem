@@ -23,7 +23,9 @@ import { angleToSeg } from '../sim/core';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
+import { simNowMs } from './clock';
 import { applyCoreDamage } from './damage';
+import { gameplayRandom } from './rng';
 import { scheduleWeaponShot } from './weaponTimers';
 
 function scheduleShot(callback: () => void, delay: number): void {
@@ -125,7 +127,7 @@ export function queueFireMissiles(
   (sim.fxSweep ||= []).push({
     x: src.x,
     y: src.y,
-    t0: performance.now(),
+    t0: simNowMs(),
     // Extend sweep to continue through the firing window
     ms: windupMs + totalFireMs,
     a0: sweepA0,
@@ -190,7 +192,7 @@ export function fireCannon(
         ptype: 'cannon',
         side: from,
         dmg: DAMAGE.cannon * mul,
-        spawnT: performance.now(),
+        spawnT: simNowMs(),
         didDamage: false,
       };
       {
@@ -206,8 +208,8 @@ export function fireCannon(
       }
       const jitter = 3; // small spread
       Body.setVelocity(b, {
-        x: dir.x * speed + (Math.random() - 0.5) * jitter,
-        y: dir.y * speed + (Math.random() - 0.5) * jitter,
+        x: dir.x * speed + (gameplayRandom() - 0.5) * jitter,
+        y: dir.y * speed + (gameplayRandom() - 0.5) * jitter,
       });
     }, i * 40);
 }
@@ -361,7 +363,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
   }
 
   // --- FX (kept as you had it) ---
-  const now = performance.now();
+  const now = simNowMs();
   sim.fxBeams = sim.fxBeams ?? [];
   sim.fxBeams.push({
     x1: src.x,
@@ -437,7 +439,7 @@ export function fireMissiles(
         ptype: 'missile',
         side: from,
         dmg: DAMAGE.missile * mul,
-        spawnT: performance.now(),
+        spawnT: simNowMs(),
         didDamage: false,
       };
       {
@@ -452,7 +454,7 @@ export function fireMissiles(
       }
 
       const t = count === 1 ? 0 : i / (count - 1) - 0.5;
-      const ang = center + t * spread + (Math.random() - 0.5) * jitter;
+      const ang = center + t * spread + (gameplayRandom() - 0.5) * jitter;
 
       const speed = 8 * PROJ_SPEED.missile;
       Body.setVelocity(m, { x: Math.cos(ang) * speed, y: Math.sin(ang) * speed });
@@ -489,7 +491,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
         ptype: 'mortar',
         side: from,
         dmg: DAMAGE.mortar * currentDmgMul(from),
-        spawnT: performance.now(),
+        spawnT: simNowMs(),
         gExtra: MORTAR_ANGLE.extraGravity || 0,
         didDamage: false,
       };
@@ -504,10 +506,11 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
       const sgn = Math.sign(dx) || (from === SIDE.LEFT ? +1 : -1);
 
       // Angle + speed with jitter (all per-tick units)
-      const angDeg = MORTAR_ANGLE.angleDeg + (Math.random() * 2 - 1) * MORTAR_ANGLE.angleJitterDeg;
+      const angDeg =
+        MORTAR_ANGLE.angleDeg + (gameplayRandom() * 2 - 1) * MORTAR_ANGLE.angleJitterDeg;
       const ang = (Math.max(10, Math.min(85, angDeg)) * Math.PI) / 180;
       const spd =
-        MORTAR_ANGLE.speedPerTick * (1 + (Math.random() * 2 - 1) * MORTAR_ANGLE.speedJitter);
+        MORTAR_ANGLE.speedPerTick * (1 + (gameplayRandom() * 2 - 1) * MORTAR_ANGLE.speedJitter);
 
       const vx = Math.cos(ang) * spd * sgn;
       const vy = -Math.sin(ang) * spd; // negative = up (canvas Y-down)
@@ -528,7 +531,7 @@ export function tickHoming(dtMs: number): void {
 
   const maxTurn = HOMING.maxTurnRadPerSec * dt;
   const accel = HOMING.accelPerSec * dt;
-  const now = performance.now();
+  const now = simNowMs();
 
   // iterate a copy so we can splice safely
   for (let i = sim.homing.length - 1; i >= 0; i--) {

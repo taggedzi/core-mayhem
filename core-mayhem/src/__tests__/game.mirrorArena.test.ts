@@ -54,7 +54,10 @@ vi.mock('../sim/world', () => ({
     (sim as any).world = null;
   }),
 }));
-vi.mock('../app/collisions', () => ({ registerCollisions: vi.fn(() => vi.fn()) }));
+vi.mock('../app/collisions', () => ({
+  registerCollisions: vi.fn(() => vi.fn()),
+  resetExplosionLimiter: vi.fn(),
+}));
 vi.mock('../app/devKeys', () => ({ attachDevHotkeys: vi.fn(() => vi.fn()) }));
 vi.mock('../app/stats', () => ({ startNewMatch: vi.fn() }));
 vi.mock('../app/systems/announcer', () => ({ runAnnouncer: vi.fn() }));

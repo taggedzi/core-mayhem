@@ -3,6 +3,7 @@ import { GAMEOVER, MATCH_LIMIT } from '../../config';
 import { readGameMode } from '../../gameMode';
 import { setAvatarEmotion } from '../../render/avatar';
 import { updateScoreboard } from '../../render/score';
+import { simNowMs } from '../../sim/clock';
 import { cancelWeaponTimers } from '../../sim/weaponTimers';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
@@ -26,7 +27,7 @@ export function declareWinner(winner: Side | 0): void {
   }
   (sim as any).winner = winner; // 0 = tie
   (sim as any).gameOver = true;
-  (sim as any).winnerAt = performance.now();
+  (sim as any).winnerAt = simNowMs();
 
   // Banter: winner speaks a victory line (LLM with fallback)
   try {
@@ -114,7 +115,7 @@ export function maybeEndMatch(): void {
 export function checkTimeLimit(): void {
   if (!MATCH_LIMIT.enabled || MATCH_LIMIT.ms <= 0 || (sim as any).gameOver) return;
   const start = (sim as any).matchStart ?? 0;
-  const elapsed = performance.now() - start;
+  const elapsed = simNowMs() - start;
   if (elapsed >= MATCH_LIMIT.ms) {
     declareWinner(0);
   }
