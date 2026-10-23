@@ -69,6 +69,11 @@ Generated replies belong to the match and settings that requested them. Stop,
 restart, and settings changes cancel pending replies. Each side keeps its first
 pending request and ignores additional events until that request finishes.
 
+Both characters may deliver one opening line immediately after Start. Later lines
+follow the configured pacing. Pacing changes apply during play, and emoji/profanity
+settings apply to both built-in and generated dialogue. Turning banter off clears
+its visible bubbles immediately.
+
 ## Run locally
 
 **Requirements:** Git, npm, and Node.js **22.12 or newer in the 22.x line, or Node.js 24+**, compatible with the installed Vite and Vitest dependencies.

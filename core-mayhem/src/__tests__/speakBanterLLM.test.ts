@@ -16,6 +16,7 @@ vi.mock('../ui/banterControls', () => ({
 }));
 vi.mock('../render/banter', () => ({
   setBanter: vi.fn(),
+  clearBanter: vi.fn(),
 }));
 
 const ollama = await import('../banter/llm/ollama');
@@ -231,6 +232,44 @@ describe('speakBanterSmart', () => {
     await newTask;
     expect(overlay.setBanter).toHaveBeenCalledTimes(1);
     expect(overlay.setBanter).toHaveBeenCalledWith('L', 'current.');
+  });
+
+  it('allows both opening speakers immediately on a freshly loaded page', async () => {
+    vi.mocked(performance.now).mockReturnValue(0);
+    setLLMSettings({ provider: 'deterministic' });
+    setPacing({ cooldownMs: 8000, sideMinGapMs: 25000 });
+    await speakBanterSmart('match_start', 'L');
+    await speakBanterSmart('match_start', 'R');
+    expect(overlay.setBanter).toHaveBeenCalledTimes(2);
+    expect(overlay.setBanter).toHaveBeenCalledWith('L', expect.any(String));
+    expect(overlay.setBanter).toHaveBeenCalledWith('R', expect.any(String));
+  });
+
+  it('uses the same emoji and profanity controls for deterministic output', async () => {
+    (sim as any).banter.speak.mockReturnValue({ text: 'damn 😎 honey' });
+    setLLMSettings({ provider: 'deterministic', emojiStyle: 'none', profanityFilter: 'mild' });
+    await speakBanterSmart('taunt', 'L');
+    expect(overlay.setBanter).toHaveBeenCalledWith('L', '**** you');
+  });
+
+  it('updates active pacing and clears displayed lines from the settings controls', async () => {
+    const actualUI = await vi.importActual<{ initBanterControls(): void }>('../ui/banterControls');
+    localStorage.clear();
+    document.body.innerHTML = '<button id="btnBanter">Banter</button>';
+    const updatePacing = vi.fn();
+    (sim as any).banter = { updatePacing };
+    actualUI.initBanterControls();
+    const cooldown = document.getElementById('banterCooldown') as HTMLInputElement;
+    cooldown.value = '2000';
+    cooldown.dispatchEvent(new Event('change'));
+    expect(updatePacing).toHaveBeenCalledWith({ cooldownMs: 2000, sideMinGapMs: 0 });
+    const enabled = document.getElementById('banterEnabled') as HTMLInputElement;
+    enabled.checked = false;
+    enabled.dispatchEvent(new Event('change'));
+    expect(overlay.clearBanter).toHaveBeenCalled();
+    expect((sim as any).banterEnabled).toBe(false);
+    localStorage.clear();
+    document.body.innerHTML = '';
   });
 });
 

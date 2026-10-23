@@ -1,5 +1,6 @@
 import { DEV_KEYS, DEFAULTS } from '../config';
 import { MESMER } from '../config';
+import { clearBanter } from '../render/banter';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import { sim } from '../state';
 import { SIDE } from '../types';
@@ -108,16 +109,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
         (sim as any).banterEnabled = !(sim as any).banterEnabled;
         const on = (sim as any).banterEnabled !== false;
         toast(`Banter: ${on ? 'on' : 'off'}`);
-        if (!on) {
-          try {
-            const elL = document.getElementById('banterL');
-            const elR = document.getElementById('banterR');
-            if (elL) elL.textContent = '';
-            if (elR) elR.textContent = '';
-          } catch {
-            /* ignore */
-          }
-        }
+        if (!on) clearBanter();
         break;
       }
 

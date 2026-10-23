@@ -160,6 +160,15 @@ function stripEndearments(text: string): string {
   return out;
 }
 
+function filterOutput(
+  text: string,
+  settings: ReturnType<typeof readLLMSettings>['settings'],
+): string {
+  return stripEndearments(
+    profanityFilter(stripEmojiIfNeeded(text, settings.emojiStyle), settings.profanityFilter),
+  );
+}
+
 export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<void> {
   // Avatar reacts immediately to every game event, regardless of banter pacing
   try {
@@ -191,7 +200,11 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
 
   // Pacing gate — applies to ALL paths (LLM and deterministic alike)
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const gate = ((sim as any).banterGate ??= { L: 0, R: 0, lastAny: 0 }) as any;
+  const gate = ((sim as any).banterGate ??= {
+    L: -Infinity,
+    R: -Infinity,
+    lastAny: -Infinity,
+  }) as any;
   const pacing = (() => {
     try {
       return readBanterPacing();
@@ -199,17 +212,19 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
       return { cooldownMs: 8000, sideMinGapMs: 25000 };
     }
   })();
-  const sideTooSoon = now - (gate[side] ?? 0) < Math.max(0, pacing.sideMinGapMs | 0);
+  const sideTooSoon = now - (gate[side] ?? -Infinity) < Math.max(0, pacing.sideMinGapMs | 0);
   const crossMin = Math.max(800, Math.round((pacing.sideMinGapMs ?? 2000) * 0.35));
-  const anyTooSoon = now - (gate.lastAny ?? 0) < crossMin;
-  if (sideTooSoon || anyTooSoon) return;
+  const anyTooSoon = now - (gate.lastAny ?? -Infinity) < crossMin;
+  const opening = ev === 'match_start' && !gate.opened?.[side];
+  if (!opening && (sideTooSoon || anyTooSoon)) return;
+  if (opening) (gate.opened ??= {})[side] = true;
 
   // Shared helper — speaks deterministic line and stamps the gate
   const speakDeterministic = (): void => {
     try {
       const out = b.speak(ev, me, them);
       if (out) {
-        setBanter(side, stripEndearments(out.text));
+        setBanter(side, filterOutput(out.text, st));
         const t = typeof performance !== 'undefined' ? performance.now() : Date.now();
         gate[side] = t;
         gate.lastAny = t;
@@ -276,9 +291,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     let outText: string | null = null;
     if (typeof resp === 'string' && resp.trim()) {
       outText = firstLineAndTrim(resp, st.maxChars);
-      outText = stripEmojiIfNeeded(outText, st.emojiStyle as any);
-      outText = profanityFilter(outText, st.profanityFilter as any);
-      outText = stripEndearments(outText);
+      outText = filterOutput(outText, st);
       // Ensure terminal punctuation for consistency
       if (outText && !/[.!?]$/.test(outText)) outText += '.';
     }

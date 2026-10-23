@@ -86,6 +86,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   (sim as any).gameOver = false;
   (sim as any).winner = null;
   (sim as any).winnerAt = 0;
+  (sim as any).banterGate = undefined;
   (sim as any).matchStart = performance.now(); // ⬅️ stamp match start
   // Start a new stats match session
   startNewMatch();

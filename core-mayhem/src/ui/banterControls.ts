@@ -6,6 +6,7 @@ import {
   normalizeLLMSettings,
   type LLMSettings,
 } from '../config/llm';
+import { clearBanter } from '../render/banter';
 import { sim } from '../state';
 
 const K = {
@@ -74,6 +75,8 @@ function save(key: string, v: string | number | boolean): void {
     const next = typeof v === 'boolean' ? (v ? '1' : '0') : String(v);
     if (localStorage.getItem(key) !== next) invalidateBanterRequests();
     localStorage.setItem(key, next);
+    if (key === K.cd)
+      (sim as any).banter?.updatePacing?.({ cooldownMs: Number(v), sideMinGapMs: 0 });
   } catch {
     /* ignore */
   }
@@ -290,6 +293,7 @@ export function initBanterControls(): void {
   // Current state
   const enabled0 = loadBool(K.on, true);
   (sim as any).banterEnabled = enabled0;
+  if (!enabled0) clearBanter();
 
   const st = getInitial();
 
@@ -465,6 +469,7 @@ export function initBanterControls(): void {
   elOn.addEventListener('change', () => {
     const on = !!(elOn as HTMLInputElement).checked;
     (sim as any).banterEnabled = on;
+    if (!on) clearBanter();
     save(K.on, on);
     refreshBtnLabel();
   });
@@ -617,6 +622,7 @@ export function initBanterControls(): void {
     // Enabled
     elOn.checked = cfg.enabled;
     (sim as any).banterEnabled = cfg.enabled;
+    if (!cfg.enabled) clearBanter();
     save(K.on, cfg.enabled);
     // Provider
     elProvider.value = cfg.provider;
@@ -700,10 +706,12 @@ export function initBanterControls(): void {
 
   btnSave.addEventListener('click', (e) => {
     e.preventDefault();
+    (sim as any).banterEnabled = elOn.checked;
+    if (!elOn.checked) clearBanter();
     if (!persistUI()) return;
     // Reset the in-game pacing gate so new timing takes effect immediately
     try {
-      (sim as any).banterGate = { L: 0, R: 0, lastAny: 0 };
+      (sim as any).banterGate = { L: -Infinity, R: -Infinity, lastAny: -Infinity };
     } catch {
       /* ignore */
     }
