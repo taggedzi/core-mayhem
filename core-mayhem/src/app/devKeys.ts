@@ -9,7 +9,15 @@ import { runTriggers } from './systems/triggers';
 import type { WeaponsType } from '../sim/weapons';
 
 
-const devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
+let devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
+
+export function isDevModeEnabled(): boolean {
+  return devKeysOn;
+}
+
+export function setDevModeEnabled(enabled: boolean): void {
+  devKeysOn = enabled;
+}
 
 // Export a concise help list for UI overlay
 export const DEV_HELP_LINES: readonly string[] = [
@@ -26,8 +34,6 @@ export const DEV_HELP_LINES: readonly string[] = [
 ];
 
 export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => void {
-  if (!devKeysOn) return () => undefined;
-
   let toastTO = 0;
   const toast = (msg: string, ms = 1500): void => {
     const el = document.getElementById('state');
@@ -40,7 +46,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
   };
 
   const onKey = (e: KeyboardEvent): void => {
-    if (sim.gameOver) return;
+    if (!devKeysOn || sim.gameOver) return;
 
     const L = SIDE.LEFT,
       R = SIDE.RIGHT;

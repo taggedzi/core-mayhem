@@ -1,5 +1,4 @@
-import { DEV_HELP_LINES } from '../app/devKeys';
-import { DEV_KEYS } from '../config';
+import { DEV_HELP_LINES, isDevModeEnabled, setDevModeEnabled } from '../app/devKeys';
 
 declare const __BUILD_DATE__: string;
 
@@ -7,7 +6,20 @@ let overlayEl: HTMLElement | null = null;
 let contentEl: HTMLElement | null = null;
 let lastFocusEl: Element | null = null;
 
-const devKeysOn = (import.meta as any)?.env?.DEV === true || DEV_KEYS.enabledInProd;
+function refreshDevModeControls(): void {
+  const enabled = isDevModeEnabled();
+  const sub = overlayEl?.querySelector('.help-sub');
+  if (sub) {
+    sub.textContent = enabled ? '(enabled)' : '(disabled)';
+    sub.classList.toggle('enabled', enabled);
+    sub.classList.toggle('disabled', !enabled);
+  }
+  const button = overlayEl?.querySelector<HTMLButtonElement>('#toggleDevMode');
+  if (button) {
+    button.textContent = enabled ? 'Disable Dev Mode' : 'Enable Dev Mode';
+    button.setAttribute('aria-pressed', String(enabled));
+  }
+}
 
 export function initHelpOverlay(): void {
   if (overlayEl) return; // already initialized
@@ -38,7 +50,6 @@ export function initHelpOverlay(): void {
   hTitle.textContent = 'Dev Hotkeys';
   const hSmall = document.createElement('span');
   hSmall.className = 'help-sub';
-  hSmall.textContent = devKeysOn ? '(enabled)' : '(disabled)';
   const btnX = document.createElement('button');
   btnX.className = 'help-close';
   btnX.type = 'button';
@@ -52,7 +63,7 @@ export function initHelpOverlay(): void {
 
   const p = document.createElement('p');
   p.className = 'help-note';
-  p.textContent = 'Press H or click Help to toggle. Hotkeys only work when enabled.';
+  p.textContent = 'Press H or click Help to open this panel. Use the Enable Dev Mode / Disable Dev Mode button below to turn dev hotkeys on or off. Hotkeys only work when dev mode is enabled.';
 
   // Structured two-column grid with key pills
   const grid = document.createElement('div');
@@ -108,13 +119,21 @@ export function initHelpOverlay(): void {
 
   const actions = document.createElement('div');
   actions.className = 'help-actions';
+  const devModeButton = document.createElement('button');
+  devModeButton.id = 'toggleDevMode';
+  devModeButton.className = 'game-button';
+  devModeButton.type = 'button';
+  devModeButton.addEventListener('click', () => {
+    setDevModeEnabled(!isDevModeEnabled());
+    refreshDevModeControls();
+  });
   const creditsLink = document.createElement('a');
   creditsLink.className = 'game-button';
   creditsLink.href = './licenses/MEDIA_LICENSES.txt';
   creditsLink.target = '_blank';
   creditsLink.rel = 'noopener noreferrer';
   creditsLink.textContent = 'Credits';
-  actions.appendChild(creditsLink);
+  actions.append(devModeButton, creditsLink);
 
   body.append(p, grid, actions);
   panel.append(header, body, footer);
@@ -123,6 +142,7 @@ export function initHelpOverlay(): void {
 
   overlayEl = overlay;
   contentEl = panel;
+  refreshDevModeControls();
 
   // Global key handling
   window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -142,12 +162,7 @@ export function openHelpOverlay(): void {
   overlayEl.style.display = 'block';
   overlayEl.setAttribute('aria-hidden', 'false');
   // refresh enabled flag text
-  const sub = overlayEl.querySelector('.help-sub');
-  if (sub) {
-    sub.textContent = devKeysOn ? '(enabled)' : '(disabled)';
-    sub.classList.toggle('enabled', !!devKeysOn);
-    sub.classList.toggle('disabled', !devKeysOn);
-  }
+  refreshDevModeControls();
   // focus for esc handling accessibility
   (contentEl as HTMLElement | null)?.focus?.();
 }

@@ -260,6 +260,9 @@ button:disabled {
 
 /* Help overlay footer */
 #helpOverlay .help-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-top: 16px;
 }
 #helpOverlay .help-footer {
