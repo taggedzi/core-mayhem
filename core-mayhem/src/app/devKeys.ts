@@ -63,30 +63,30 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
     switch (e.key) {
       // Left side (lowercase)
       case 'c':
-        fireCannon(L, wepL.cannon.pos, cR, 16);
+        if (wepL.cannon) fireCannon(L, wepL.cannon.pos, cR, 16);
         break;
       case 'l':
-        fireLaser(L, wepL.laser.pos, cRCore);
+        if (wepL.laser) fireLaser(L, wepL.laser.pos, cRCore);
         break;
       case 'm':
-        fireMissiles(L, wepL.missile.pos, 5);
+        if (wepL.missile) fireMissiles(L, wepL.missile.pos, 5);
         break;
       case 'o':
-        fireMortar(L, wepL.mortar.pos, 3);
+        if (wepL.mortar) fireMortar(L, wepL.mortar.pos, 3);
         break;
 
       // Right side (uppercase)
       case 'C':
-        fireCannon(R, wepR.cannon.pos, cL, 16);
+        if (wepR.cannon) fireCannon(R, wepR.cannon.pos, cL, 16);
         break;
       case 'L':
-        fireLaser(R, wepR.laser.pos, cLCore);
+        if (wepR.laser) fireLaser(R, wepR.laser.pos, cLCore);
         break;
       case 'M':
-        fireMissiles(R, wepR.missile.pos, 5);
+        if (wepR.missile) fireMissiles(R, wepR.missile.pos, 5);
         break;
       case 'O':
-        fireMortar(R, wepR.mortar.pos, 3);
+        if (wepR.mortar) fireMortar(R, wepR.mortar.pos, 3);
         break;
 
       // Visuals: cycle mesmer mode Off → Low → Always

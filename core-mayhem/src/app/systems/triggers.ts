@@ -7,9 +7,10 @@ import {
   queueFireLaser,
   queueFireMissiles,
   queueFireMortar,
+  type WeaponsType,
 } from '../../sim/weapons';
 import { sim } from '../../state';
-import { SIDE, type Side } from '../../types';
+import { SIDE, type Bins, type Side, type WeaponKind } from '../../types';
 import { applyBuff, applyDebuff, currentCooldownMul } from '../mods';
 import { applyRandomBuff } from '../mods';
 import { speakBanterSmart } from '../speakBanterLLM';
@@ -22,10 +23,44 @@ function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+function releaseWeapon(
+  side: Side,
+  bins: Bins,
+  wep: WeaponsType,
+  now: number,
+  color: string,
+  id: WeaponKind,
+  fire: (pos: { x: number; y: number }) => void,
+): void {
+  const bin = bins[id];
+  const mount = wep[id];
+  if (!bin || !mount) return;
+  const key = side === SIDE.LEFT ? 'L' : 'R';
+  if (bin.fill < bin.cap || now < sim.cooldowns[key][id]) return;
+  try {
+    recordBinCap(side, id, now);
+  } catch {
+    /* ignore */ void 0;
+  }
+  bin.fill = 0;
+  sim.cooldowns[key][id] = now + Math.round(COOLDOWN_MS[id] * currentCooldownMul(side));
+  (sim.fxArm ||= []).push({
+    x: mount.pos.x,
+    y: mount.pos.y,
+    until: now + WEAPON_WINDUP_MS,
+    color,
+  });
+  fire(mount.pos);
+  try {
+    speakBanter('taunt', side);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function runTriggers(now = performance.now()): void {
-  const doSide = (side: Side, bins: any, wep: any): void => {
+  const doSide = (side: Side, bins: Bins | null, wep: WeaponsType | null): void => {
     if (!bins || !wep) return;
-    const key = side === SIDE.LEFT ? 'L' : 'R';
     const color = side === SIDE.LEFT ? css('--left') : css('--right');
 
     if (bins.buff && bins.buff.fill >= bins.buff.cap) {
@@ -56,98 +91,21 @@ export function runTriggers(now = performance.now()): void {
       }
     }
 
-    if (bins.cannon.fill >= bins.cannon.cap && now >= sim.cooldowns[key].cannon) {
-      try {
-        recordBinCap(side, 'cannon', now);
-      } catch {
-        /* ignore */ void 0;
-      }
-      bins.cannon.fill = 0;
-      sim.cooldowns[key].cannon = now + Math.round(COOLDOWN_MS.cannon * currentCooldownMul(side));
-      (sim.fxArm ||= []).push({
-        x: wep.cannon.pos.x,
-        y: wep.cannon.pos.y,
-        until: now + WEAPON_WINDUP_MS,
-        color,
-      });
-      const tc = side === SIDE.LEFT ? (sim as any).coreR : (sim as any).coreL;
-      queueFireCannon(side, wep.cannon.pos, tc.center);
-      // Banter: shooter taunts lightly on fire
-      try {
-        speakBanter('taunt', side);
-      } catch {
-        /* ignore */
-      }
-    }
+    const foe = side === SIDE.LEFT ? (sim as any).coreR : (sim as any).coreL;
+    releaseWeapon(side, bins, wep, now, color, 'cannon', (pos) => {
+      queueFireCannon(side, pos, foe.center);
+    });
+    releaseWeapon(side, bins, wep, now, color, 'laser', (pos) => {
+      queueFireLaser(side, pos, foe);
+    });
+    releaseWeapon(side, bins, wep, now, color, 'missile', (pos) => {
+      queueFireMissiles(side, pos);
+    });
+    releaseWeapon(side, bins, wep, now, color, 'mortar', (pos) => {
+      queueFireMortar(side, pos);
+    });
 
-    if (bins.laser.fill >= bins.laser.cap && now >= sim.cooldowns[key].laser) {
-      try {
-        recordBinCap(side, 'laser', now);
-      } catch {
-        /* ignore */ void 0;
-      }
-      bins.laser.fill = 0;
-      sim.cooldowns[key].laser = now + Math.round(COOLDOWN_MS.laser * currentCooldownMul(side));
-      (sim.fxArm ||= []).push({
-        x: wep.laser.pos.x,
-        y: wep.laser.pos.y,
-        until: now + WEAPON_WINDUP_MS,
-        color,
-      });
-      const tc = side === SIDE.LEFT ? (sim as any).coreR : (sim as any).coreL;
-      queueFireLaser(side, wep.laser.pos, tc);
-      try {
-        speakBanter('taunt', side);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    if (bins.missile.fill >= bins.missile.cap && now >= sim.cooldowns[key].missile) {
-      try {
-        recordBinCap(side, 'missile', now);
-      } catch {
-        /* ignore */ void 0;
-      }
-      bins.missile.fill = 0;
-      sim.cooldowns[key].missile = now + Math.round(COOLDOWN_MS.missile * currentCooldownMul(side));
-      (sim.fxArm ||= []).push({
-        x: wep.missile.pos.x,
-        y: wep.missile.pos.y,
-        until: now + WEAPON_WINDUP_MS,
-        color,
-      });
-      queueFireMissiles(side, wep.missile.pos);
-      try {
-        speakBanter('taunt', side);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    if (bins.mortar.fill >= bins.mortar.cap && now >= sim.cooldowns[key].mortar) {
-      try {
-        recordBinCap(side, 'mortar', now);
-      } catch {
-        /* ignore */ void 0;
-      }
-      bins.mortar.fill = 0;
-      sim.cooldowns[key].mortar = now + Math.round(COOLDOWN_MS.mortar * currentCooldownMul(side));
-      (sim.fxArm ||= []).push({
-        x: wep.mortar.pos.x,
-        y: wep.mortar.pos.y,
-        until: now + WEAPON_WINDUP_MS,
-        color,
-      });
-      queueFireMortar(side, wep.mortar.pos);
-      try {
-        speakBanter('taunt', side);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    if (bins.repair.fill >= bins.repair.cap) {
+    if (bins.repair && bins.repair.fill >= bins.repair.cap) {
       try {
         recordBinCap(side, 'repair', now);
       } catch {
@@ -168,7 +126,7 @@ export function runTriggers(now = performance.now()): void {
       }
     }
 
-    if (bins.shield.fill >= bins.shield.cap) {
+    if (bins.shield && bins.shield.fill >= bins.shield.cap) {
       try {
         recordBinCap(side, 'shield', now);
       } catch {
@@ -205,11 +163,11 @@ export function runTriggers(now = performance.now()): void {
   else if (mode === 'alternateTick') first = tick % 2 === 0 ? SIDE.LEFT : SIDE.RIGHT;
   else if (mode === 'alternateMatch') first = matchIndex % 2 === 1 ? SIDE.LEFT : SIDE.RIGHT;
   if (first === SIDE.LEFT) {
-    doSide(SIDE.LEFT, (sim as any).binsL, (sim as any).wepL);
-    doSide(SIDE.RIGHT, (sim as any).binsR, (sim as any).wepR);
+    doSide(SIDE.LEFT, sim.binsL, sim.wepL);
+    doSide(SIDE.RIGHT, sim.binsR, sim.wepR);
   } else {
-    doSide(SIDE.RIGHT, (sim as any).binsR, (sim as any).wepR);
-    doSide(SIDE.LEFT, (sim as any).binsL, (sim as any).wepL);
+    doSide(SIDE.RIGHT, sim.binsR, sim.wepR);
+    doSide(SIDE.LEFT, sim.binsL, sim.wepL);
   }
 }
 

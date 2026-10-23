@@ -2,7 +2,7 @@ import { Bodies, Body, World } from 'matter-js';
 
 import { BIN_INTAKE_H, BINS_LEFT, type BinSpec, type IntakeSide } from '../config';
 import { sim } from '../state';
-import { SIDE, type Side } from '../types';
+import { SIDE, type Bin, type Bins, type Side } from '../types';
 
 /**
  * Nudge all bins on a side so they stay at least `margin` px away from that side's
@@ -78,19 +78,7 @@ function assertWorld(w: World | null): asserts w is World {
   if (!w) throw new Error('World not initialized');
 }
 
-interface BinModel {
-  key: BinSpec['id'];
-  pos: { x: number; y: number };
-  box: Body;
-  intake: Body;
-  cap: number;
-  fill: number;
-  accept: BinSpec['accepts'];
-  style: NonNullable<BinSpec['style']>; // defaults to {}
-  intakeSide: BinSpec['intake'];
-}
-
-function mkOneBin(side: Side, spec: BinSpec): BinModel {
+function mkOneBin(side: Side, spec: BinSpec): Bin {
   const [x0, y0] = spec.pos; // bottom-left in canvas coords
   const [w, h] = spec.size;
   const angle = ((spec.rotation ?? 0) * Math.PI) / 180;
@@ -132,9 +120,10 @@ function mkOneBin(side: Side, spec: BinSpec): BinModel {
   };
 }
 
-export function makeBins(side: Side, _pinsMid: number, _pinsWidth: number): any {
-  const specs = BINS_LEFT.filter((s) => s.enabled !== false);
-  const out: any = {};
-  for (const spec of specs) out[spec.id] = mkOneBin(side, spec);
+export function makeBins(side: Side, _pinsMid: number, _pinsWidth: number): Bins {
+  const out: Bins = {};
+  for (const spec of BINS_LEFT) {
+    out[spec.id] = spec.enabled === false ? undefined : mkOneBin(side, spec);
+  }
   return out;
 }
