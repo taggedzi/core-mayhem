@@ -321,10 +321,11 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // deposit() and hit() moved to app/collisions.ts
 
   // Game update
-  Events.on(eng, 'beforeUpdate', (): void => {
+  Events.on(eng, 'beforeUpdate', (event): void => {
     // tick counter for alternate order testing
     (sim as any).tick = ((sim as any).tick | 0) + 1;
-    const dtMs = sim.engine?.timing?.lastDelta ?? 16.6;
+    const dtMs =
+      (event as typeof event & { delta?: number }).delta ?? sim.engine?.timing?.lastDelta ?? 16.6;
     // stop all game logic once over
     if ((sim as any).gameOver) return;
 
@@ -332,19 +333,15 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     checkTimeLimit();
     if (sim.gameOver) return;
 
-    // Apply configurable time scale (slow down/speed up sim)
-    const stg = (sim as any).settings ?? DEFAULTS;
-    const scaled = dtMs * (stg.timescale ?? 1);
-    if (sim.engine) sim.engine.timing.timeScale = stg.timescale ?? 1;
-
-    runPhysics(scaled);
+    // Matter has already scaled this update delta. Share it without scaling again.
+    runPhysics(dtMs);
     try {
-      (sim as any).banter?.step(scaled);
+      (sim as any).banter?.step(dtMs);
     } catch {
       /* ignore */
     }
     runFXPrune(performance.now());
-    runSpawn(scaled);
+    runSpawn(dtMs);
     runTriggers();
     runAudioMonitors();
     runAnnouncer();

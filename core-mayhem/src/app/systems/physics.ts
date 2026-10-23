@@ -14,7 +14,9 @@ export function runPhysics(dtMs: number): void {
 
   // Advance core rotation
   const cL = sim.coreL as any;
-  if (cL && typeof cL.rot === 'number' && typeof cL.rotSpeed === 'number') cL.rot += cL.rotSpeed;
+  if (cL && typeof cL.rot === 'number' && typeof cL.rotSpeed === 'number')
+    cL.rot += cL.rotSpeed * (dtMs / (1000 / 60));
   const cR = sim.coreR as any;
-  if (cR && typeof cR.rot === 'number' && typeof cR.rotSpeed === 'number') cR.rot += cR.rotSpeed;
+  if (cR && typeof cR.rot === 'number' && typeof cR.rotSpeed === 'number')
+    cR.rot += cR.rotSpeed * (dtMs / (1000 / 60));
 }

@@ -134,6 +134,10 @@ core-mayhem/                 # Repository root
 
 During development, press **H** to see the available hotkeys. For example, `c / l / m / o` fire the left core's cannon, laser, missiles, or mortar; uppercase versions fire the right core's weapons. `[` and `]` adjust simulation speed.
 
+Simulation speed scales Matter physics, spawning, paddles, homing, core rotation,
+and the banter simulation step once per engine update. Presentation effects,
+audio, match deadlines, and weapon windup/burst timers use wall-clock time.
+
 ### Contributing and reporting issues
 
 See the [contribution guide](CONTRIBUTING.md) for setup, validation, and pull request
