@@ -30,11 +30,9 @@ export interface SideMods {
 
 export interface Settings {
   seed: number;
-  chaos: number;
   spawnRate: number;
   targetAmmo: number;
   timescale: number;
-  loop: boolean;
   // Pipe vertical lift tuning (used by obstacles.applyPipeForces)
   pipeUpSpeed?: number; // px/s toward upward target velocity
   pipeUpGain?: number; // 1/s responsiveness (higher = snappier)

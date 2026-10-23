@@ -277,7 +277,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const eBass = avg(b0, b1);
         const eMT = (avg(m0, m1) + avg(t0, t1)) * 0.5;
         const ratio = eMT / Math.max(0.001, eBass);
-        const chipW = Math.max(0, Math.min(1, (ratio - 0.6) / 2.0)); // chipW~1 when mids/highs >> bass
+        // Auto weights toward chiptune when mids/highs dominate bass. The Chiptune control forces a band.
+        const autoW = Math.max(0, Math.min(1, (ratio - 0.6) / 2.0));
+        const chipMode = (sim as any).chipMode;
+        const chipW = chipMode === 'on' ? 1 : chipMode === 'off' ? 0 : autoW;
         const f = (1 - chipW) * fLow + chipW * fChip;
         (sim as any)._musicFlux = f;
         // copy current to prev
@@ -309,7 +312,10 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const pDt = Math.max(1, now - pLastT);
     const pAtk = 1 - Math.exp(-pDt / 25);
     const pDec = 1 - Math.exp(-pDt / 140);
-    const fluxIn = Math.max(0, Math.min(1, feat.flux * (0.6 + 0.8 * sens)));
+    // Beat Sens (slider 0.5–2) scales the flux pulse. Missing or non-finite values keep the old scale of 1.
+    const beatRaw = Number((sim as any).beatSens ?? 1);
+    const beat = Number.isFinite(beatRaw) ? Math.max(0.5, Math.min(2, beatRaw)) : 1;
+    const fluxIn = Math.max(0, Math.min(1, feat.flux * (0.6 + 0.8 * sens) * beat));
     let pulse = ((sim as any).musicPulse as number) ?? 0;
     if (fluxIn > pulse) pulse += (fluxIn - pulse) * pAtk;
     else pulse += (fluxIn - pulse) * pDec;

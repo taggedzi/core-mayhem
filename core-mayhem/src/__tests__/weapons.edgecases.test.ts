@@ -134,4 +134,39 @@ describe('weapons edge cases', () => {
     // restore fuse radius
     (HOMING as any).fuseRadius = 0;
   });
+
+  it('tickMortarGravity adds gExtra and ignores zero or a missing world', () => {
+    const shell = Bodies.circle(100, 100, 6);
+    (shell as any).plugin = { kind: 'projectile', ptype: 'mortar', gExtra: 0.2 };
+    Matter.Body.setVelocity(shell, { x: 3, y: 0 });
+    World.add(sim.world as any, shell);
+
+    const idle = Bodies.circle(140, 100, 6);
+    (idle as any).plugin = { kind: 'projectile', ptype: 'mortar', gExtra: 0 };
+    Matter.Body.setVelocity(idle, { x: 1, y: 4 });
+    World.add(sim.world as any, idle);
+
+    const plain = Bodies.circle(180, 100, 6);
+    Matter.Body.setVelocity(plain, { x: 0, y: 2 });
+    World.add(sim.world as any, plain);
+
+    const junk = Bodies.circle(220, 100, 6);
+    (junk as any).plugin = { gExtra: 'nope' };
+    Matter.Body.setVelocity(junk, { x: 0, y: 3 });
+    World.add(sim.world as any, junk);
+
+    weapons.tickMortarGravity();
+    expect(shell.velocity.y).toBeCloseTo(0.2);
+    expect(shell.velocity.x).toBeCloseTo(3);
+    expect(idle.velocity.y).toBeCloseTo(4);
+    expect(plain.velocity.y).toBeCloseTo(2);
+    expect(junk.velocity.y).toBeCloseTo(3);
+
+    (shell as any).plugin.gExtra = -0.1;
+    weapons.tickMortarGravity();
+    expect(shell.velocity.y).toBeCloseTo(0.1);
+
+    sim.world = null as any;
+    expect(() => weapons.tickMortarGravity()).not.toThrow();
+  });
 });

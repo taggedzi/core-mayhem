@@ -3,11 +3,9 @@ import type { Settings } from '../types';
 /** Default simulation settings (seed, spawn, timing). */
 export const DEFAULTS: Settings = {
   seed: Date.now() | 0,
-  chaos: 0.7,
   spawnRate: 26,
   targetAmmo: 80,
   timescale: 1.0,
-  loop: false,
   pipeUpSpeed: 22,
   pipeUpGain: 3.2,
   // Slow paddles slightly for clearer interactions
@@ -30,7 +28,7 @@ export const DEV_KEYS = {
   enabledInProd: false,
 } as const;
 
-/** Armor behavior for damage spillover and chip chance. */
+/** Armor spillover, chip chance, and center leak when both hit segments are already broken. */
 export const ARMOR = {
   spillover: true,
   leakWhenBroken: 1.0,

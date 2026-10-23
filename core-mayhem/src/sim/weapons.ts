@@ -635,6 +635,18 @@ export function tickHoming(dtMs: number): void {
   }
 }
 
+/** Add mortar gExtra to vy once per physics step. Zero and missing values do nothing. */
+export function tickMortarGravity(): void {
+  const bodies = sim.world?.bodies;
+  if (!bodies) return;
+  for (const body of bodies) {
+    const extra = (body as any).plugin?.gExtra;
+    if (typeof extra !== 'number' || extra === 0) continue;
+    const v = body.velocity;
+    Body.setVelocity(body, { x: v.x, y: v.y + extra });
+  }
+}
+
 interface WeapType {
   pos: { x: number; y: number };
   mount: Body;

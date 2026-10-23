@@ -95,7 +95,7 @@ export const WEAPONS = {
       angleJitterDeg: 6,
       speedPerTick: 22,
       speedJitter: 0.12,
-      extraGravity: 0.0,
+      extraGravity: 0.0, // added to vy each physics tick; negative lifts; 0 disables
     },
   },
 } as const;
