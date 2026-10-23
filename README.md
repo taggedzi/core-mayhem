@@ -20,7 +20,7 @@ Two cores face off in a physics-driven arena. Resources bounce through pins, obs
 - **Layered survival:** armor, shields, repairs, buffs, and debuffs affect each round.
 - **Match series:** rounds build toward a series winner, with automatic restarts, random character matchups, and round-robin tournament mode.
 - **Character personality:** configurable personas and event-driven banter bring the rivalry to life.
-- **Audio and statistics:** sound effects, music controls, and battle statistics support the action.
+- **Audio and statistics:** sound effects, a synthesized announcer, music controls, and battle statistics support the action.
 
 The game renders on a 1920 × 1080 logical canvas that scales to fit the available space.
 
@@ -163,11 +163,10 @@ See [media licenses and exclusions](MEDIA_LICENSES.md) for file mappings,
 modification notices, sources, and redistribution requirements, and
 [third-party software notices](THIRD_PARTY_NOTICES.txt) for Matter.js.
 
-Recorded announcer audio is disabled and archived outside the application
-because redistribution permission has not been established. The old alarm
-with conflicting source credits has been replaced by an original synthesized
-MIT-licensed tone. Unused cyborg media is also archived under ignored
-`unused/`; none of these archived files is included in new builds.
+The announcer uses 49 bundled robotic voice clips synthesized offline with
+eSpeak NG. These original recordings and their generation scripts use MIT.
+Run `npm run audio:announcer` to regenerate them with eSpeak NG installed.
+Players do not need eSpeak NG or an online speech service.
 
 The in-game Credits link opens the media notice; code and dependency license
 texts ship alongside it in `licenses/`. Asset folders are excluded by the

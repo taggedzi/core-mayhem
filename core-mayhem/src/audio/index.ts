@@ -25,7 +25,7 @@ class AudioFacade {
   setSfxVolume(v: number): void { this.get()?.setBusVolume('sfx', v); }
   setMusicVolume(v: number): void { this.get()?.setBusVolume('music', v); }
   setAnnouncerVolume(v: number): void { this.get()?.setBusVolume('announcer', v); }
-  playUrl(url: string, opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number }): void { void this.get()?.playUrl(url, opts); }
+  async playUrl(url: string, opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number }): Promise<void> { await this.get()?.playUrl(url, opts); }
   stopAnnouncer(): void { this.get()?.stopChannel('announcer'); }
   // Music playlist helpers (public assets)
   setMusicPlaylist(urls: string[]): void { this.get()?.setMusicPlaylist(urls); }

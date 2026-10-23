@@ -152,6 +152,17 @@ describe('AudioManager', () => {
     expect(createdSources.length).toBe(1);
   });
 
+  it('does not start an interrupted announcement when its fetch finishes', async () => {
+    let complete!: (response: Response) => void;
+    vi.mocked(globalThis.fetch).mockImplementationOnce(() => new Promise<Response>(resolve => { complete = resolve; }));
+    const mgr = makeMgr({} as any);
+    const loading = mgr.playUrl('interrupted.wav', { channel: 'announcer' });
+    mgr.stopChannel('announcer');
+    complete({ arrayBuffer: async () => new ArrayBuffer(8) } as Response);
+    await loading;
+    expect(createdSources).toHaveLength(0);
+  });
+
   it('loops: startLoop once per id, then stopLoop and stopAll', async () => {
     const sounds: Record<SoundKey, SoundSpec> = {
       core_low_hp_alarm: { src: 'alarm.ogg', loop: true },

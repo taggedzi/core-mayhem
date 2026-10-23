@@ -5,6 +5,7 @@ import { BanterSystem, createCharacter } from '../banter';
 import { LightCore, DarkCore } from '../banter/personalities';
 import { PERSONA_CATALOG } from '../banter/personas';
 import { DEFAULTS } from '../config';
+import { readGameMode } from '../gameMode';
 import { drawFrame } from '../render/draw';
 import { updateHUD } from '../render/hud';
 import { updateScoreboard } from '../render/score';
@@ -89,17 +90,12 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     // so BanterSystem's internal gap is set to 0 to avoid double-gating.
     (sim as any).banter = new BanterSystem({ seed, cooldownMs: pacing.cooldownMs, sideMinGapMs: 0 });
     // --- Game mode selection: manual | random | tournament ---
-    const mode = (() => {
-      try { return ((localStorage.getItem('cm_game_mode') as any) ?? 'manual'); } catch { return 'manual'; }
-    })() as 'manual' | 'random' | 'tournament';
+    const mode = readGameMode();
 
     // Small deterministic RNG seeded from overall seed + match index
     const mulberry32 = (s: number): (() => number) => { let t = s >>> 0; return (): number => { t += 0x6d2b79f5; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; };
     const rng = mulberry32((seed ^ ((sim as any).matchIndex | 0)) >>> 0);
     const keys = Object.keys(PERSONA_CATALOG);
-    const saveProfile = (side: 'L' | 'R', personaKey: string): void => {
-      try { localStorage.setItem(side === 'L' ? 'cm_char_L' : 'cm_char_R', JSON.stringify({ persona: personaKey })); } catch { /* ignore */ }
-    };
     const labelFromKey = (k: string): string => k.replace(/\s*Core$/i, '').trim();
 
     if (mode === 'random') {
@@ -114,7 +110,6 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
       (sim as any).banterR = createCharacter('right', pR, labelFromKey(kR));
       // Track for UI labels and potential consumers
       (sim as any).matchPersonaL = kL; (sim as any).matchPersonaR = kR;
-      saveProfile('L', kL); saveProfile('R', kR);
     } else if (mode === 'tournament') {
       // Round-robin tournament over all unique pairs
       type Pair = [string, string];
@@ -149,7 +144,6 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
       (sim as any).banterL = createCharacter('left', pL, labelFromKey(kL));
       (sim as any).banterR = createCharacter('right', pR, labelFromKey(kR));
       (sim as any).matchPersonaL = kL; (sim as any).matchPersonaR = kR;
-      saveProfile('L', kL); saveProfile('R', kR);
     } else {
       // Manual
       const chosen = (() => { try { return readCharacterProfiles(); } catch { return null; } })();
@@ -323,6 +317,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     updateHUD();
     try { audio.stopLoop('alarm_L'); audio.stopLoop('alarm_R'); } catch { /* ignore */ void 0; }
     try { audio.stopMusic(); } catch { /* ignore */ void 0; }
+    try { audio.stopAnnouncer(); } catch { /* ignore */ void 0; }
   };
 }
 

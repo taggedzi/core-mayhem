@@ -2,11 +2,10 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { announcer, announcerControls } from '../announcer';
 import { POOLS, RECORDED_ANNOUNCER_AVAILABLE } from '../announcer/config';
-import { audio } from '../audio';
+import voiceManifest from '../audio/announcer/manifest.json';
 import { SOUNDS } from '../audio/config';
 
 describe('original synthesized effects', () => {
@@ -48,17 +47,26 @@ describe('original synthesized effects', () => {
   });
 });
 
-describe('excluded recorded announcements', () => {
-  it('has no recorded URLs in any event pool', () => {
-    expect(RECORDED_ANNOUNCER_AVAILABLE).toBe(false);
-    expect(Object.values(POOLS).every((pool) => pool.length === 0)).toBe(true);
+describe('original synthesized announcements', () => {
+  it('provides 49 bundled lines covering every announcement pool', () => {
+    expect(RECORDED_ANNOUNCER_AVAILABLE).toBe(true);
+    expect(voiceManifest.clips).toHaveLength(49);
+    expect(Object.values(POOLS).every((pool) => pool.length > 0)).toBe(true);
+    expect(new Set(Object.values(POOLS).flat()).size).toBe(49);
+    for (const url of Object.values(POOLS).flat()) {
+      expect(url).toMatch(/\/audio\/announcer\/[^/]+\.wav/);
+    }
   });
 
-  it('cannot be re-enabled through persisted audio settings', () => {
-    const play = vi.spyOn(audio, 'playUrl');
-    announcerControls.setEnabled(true);
-    announcer.trigger('match_start_go', 10000);
-    announcer.run(10000);
-    expect(play).not.toHaveBeenCalled();
+  it('records real PCM durations for overlap prevention', () => {
+    for (const clip of voiceManifest.clips) {
+      const wav = readFileSync(resolve(`src/audio/announcer/${clip.id}.wav`));
+      expect(wav.toString('ascii', 0, 4)).toBe('RIFF');
+      expect(wav.readUInt32LE(40)).toBe(wav.length - 44);
+      const duration = Math.ceil(((wav.length - 44) / wav.readUInt32LE(28)) * 1000);
+      expect(clip.durationMs).toBe(duration);
+      expect(duration).toBeGreaterThan(200);
+      expect(duration).toBeLessThan(3000);
+    }
   });
 });

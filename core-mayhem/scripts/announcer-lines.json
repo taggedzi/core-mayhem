@@ -1,0 +1,247 @@
+[
+  {
+    "id": "battle_of_the_century",
+    "text": "Welcome to Core Mayhem!",
+    "pools": ["pre_game"]
+  },
+  {
+    "id": "who_will_win",
+    "text": "Which core will survive?",
+    "pools": ["pre_game"]
+  },
+  {
+    "id": "get_ready_for_the_next_fight",
+    "text": "A new core battle begins!",
+    "pools": ["pre_game"]
+  },
+  {
+    "id": "may_the_best_fighter_win",
+    "text": "Let the strongest core prevail!",
+    "pools": ["pre_game"]
+  },
+  {
+    "id": "ready_1",
+    "text": "Ready?",
+    "pools": ["ready"]
+  },
+  {
+    "id": "ready_2",
+    "text": "Cores ready!",
+    "pools": ["ready"]
+  },
+  {
+    "id": "get_ready",
+    "text": "Prepare for combat!",
+    "pools": ["ready"]
+  },
+  {
+    "id": "show_time",
+    "text": "Systems online!",
+    "pools": ["ready"]
+  },
+  {
+    "id": "fight_1",
+    "text": "Fight!",
+    "pools": ["go"]
+  },
+  {
+    "id": "fight_2",
+    "text": "Begin combat!",
+    "pools": ["go"]
+  },
+  {
+    "id": "fight_3",
+    "text": "Weapons free!",
+    "pools": ["go"]
+  },
+  {
+    "id": "go_1",
+    "text": "Go!",
+    "pools": ["go"]
+  },
+  {
+    "id": "go_2",
+    "text": "Launch!",
+    "pools": ["go"]
+  },
+  {
+    "id": "go_3",
+    "text": "Let the battle begin!",
+    "pools": ["go"]
+  },
+  {
+    "id": "lets_rock",
+    "text": "Power up and let loose!",
+    "pools": ["go"]
+  },
+  {
+    "id": "firstblood_1",
+    "text": "First core hit!",
+    "pools": ["firstblood"]
+  },
+  {
+    "id": "firstblood_2",
+    "text": "The first breach!",
+    "pools": ["firstblood"]
+  },
+  {
+    "id": "danger_1",
+    "text": "Critical core damage!",
+    "pools": ["danger"]
+  },
+  {
+    "id": "danger_2",
+    "text": "Core integrity failing!",
+    "pools": ["danger"]
+  },
+  {
+    "id": "danger_3",
+    "text": "One more hit could end it!",
+    "pools": ["danger"]
+  },
+  {
+    "id": "this_is_the_end_1",
+    "text": "Holding on by a thread!",
+    "pools": ["danger"]
+  },
+  {
+    "id": "this_is_the_end_2",
+    "text": "The core is near collapse!",
+    "pools": ["danger"]
+  },
+  {
+    "id": "theyre_on_fire",
+    "text": "An unstoppable assault!",
+    "pools": ["high_damage", "comeback"]
+  },
+  {
+    "id": "over_the_top",
+    "text": "Overwhelming firepower!",
+    "pools": ["high_damage", "extreme"]
+  },
+  {
+    "id": "amazing",
+    "text": "Incredible impact!",
+    "pools": ["high_damage", "comeback"]
+  },
+  {
+    "id": "wow",
+    "text": "What a hit!",
+    "pools": ["high_damage", "comeback"]
+  },
+  {
+    "id": "sick",
+    "text": "That was devastating!",
+    "pools": ["high_damage"]
+  },
+  {
+    "id": "excellent_1",
+    "text": "A precision strike!",
+    "pools": ["high_damage"]
+  },
+  {
+    "id": "excellent_2",
+    "text": "Outstanding attack!",
+    "pools": ["high_damage"]
+  },
+  {
+    "id": "not_bad",
+    "text": "A solid hit!",
+    "pools": ["high_damage"]
+  },
+  {
+    "id": "ive_never_seen_moves",
+    "text": "The balance is shifting!",
+    "pools": ["momentum", "comeback"]
+  },
+  {
+    "id": "this_should_be_good",
+    "text": "This battle is heating up!",
+    "pools": ["momentum", "comeback"]
+  },
+  {
+    "id": "battle_is_about_to_explode",
+    "text": "The arena is erupting!",
+    "pools": ["momentum", "extreme"]
+  },
+  {
+    "id": "its_all_on_the_line",
+    "text": "Everything hangs on this!",
+    "pools": ["momentum", "extreme"]
+  },
+  {
+    "id": "go_for_broke",
+    "text": "Back from the brink!",
+    "pools": ["comeback"]
+  },
+  {
+    "id": "you_win_1",
+    "text": "Victory secured!",
+    "pools": ["match_end_win"]
+  },
+  {
+    "id": "you_win_2",
+    "text": "The surviving core takes it!",
+    "pools": ["match_end_win"]
+  },
+  {
+    "id": "winner_1",
+    "text": "We have a winner!",
+    "pools": ["match_end_win"]
+  },
+  {
+    "id": "winner_2",
+    "text": "A decisive victory!",
+    "pools": ["match_end_win"]
+  },
+  {
+    "id": "winner_3",
+    "text": "The arena has its champion!",
+    "pools": ["match_end_win"]
+  },
+  {
+    "id": "gameover_1",
+    "text": "Battle over!",
+    "pools": ["match_end_generic"]
+  },
+  {
+    "id": "gameover_2",
+    "text": "Combat complete!",
+    "pools": ["match_end_generic"]
+  },
+  {
+    "id": "finish",
+    "text": "End of battle!",
+    "pools": ["match_end_generic"]
+  },
+  {
+    "id": "finished",
+    "text": "All weapons stand down!",
+    "pools": ["match_end_generic"]
+  },
+  {
+    "id": "match_over",
+    "text": "The match has ended!",
+    "pools": ["match_end_generic"]
+  },
+  {
+    "id": "match_complete",
+    "text": "Round complete!",
+    "pools": ["match_end_generic"]
+  },
+  {
+    "id": "count_down_from_10",
+    "text": "Ten seconds remaining!",
+    "pools": ["time_countdown_10"]
+  },
+  {
+    "id": "count_down_from_3",
+    "text": "Three seconds remaining!",
+    "pools": ["time_countdown_3"]
+  },
+  {
+    "id": "triumph_or_die",
+    "text": "Maximum firepower!",
+    "pools": ["extreme"]
+  }
+]

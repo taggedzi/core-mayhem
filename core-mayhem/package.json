@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "audio:generate": "node scripts/generate-sfx.mjs",
+    "audio:announcer": "node scripts/generate-announcer.mjs",
     "predev": "node scripts/sync-license-notices.mjs",
     "prebuild": "node scripts/sync-license-notices.mjs",
     "dev": "vite",

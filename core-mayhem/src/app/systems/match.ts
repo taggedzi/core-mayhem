@@ -1,5 +1,6 @@
 import { announcer } from '../../announcer';
 import { GAMEOVER, MATCH_LIMIT } from '../../config';
+import { readGameMode } from '../../gameMode';
 import { setAvatarEmotion } from '../../render/avatar';
 import { updateScoreboard } from '../../render/score';
 import { sim } from '../../state';
@@ -54,7 +55,7 @@ export function declareWinner(winner: Side | 0): void {
 
   // Tournament bookkeeping: advance pairing and record winner
   try {
-    const mode = (() => { try { return ((localStorage.getItem('cm_game_mode') as any) ?? 'manual'); } catch { return 'manual'; } })() as 'manual' | 'random' | 'tournament';
+    const mode = readGameMode();
     if (mode === 'tournament') {
       const T = (sim as any).tournament as any;
       if (T && Array.isArray(T.pairs)) {

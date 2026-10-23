@@ -1,5 +1,6 @@
-// Manual announcer pool grouping and detection thresholds
-// Only add recordings with established redistribution rights.
+import manifest from '../audio/announcer/manifest.json';
+
+// Bundled, offline formant-synthesized speech; no runtime synthesis service.
 
 export type AnnounceEvent =
   | 'pre_game'
@@ -48,10 +49,7 @@ export const ANNOUNCER_THRESHOLDS = {
   countdownSecs: [10, 3] as const,
 } as const;
 
-// Recorded voice assets are excluded pending redistribution permission.
-export const RECORDED_ANNOUNCER_AVAILABLE = false;
-
-export const POOLS = {
+const poolNames = {
   pre_game: [],
   ready: [],
   go: [],
@@ -66,6 +64,43 @@ export const POOLS = {
   time_countdown_10: [],
   time_countdown_3: [],
 } as const;
+
+type PoolId = keyof typeof poolNames;
+const urls = import.meta.glob('../audio/announcer/*.wav', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+function clipsFor(pool: PoolId): readonly string[] {
+  return manifest.clips.filter((clip) => clip.pools.includes(pool))
+    .map((clip) => urls[`../audio/announcer/${clip.id}.wav`])
+    .filter((url): url is string => typeof url === 'string');
+}
+
+export const POOLS = {
+  pre_game: clipsFor('pre_game'),
+  ready: clipsFor('ready'),
+  go: clipsFor('go'),
+  firstblood: clipsFor('firstblood'),
+  danger: clipsFor('danger'),
+  high_damage: clipsFor('high_damage'),
+  momentum: clipsFor('momentum'),
+  extreme: clipsFor('extreme'),
+  comeback: clipsFor('comeback'),
+  match_end_win: clipsFor('match_end_win'),
+  match_end_generic: clipsFor('match_end_generic'),
+  time_countdown_10: clipsFor('time_countdown_10'),
+  time_countdown_3: clipsFor('time_countdown_3'),
+};
+
+export const CLIP_DURATION_MS = Object.fromEntries(manifest.clips.map((clip) => [
+  urls[`../audio/announcer/${clip.id}.wav`], clip.durationMs,
+]));
+
+export const RECORDED_ANNOUNCER_AVAILABLE = manifest.clips.length === 49
+  && manifest.clips.every((clip) => !!urls[`../audio/announcer/${clip.id}.wav`])
+  && Object.keys(poolNames).every((pool) => POOLS[pool as PoolId].length > 0);
 
 // Event mapping to pools with priorities and per-event cooldowns
 export const EVENTS: Record<

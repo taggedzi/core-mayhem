@@ -1,4 +1,5 @@
 import { PERSONA_CATALOG } from '../banter/personas';
+import { readGameMode } from '../gameMode';
 
 import type { Personality } from '../banter';
 
@@ -87,7 +88,7 @@ export function initCharactersControls(): void {
     pop.appendChild(d);
     const wrap = document.createElement('label'); wrap.className = 'audio-row'; wrap.textContent = 'Mode ';
     const sel = document.createElement('select'); sel.id = 'cm_mode_sel';
-    const cur = (() => { try { return localStorage.getItem(K_MODE) ?? 'tournament'; } catch { return 'tournament'; } })();
+    const cur = readGameMode();
     const opts = [
       { value: 'manual', label: 'Manual (Use selections below)' },
       { value: 'random', label: 'Random Each Match' },
@@ -102,7 +103,7 @@ export function initCharactersControls(): void {
 
   const makeSide = (side: SideLR, title: string): HTMLElement[] => {
     pop.appendChild(section(title));
-    const stored = loadProfile(side) ?? { persona: 'LightCore' } as StoredProfile;
+    const stored = loadProfile(side) ?? { persona: side === 'L' ? 'LightCore' : 'DarkCore' } as StoredProfile;
     const base = (PERSONA_CATALOG[stored.persona] ?? PERSONA_CATALOG.LightCore)!;
     const cur = applyOverrides(base, stored.overrides);
 

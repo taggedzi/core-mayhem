@@ -110,6 +110,10 @@ export function initAudioControls(): void {
   elAnnToggle.id = 'annEnabled';
   elAnnToggleWrap.appendChild(elAnnToggle);
   pop.appendChild(elAnnToggleWrap);
+  const voiceNote = document.createElement('div');
+  voiceNote.className = 'audio-row';
+  voiceNote.textContent = 'Announcer: synthesized robotic voice.';
+  pop.appendChild(voiceNote);
   const elAnnVol = row('Announcer Vol', 'annVol', annVol0, { min: 0, max: 1, step: 0.05 });
   const elAnnDuckM = row('Duck Music', 'annDuckM', annDuckM0, { min: 0, max: 1, step: 0.05 });
   const elAnnDuckS = row('Duck SFX', 'annDuckS', annDuckS0, { min: 0, max: 1, step: 0.05 });

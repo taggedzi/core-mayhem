@@ -131,8 +131,9 @@ const effects = {
   'impact-armor': [
     0.26,
     [
-      tone(980, 780, 0.16, 0.7, { metal: true, decay: 6 }),
-      noise(0.07, 0.55, 4000, { highpass: true, decay: 7 }),
+      tone(480, 300, 0.19, 0.6, { metal: true, decay: 4 }),
+      tone(160, 95, 0.2, 0.55, { decay: 4 }),
+      noise(0.07, 0.25, 2200, { decay: 6 }),
     ],
   ],
   'impact-core': [
@@ -149,9 +150,9 @@ const effects = {
   'impact-shield': [
     0.32,
     [
-      tone(1250, 700, 0.22, 0.65, { fm: 2, decay: 5 }),
-      tone(310, 310, 0.14, 0.25),
-      noise(0.055, 0.2, 5500, { highpass: true }),
+      tone(680, 340, 0.24, 0.55, { fm: 1.2, decay: 4 }),
+      tone(190, 125, 0.23, 0.6, { decay: 3.5 }),
+      noise(0.055, 0.1, 3000, { highpass: true }),
     ],
   ],
   'activate-buff': [0.62, notes([440, 554.37, 659.25, 880], 0.095, 0.22)],

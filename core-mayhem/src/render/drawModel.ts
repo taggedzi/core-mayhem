@@ -1556,11 +1556,11 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const c = side < 0 ? (sim as any).banterL : (sim as any).banterR;
         if (!c) return null;
         const defaultSideName = side < 0 ? 'Left' : 'Right';
-        // Prefer persona key from character selection (drop-down) over personality.name
-        let personaKey = '';
+        // Automatic match selections take priority over saved manual profiles.
+        let personaKey = (side < 0 ? (sim as any).matchPersonaL : (sim as any).matchPersonaR) ?? '';
         try {
           const raw = localStorage.getItem(side < 0 ? 'cm_char_L' : 'cm_char_R');
-          if (raw) {
+          if (!personaKey && raw) {
             const obj = JSON.parse(raw);
             if (obj && typeof obj.persona === 'string') personaKey = obj.persona;
           }

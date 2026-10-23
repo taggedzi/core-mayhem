@@ -25,6 +25,7 @@ export class AudioManager {
     announcer: new Set(),
   };
   private enabled = true;
+  private channelEpoch: Record<Channel, number> = { sfx: 0, music: 0, announcer: 0 };
   // P5: store the resume handler so it can be removed if the AudioContext is
   // never triggered by a user gesture (e.g. page visited without interaction).
   private resumeFn: (() => void) | null = null;
@@ -236,7 +237,10 @@ export class AudioManager {
     if (!this.enabled) return;
     this.ensure();
     if (!this.ctx) return;
+    const ch = (opts?.channel ?? 'sfx') as Channel;
+    const epoch = this.channelEpoch[ch];
     const buf = await this.loadBuffer(url);
+    if (!this.enabled || epoch !== this.channelEpoch[ch]) return;
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     const rate = opts?.rate ?? 1.0;
@@ -246,7 +250,6 @@ export class AudioManager {
     const gain = this.ctx.createGain();
     const vol = Math.max(0, Math.min(1, opts?.volume ?? 1.0));
     gain.gain.value = vol;
-    const ch = (opts?.channel ?? 'sfx') as Channel;
     const bus = this.bus[ch as Channel];
     if (!bus) return;
     src.connect(gain);
@@ -266,6 +269,7 @@ export class AudioManager {
   }
 
   stopChannel(ch: Channel): void {
+    this.channelEpoch[ch]++;
     const set = this.chanNodes[ch];
     if (!set || set.size === 0) return;
     for (const pair of Array.from(set)) {

@@ -43,6 +43,7 @@ export function resetAnnouncerState(): void {
 export function runAnnouncer(): void {
   const idx = (sim as any).matchIndex | 0;
   if (idx !== lastMatchIndex) {
+    announcer.reset?.();
     // New match: seed state and fire pre-game + ready/go
     lastMatchIndex = idx;
     didFirstCenterDamage = false;
