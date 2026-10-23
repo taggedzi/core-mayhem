@@ -22,7 +22,7 @@ describe('repair', () => {
     expect((sim as any).coreL.segHP[0]).toBeGreaterThan(10);
     // and segments should not exceed max
     expect((sim as any).coreL.segHP.every((v: number) => v <= 100)).toBe(true);
-    ;(Math.random as any).mockRestore?.();
+    (Math.random as any).mockRestore?.();
   });
 
   it('occasionally heals center when random allows', () => {
@@ -30,7 +30,6 @@ describe('repair', () => {
     const before = (sim as any).coreL.centerHP;
     repair(SIDE.LEFT);
     expect((sim as any).coreL.centerHP).toBeGreaterThan(before);
-    ;(Math.random as any).mockRestore?.();
+    (Math.random as any).mockRestore?.();
   });
 });
-

@@ -36,4 +36,3 @@ export function repair(side: Side): void {
     core.centerHP = Math.min(core.centerHPmax, core.centerHP + REPAIR_EFFECT.centerAmount);
   }
 }
-

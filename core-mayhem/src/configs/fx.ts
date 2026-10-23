@@ -51,4 +51,3 @@ export const LASER_FX = {
   dash: 18,
   flashMs: 140,
 } as const;
-

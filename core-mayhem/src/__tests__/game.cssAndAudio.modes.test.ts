@@ -13,23 +13,31 @@ vi.mock('../sim/channels', () => ({ buildLanes: vi.fn() }));
 vi.mock('../sim/containers', () => ({ makeBins: vi.fn(() => ({})), nudgeBinsFromPipes: vi.fn() }));
 // Capture color arg via mock (defined inside factory)
 vi.mock('../sim/core', () => {
-  const makeCore = vi.fn((w: any, side: any, color: string) => ({ center: { x: side === 'L' ? 10 : 20, y: 0 }, color }));
+  const makeCore = vi.fn((w: any, side: any, color: string) => ({
+    center: { x: side === 'L' ? 10 : 20, y: 0 },
+    color,
+  }));
   return { makeCore };
 });
-vi.mock('../sim/obstacles', () => ({ makePipe: vi.fn(() => ({ innerX: 0 })), placeObstaclesFromSpecs: vi.fn() }));
+vi.mock('../sim/obstacles', () => ({
+  makePipe: vi.fn(() => ({ innerX: 0 })),
+  placeObstaclesFromSpecs: vi.fn(),
+}));
 vi.mock('../sim/pins', () => ({ makePins: vi.fn(() => ({ mid: 0, width: 0 })) }));
-vi.mock('../sim/weapons', () => ({ makeWeapons: vi.fn(() => ({
-  cannon: { pos: { x: 5, y: 0 } },
-  laser: { pos: { x: 15, y: 0 } },
-  missile: { pos: { x: 25, y: 0 } },
-  mortar: { pos: { x: 35, y: 0 } },
-})) }));
+vi.mock('../sim/weapons', () => ({
+  makeWeapons: vi.fn(() => ({
+    cannon: { pos: { x: 5, y: 0 } },
+    laser: { pos: { x: 15, y: 0 } },
+    missile: { pos: { x: 25, y: 0 } },
+    mortar: { pos: { x: 35, y: 0 } },
+  })),
+}));
 vi.mock('../sim/world', () => ({
   initWorld: vi.fn((canvas: HTMLCanvasElement) => {
     (sim as any).engine = { timing: { lastDelta: 16.6 } } as any;
     (sim as any).world = {} as any;
-    (sim as any).W = (canvas.width ||= 640);
-    (sim as any).H = (canvas.height ||= 360);
+    (sim as any).W = canvas.width ||= 640;
+    (sim as any).H = canvas.height ||= 360;
   }),
   clearWorld: vi.fn(() => {
     (sim as any).engine = null;
@@ -49,8 +57,15 @@ vi.mock('../app/systems/triggers', () => ({ runTriggers: vi.fn() }));
 
 // Banter basics
 vi.mock('../banter', () => ({
-  BanterSystem: class { constructor(_o: any) {} step(): void {} },
-  createCharacter: vi.fn((side: 'left'|'right', p: any, name: string) => ({ id: side, personality: p, displayName: name })),
+  BanterSystem: class {
+    constructor(_o: any) {}
+    step(): void {}
+  },
+  createCharacter: vi.fn((side: 'left' | 'right', p: any, name: string) => ({
+    id: side,
+    personality: p,
+    displayName: name,
+  })),
 }));
 
 // No need to mock personas for these tests
@@ -62,11 +77,16 @@ vi.mock('../audio', () => {
     preloadAll: vi.fn(),
     hasPlaylist: vi.fn(() => playlist.length > 0),
     isMusicPlaying: vi.fn(() => false),
-    setMusicPlaylist: vi.fn((urls: string[]) => { playlist = urls.slice(); }),
+    setMusicPlaylist: vi.fn((urls: string[]) => {
+      playlist = urls.slice();
+    }),
     playMusic: vi.fn(),
     stopLoop: vi.fn(),
     setAnnouncerVolume: vi.fn(),
-    duck: vi.fn(), duckSfx: vi.fn(), playUrl: vi.fn(), stopAnnouncer: vi.fn(),
+    duck: vi.fn(),
+    duckSfx: vi.fn(),
+    playUrl: vi.fn(),
+    stopAnnouncer: vi.fn(),
   } as const;
   return { audio };
 });
@@ -93,9 +113,12 @@ describe('game css vars and audio init', () => {
     (mockedAudio.setMusicPlaylist as any).mockClear();
     (mockedAudio.playMusic as any).mockClear();
     // DOM
-    document.body.innerHTML = '<div id="hud"><span id="fps"></span><div id="score"></div></div><canvas id="c" width="640" height="360"></canvas>';
+    document.body.innerHTML =
+      '<div id="hud"><span id="fps"></span><div id="score"></div></div><canvas id="c" width="640" height="360"></canvas>';
     const canvas = document.getElementById('c') as HTMLCanvasElement;
-    vi.spyOn(canvas, 'getContext').mockImplementation((type: string) => (type === '2d' ? ctxStub(canvas) : null));
+    vi.spyOn(canvas, 'getContext').mockImplementation((type: string) =>
+      type === '2d' ? ctxStub(canvas) : null,
+    );
 
     // requestAnimationFrame/cancelAnimationFrame stubs
     (globalThis as any).requestAnimationFrame = vi.fn(() => 1);
@@ -107,13 +130,15 @@ describe('game css vars and audio init', () => {
 
   it('passes trimmed CSS color vars to makeCore', () => {
     const getComputed = vi.spyOn(window, 'getComputedStyle');
-    getComputed.mockReturnValue({ getPropertyValue: (name: string) => (name === '--left' ? '  #abc  ' : '  #def  ') } as any);
+    getComputed.mockReturnValue({
+      getPropertyValue: (name: string) => (name === '--left' ? '  #abc  ' : '  #def  '),
+    } as any);
 
     const canvas = document.getElementById('c') as HTMLCanvasElement;
     const stop = startGame(canvas);
 
     // makeCore called twice with trimmed colors
-    expect((mockMakeCore as any)).toHaveBeenCalledTimes(2);
+    expect(mockMakeCore as any).toHaveBeenCalledTimes(2);
     const colors = (mockMakeCore as any).mock.calls.map((c: any[]) => c[2]);
     expect(colors).toContain('#abc');
     expect(colors).toContain('#def');
@@ -126,7 +151,8 @@ describe('game css vars and audio init', () => {
     // Pretend WebAudio available
     (window as any).AudioContext = function () {} as any;
     // Mock fetch for playlist.json and HEAD probe
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       // playlist.json
       .mockResolvedValueOnce({ ok: true, json: async () => ['song1.mp3', 'song2.ogg', 'note.txt'] })
       // The code only probes main_theme if no playlist; our playlist exists so this call may not happen.

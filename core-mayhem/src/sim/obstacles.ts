@@ -241,11 +241,12 @@ export function placeObstaclesFromSpecs(side: -1 | 1, _pinsMid: number, _pinsWid
   for (const p of PADDLES_LEFT) {
     if (p.enabled === false) continue;
     const [xBL0, yBL] = p.pos;
-    const w = 80, h = 8;
+    const w = 80,
+      h = 8;
     const xBL = side < 0 ? xBL0 : sim.W - xBL0 - w;
     const cx = xBL + w / 2;
     const cy = sim.H - (yBL + h / 2);
-    const dir = side < 0 ? p.dir : (p.dir * -1) as -1 | 1;
+    const dir = side < 0 ? p.dir : ((p.dir * -1) as -1 | 1);
     addPaddle(cx, cy, p.amp, p.spd, dir);
   }
 }

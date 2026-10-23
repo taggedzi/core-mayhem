@@ -22,7 +22,9 @@ interface BatchOpts {
 
 // very forgiving 2D context stub for canvas
 function ctxStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const NOOP: (..._args: unknown[]) => void = () => { return; };
+  const NOOP: (..._args: unknown[]) => void = () => {
+    return;
+  };
   return new Proxy(
     { canvas, measureText: () => ({ width: 0 }) },
     { get: (t, p) => (p in t ? (t as any)[p] : NOOP) },
@@ -96,11 +98,13 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
     const wepR: any = (sim as any).wepR;
     if (cL) {
       cL.centerHP = Math.max(1, Math.round((cL.centerHP | 0) * hpScale));
-      if (Array.isArray(cL.segHP)) cL.segHP = cL.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
+      if (Array.isArray(cL.segHP))
+        cL.segHP = cL.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
     }
     if (cR) {
       cR.centerHP = Math.max(1, Math.round((cR.centerHP | 0) * hpScale));
-      if (Array.isArray(cR.segHP)) cR.segHP = cR.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
+      if (Array.isArray(cR.segHP))
+        cR.segHP = cR.segHP.map((v: number) => Math.max(1, Math.round(v * hpScale)));
     }
     // Fire an opening volley immediately to accelerate first contact (optional)
     if ((opts.primeVolley ?? !opts.fullLength) && wepL && wepR && cL && cR) {
@@ -114,13 +118,15 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
         fireLaser(SIDE.RIGHT as any, wepR.laser.pos, cL as any);
         fireMissiles(SIDE.RIGHT as any, wepR.missile.pos, 5);
         fireMortar(SIDE.RIGHT as any, wepR.mortar.pos, 1);
-      } catch { /* ignore */ void 0; }
+      } catch {
+        /* ignore */ void 0;
+      }
     }
     // Prime bins to trigger next volleys quickly (optional)
     if (opts.primeVolley ?? !opts.fullLength) {
       const prime = (bins: any): void => {
         if (!bins) return;
-        for (const k of ['cannon','laser','missile','mortar']) {
+        for (const k of ['cannon', 'laser', 'missile', 'mortar']) {
           if (bins[k]) bins[k].fill = bins[k].cap;
         }
       };
@@ -141,13 +147,17 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
             try {
               const cL: any = (sim as any).coreL;
               const cR: any = (sim as any).coreR;
-              const sumSeg = (arr: number[] | null | undefined): number => (Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0);
+              const sumSeg = (arr: number[] | null | undefined): number =>
+                Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
               const lhs = (cL?.centerHP | 0) + sumSeg(cL?.segHP);
               const rhs = (cR?.centerHP | 0) + sumSeg(cR?.segHP);
               if (lhs <= 0 && rhs <= 0) declareWinner(0 as any);
               else if (lhs <= 0) declareWinner(SIDE.RIGHT as any);
               else if (rhs <= 0) declareWinner(SIDE.LEFT as any);
-              else declareWinner(lhs > rhs ? (SIDE.LEFT as any) : (rhs > lhs ? (SIDE.RIGHT as any) : (0 as any)));
+              else
+                declareWinner(
+                  lhs > rhs ? (SIDE.LEFT as any) : rhs > lhs ? (SIDE.RIGHT as any) : (0 as any),
+                );
             } catch {
               /* ignore */ void 0;
             }
@@ -164,7 +174,11 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
   });
 
   // Stop and cleanup
-  try { stop(); } catch { /* ignore */ void 0; }
+  try {
+    stop();
+  } catch {
+    /* ignore */ void 0;
+  }
   // Clear any pending auto-restart timeout
   try {
     if ((sim as any).restartTO) clearTimeout((sim as any).restartTO);
@@ -173,7 +187,9 @@ async function runOne(canvas: HTMLCanvasElement, opts: BatchOpts): Promise<void>
   }
 }
 
-export async function runBatch(opts: BatchOpts): Promise<{ summary: ReturnType<typeof getSummary> } & { files: Record<string, string> }> {
+export async function runBatch(
+  opts: BatchOpts,
+): Promise<{ summary: ReturnType<typeof getSummary> } & { files: Record<string, string> }> {
   const canvas = ensureDOM();
   // fresh stats session
   resetStats();

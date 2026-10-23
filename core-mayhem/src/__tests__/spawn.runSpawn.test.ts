@@ -26,4 +26,3 @@ describe('runSpawn', () => {
     expect(sim.ammoR).toBeGreaterThan(0);
   });
 });
-

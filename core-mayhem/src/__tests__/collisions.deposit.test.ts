@@ -29,7 +29,12 @@ describe('collisions: deposit ammo into container', () => {
     const ammo = Bodies.circle(10, 10, 4);
     (ammo as any).plugin = { kind: 'ammo', side: SIDE.LEFT, type: 'basic' };
     const box = Bodies.rectangle(10, 10, 10, 10, { isStatic: true });
-    (box as any).plugin = { kind: 'container', side: SIDE.LEFT, accept: ['basic'], label: 'cannon' };
+    (box as any).plugin = {
+      kind: 'container',
+      side: SIDE.LEFT,
+      accept: ['basic'],
+      label: 'cannon',
+    };
     World.add(sim.world as any, [ammo, box]);
     const before = sim.world!.bodies.length;
 

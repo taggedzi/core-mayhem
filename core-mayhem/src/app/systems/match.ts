@@ -30,14 +30,25 @@ export function declareWinner(winner: Side | 0): void {
   try {
     if (winner === SIDE.LEFT) void speakBanterSmart('victory' as any, 'L');
     else if (winner === SIDE.RIGHT) void speakBanterSmart('victory' as any, 'R');
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // Avatar: winner celebrates, loser collapses
   try {
-    if (winner === SIDE.LEFT)       { setAvatarEmotion('L', 'victory'); setAvatarEmotion('R', 'dead'); }
-    else if (winner === SIDE.RIGHT) { setAvatarEmotion('R', 'victory'); setAvatarEmotion('L', 'dead'); }
-    else                            { setAvatarEmotion('L', 'dead');    setAvatarEmotion('R', 'dead'); }
-  } catch { /* ignore */ }
+    if (winner === SIDE.LEFT) {
+      setAvatarEmotion('L', 'victory');
+      setAvatarEmotion('R', 'dead');
+    } else if (winner === SIDE.RIGHT) {
+      setAvatarEmotion('R', 'victory');
+      setAvatarEmotion('L', 'dead');
+    } else {
+      setAvatarEmotion('L', 'dead');
+      setAvatarEmotion('R', 'dead');
+    }
+  } catch {
+    /* ignore */
+  }
 
   const stats = (sim as any).stats ?? ((sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 });
   if (winner === SIDE.LEFT) stats.leftWins++;
@@ -69,7 +80,9 @@ export function declareWinner(winner: Side | 0): void {
         }
         if (winner === SIDE.LEFT && kL) T.scores[kL] = (T.scores[kL] | 0) + 1;
         else if (winner === SIDE.RIGHT && kR) T.scores[kR] = (T.scores[kR] | 0) + 1;
-        else if (winner === 0) { /* tie: no points */ }
+        else if (winner === 0) {
+          /* tie: no points */
+        }
         // Advance to next pairing
         if (typeof T.index === 'number') T.index = Math.max(0, (T.index | 0) + 1);
       }
@@ -104,4 +117,3 @@ export function checkTimeLimit(): void {
     declareWinner(0);
   }
 }
-

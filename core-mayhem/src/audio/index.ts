@@ -15,31 +15,80 @@ class AudioFacade {
     return this.mgr;
   }
 
-  preloadAll(): void { this.get()?.preloadAll().catch(() => void 0); }
-  play(key: SoundKey, o?: { volume?: number; rate?: number; detune?: number }): void { void this.get()?.play(key, o); }
-  duck(factor: number, ms?: number): void { this.get()?.duckMusic(factor, ms); }
-  duckSfx(factor: number, ms?: number): void { this.get()?.duckBus('sfx', factor, ms); }
-  startLoop(id: string, key: SoundKey, volume?: number): void { void this.get()?.startLoop(id, key, volume); }
-  stopLoop(id: string): void { this.get()?.stopLoop(id); }
-  setMasterVolume(v: number): void { this.get()?.setMasterVolume(v); }
-  setSfxVolume(v: number): void { this.get()?.setBusVolume('sfx', v); }
-  setMusicVolume(v: number): void { this.get()?.setBusVolume('music', v); }
-  setAnnouncerVolume(v: number): void { this.get()?.setBusVolume('announcer', v); }
-  async playUrl(url: string, opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number }): Promise<void> { await this.get()?.playUrl(url, opts); }
-  stopAnnouncer(): void { this.get()?.stopChannel('announcer'); }
+  preloadAll(): void {
+    this.get()
+      ?.preloadAll()
+      .catch(() => void 0);
+  }
+  play(key: SoundKey, o?: { volume?: number; rate?: number; detune?: number }): void {
+    void this.get()?.play(key, o);
+  }
+  duck(factor: number, ms?: number): void {
+    this.get()?.duckMusic(factor, ms);
+  }
+  duckSfx(factor: number, ms?: number): void {
+    this.get()?.duckBus('sfx', factor, ms);
+  }
+  startLoop(id: string, key: SoundKey, volume?: number): void {
+    void this.get()?.startLoop(id, key, volume);
+  }
+  stopLoop(id: string): void {
+    this.get()?.stopLoop(id);
+  }
+  setMasterVolume(v: number): void {
+    this.get()?.setMasterVolume(v);
+  }
+  setSfxVolume(v: number): void {
+    this.get()?.setBusVolume('sfx', v);
+  }
+  setMusicVolume(v: number): void {
+    this.get()?.setBusVolume('music', v);
+  }
+  setAnnouncerVolume(v: number): void {
+    this.get()?.setBusVolume('announcer', v);
+  }
+  async playUrl(
+    url: string,
+    opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number },
+  ): Promise<void> {
+    await this.get()?.playUrl(url, opts);
+  }
+  stopAnnouncer(): void {
+    this.get()?.stopChannel('announcer');
+  }
   // Music playlist helpers (public assets)
-  setMusicPlaylist(urls: string[]): void { this.get()?.setMusicPlaylist(urls); }
-  playMusic(): void { void this.get()?.playMusic(); }
-  stopMusic(): void { this.get()?.stopMusic(); }
-  nextTrack(): void { this.get()?.nextTrack(); }
-  prevTrack(): void { this.get()?.prevTrack(); }
-  hasPlaylist(): boolean { return this.get()?.hasPlaylist() ?? false; }
-  isMusicPlaying(): boolean { return this.get()?.isMusicPlaying() ?? false; }
-  getMusicBinCount(): number { return this.get()?.getMusicBinCount() ?? 0; }
-  getMusicSpectrum(out: Uint8Array): boolean { return this.get()?.getMusicSpectrum(out) ?? false; }
+  setMusicPlaylist(urls: string[]): void {
+    this.get()?.setMusicPlaylist(urls);
+  }
+  playMusic(): void {
+    void this.get()?.playMusic();
+  }
+  stopMusic(): void {
+    this.get()?.stopMusic();
+  }
+  nextTrack(): void {
+    this.get()?.nextTrack();
+  }
+  prevTrack(): void {
+    this.get()?.prevTrack();
+  }
+  hasPlaylist(): boolean {
+    return this.get()?.hasPlaylist() ?? false;
+  }
+  isMusicPlaying(): boolean {
+    return this.get()?.isMusicPlaying() ?? false;
+  }
+  getMusicBinCount(): number {
+    return this.get()?.getMusicBinCount() ?? 0;
+  }
+  getMusicSpectrum(out: Uint8Array): boolean {
+    return this.get()?.getMusicSpectrum(out) ?? false;
+  }
   // P5: remove window resume listeners if the audio context was created but
   // never resumed via user gesture. Safe to call at page teardown.
-  cancelResume(): void { this.get()?.cancelResume(); }
+  cancelResume(): void {
+    this.get()?.cancelResume();
+  }
 }
 
 export const audio = new AudioFacade();

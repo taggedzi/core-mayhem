@@ -63,7 +63,8 @@ export function initHelpOverlay(): void {
 
   const p = document.createElement('p');
   p.className = 'help-note';
-  p.textContent = 'Press H or click Help to open this panel. Use the Enable Dev Mode / Disable Dev Mode button below to turn dev hotkeys on or off. Hotkeys only work when dev mode is enabled.';
+  p.textContent =
+    'Press H or click Help to open this panel. Use the Enable Dev Mode / Disable Dev Mode button below to turn dev hotkeys on or off. Hotkeys only work when dev mode is enabled.';
 
   // Structured two-column grid with key pills
   const grid = document.createElement('div');
@@ -174,12 +175,18 @@ function closeHelpOverlay(): void {
     (contentEl as HTMLElement | null)?.blur?.();
     const active = document.activeElement as HTMLElement | null;
     if (active && overlayEl.contains(active)) active.blur();
-  } catch { /* ignore */ void 0; }
+  } catch {
+    /* ignore */ void 0;
+  }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
   // Restore focus back to the opener if possible
   if (lastFocusEl && (lastFocusEl as HTMLElement).focus) {
-    try { (lastFocusEl as HTMLElement).focus(); } catch { /* ignore */ void 0; }
+    try {
+      (lastFocusEl as HTMLElement).focus();
+    } catch {
+      /* ignore */ void 0;
+    }
   }
 }
 

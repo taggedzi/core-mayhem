@@ -76,7 +76,9 @@ describe('systems/announcer runAnnouncer', () => {
     expect(trig).toContain('core_in_danger_L');
     // Call again with still low: should not retrigger
     runAnnouncer();
-    const count = (announcer.trigger as unknown as vi.Mock).mock.calls.filter((c) => c[0] === 'core_in_danger_L').length;
+    const count = (announcer.trigger as unknown as vi.Mock).mock.calls.filter(
+      (c) => c[0] === 'core_in_danger_L',
+    ).length;
     expect(count).toBe(1);
   });
 
@@ -88,7 +90,8 @@ describe('systems/announcer runAnnouncer', () => {
     // Advance time beyond momentumWindowMs
     (performance.now as any).mockReturnValue(8000);
     // Flip advantage to R with magnitude >= threshold (20% of 1000 => 200)
-    ;(sim as any).coreL.centerHP = 300; (sim as any).coreR.centerHP = 700;
+    (sim as any).coreL.centerHP = 300;
+    (sim as any).coreR.centerHP = 700;
     runAnnouncer();
     const trig = (announcer.trigger as unknown as vi.Mock).mock.calls.map((c) => c[0]);
     expect(trig).toContain('momentum_shift');

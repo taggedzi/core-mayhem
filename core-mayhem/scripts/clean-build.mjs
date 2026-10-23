@@ -14,13 +14,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '..'); // core-mayhem
 
 const DRY = (globalThis.process?.argv ?? []).includes('--dry');
 
-const SKIP_DIRS = new Set([
-  'node_modules',
-  'dist',
-  'coverage',
-  '.git',
-  '.husky',
-]);
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', '.git', '.husky']);
 
 const TS_EXTS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 
@@ -50,7 +44,12 @@ function hasTsSiblingCandidates(file) {
 }
 
 async function exists(p) {
-  try { await fs.access(p); return true; } catch { return false; }
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function main() {
@@ -62,7 +61,7 @@ async function main() {
     const name = path.basename(file);
 
     // Only consider .js, .js.map, and .d.ts
-    if (ext !== '.js' && !(name.endsWith('.js.map')) && !(name.endsWith('.d.ts'))) continue;
+    if (ext !== '.js' && !name.endsWith('.js.map') && !name.endsWith('.d.ts')) continue;
 
     // Skip known source JS files that are not TS outputs
     if (name === 'eslint.config.js' || name === 'vitest.setup.js') continue;
@@ -71,7 +70,10 @@ async function main() {
     let tsNeighbor = false;
     for (const b of bases) {
       for (const te of TS_EXTS) {
-        if (await exists(b + te)) { tsNeighbor = true; break; }
+        if (await exists(b + te)) {
+          tsNeighbor = true;
+          break;
+        }
       }
       if (tsNeighbor) break;
     }
@@ -91,7 +93,11 @@ async function main() {
       removed++;
       globalThis.console?.log?.('rm', path.relative(PROJECT_ROOT, f));
     } catch (err) {
-      globalThis.console?.warn?.('skip (cannot delete):', path.relative(PROJECT_ROOT, f), String(err?.message || err));
+      globalThis.console?.warn?.(
+        'skip (cannot delete):',
+        path.relative(PROJECT_ROOT, f),
+        String(err?.message || err),
+      );
     }
   }
 
@@ -99,4 +105,11 @@ async function main() {
   globalThis.console?.log?.(msg);
 }
 
-main().catch((err) => { globalThis.console?.error?.(err); try { globalThis.process?.exit?.(1); } catch { /* ignore */ } });
+main().catch((err) => {
+  globalThis.console?.error?.(err);
+  try {
+    globalThis.process?.exit?.(1);
+  } catch {
+    /* ignore */
+  }
+});

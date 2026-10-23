@@ -24,13 +24,17 @@ export function runSpawn(dtMs: number): void {
     const trySpawn = (side: Side): void => {
       if (side === SIDE.LEFT) {
         if (sim.ammoL < softMax) {
-          if (sim.ammoL < softMin) { spawnAmmo(SIDE.LEFT); spawnAmmo(SIDE.LEFT); }
-          else spawnAmmo(SIDE.LEFT);
+          if (sim.ammoL < softMin) {
+            spawnAmmo(SIDE.LEFT);
+            spawnAmmo(SIDE.LEFT);
+          } else spawnAmmo(SIDE.LEFT);
         }
       } else {
         if (sim.ammoR < softMax) {
-          if (sim.ammoR < softMin) { spawnAmmo(SIDE.RIGHT); spawnAmmo(SIDE.RIGHT); }
-          else spawnAmmo(SIDE.RIGHT);
+          if (sim.ammoR < softMin) {
+            spawnAmmo(SIDE.RIGHT);
+            spawnAmmo(SIDE.RIGHT);
+          } else spawnAmmo(SIDE.RIGHT);
         }
       }
     };
@@ -39,4 +43,3 @@ export function runSpawn(dtMs: number): void {
     trySpawn(second);
   }
 }
-

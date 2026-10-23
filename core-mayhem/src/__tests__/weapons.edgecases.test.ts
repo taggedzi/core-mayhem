@@ -65,7 +65,12 @@ describe('weapons edge cases', () => {
     (HOMING as any).fuseRadius = 999;
     // missile close to target
     const m = Bodies.circle(520, 100, 5);
-    (m as any).plugin = { kind: 'projectile', ptype: 'missile', side: SIDE.LEFT, spawnT: performance.now() };
+    (m as any).plugin = {
+      kind: 'projectile',
+      ptype: 'missile',
+      side: SIDE.LEFT,
+      spawnT: performance.now(),
+    };
     World.add(sim.world as any, m);
     sim.homing.push(m);
     const beforeBodies = sim.world!.bodies.length;

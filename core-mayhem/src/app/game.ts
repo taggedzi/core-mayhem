@@ -85,15 +85,33 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // Initialize banter system and characters per match (seeded for determinism)
   try {
     const seed = Number(((sim as any).settings?.seed ?? 1337) | 0);
-    const pacing = (() => { try { return readBanterPacing(); } catch { return { cooldownMs: 5000, sideMinGapMs: 12000 }; } })();
+    const pacing = (() => {
+      try {
+        return readBanterPacing();
+      } catch {
+        return { cooldownMs: 5000, sideMinGapMs: 12000 };
+      }
+    })();
     // sideMinGapMs is owned by the outer gate in speakBanterLLM (reads localStorage live),
     // so BanterSystem's internal gap is set to 0 to avoid double-gating.
-    (sim as any).banter = new BanterSystem({ seed, cooldownMs: pacing.cooldownMs, sideMinGapMs: 0 });
+    (sim as any).banter = new BanterSystem({
+      seed,
+      cooldownMs: pacing.cooldownMs,
+      sideMinGapMs: 0,
+    });
     // --- Game mode selection: manual | random | tournament ---
     const mode = readGameMode();
 
     // Small deterministic RNG seeded from overall seed + match index
-    const mulberry32 = (s: number): (() => number) => { let t = s >>> 0; return (): number => { t += 0x6d2b79f5; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; };
+    const mulberry32 = (s: number): (() => number) => {
+      let t = s >>> 0;
+      return (): number => {
+        t += 0x6d2b79f5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    };
     const rng = mulberry32((seed ^ ((sim as any).matchIndex | 0)) >>> 0);
     const keys = Object.keys(PERSONA_CATALOG);
     const labelFromKey = (k: string): string => k.replace(/\s*Core$/i, '').trim();
@@ -103,13 +121,15 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
       const i = Math.floor(rng() * keys.length);
       let j = Math.floor(rng() * keys.length);
       if (keys.length > 1) while (j === i) j = Math.floor(rng() * keys.length);
-      const kL = keys[i]!, kR = keys[j]!;
+      const kL = keys[i]!,
+        kR = keys[j]!;
       const pL = PERSONA_CATALOG[kL] ?? LightCore;
       const pR = PERSONA_CATALOG[kR] ?? DarkCore;
       (sim as any).banterL = createCharacter('left', pL, labelFromKey(kL));
       (sim as any).banterR = createCharacter('right', pR, labelFromKey(kR));
       // Track for UI labels and potential consumers
-      (sim as any).matchPersonaL = kL; (sim as any).matchPersonaR = kR;
+      (sim as any).matchPersonaL = kL;
+      (sim as any).matchPersonaR = kR;
     } else if (mode === 'tournament') {
       // Round-robin tournament over all unique pairs
       type Pair = [string, string];
@@ -119,10 +139,15 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
           for (let b = a + 1; b < keys.length; b++) out.push([keys[a]!, keys[b]!] as Pair);
         }
         // Shuffle deterministically
-        for (let n = out.length - 1; n > 0; n--) { const m = Math.floor(rng() * (n + 1)); const tmp = out[n]!; out[n] = out[m]!; out[m] = tmp; }
+        for (let n = out.length - 1; n > 0; n--) {
+          const m = Math.floor(rng() * (n + 1));
+          const tmp = out[n]!;
+          out[n] = out[m]!;
+          out[m] = tmp;
+        }
         return out;
       };
-      const T = (((sim as any).tournament ??= {}) as any);
+      const T = ((sim as any).tournament ??= {}) as any;
       if (!Array.isArray(T.pairs) || !Number.isFinite(T.index)) {
         T.pairs = mkPairs();
         T.index = 0;
@@ -134,27 +159,39 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
         T.index = 0;
         T.scores = Object.fromEntries(keys.map((k) => [k, 0]));
       }
-      const [aKey, bKey] = (T.pairs[T.index] ?? [keys[0]!, keys[Math.min(1, keys.length - 1)]!]) as Pair;
+      const [aKey, bKey] = (T.pairs[T.index] ?? [
+        keys[0]!,
+        keys[Math.min(1, keys.length - 1)]!,
+      ]) as Pair;
       // Alternate sides per match for fairness
-      const swap = (((sim as any).matchIndex | 0) % 2) === 0;
+      const swap = ((sim as any).matchIndex | 0) % 2 === 0;
       const kL = swap ? aKey : bKey;
       const kR = swap ? bKey : aKey;
       const pL = PERSONA_CATALOG[kL] ?? LightCore;
       const pR = PERSONA_CATALOG[kR] ?? DarkCore;
       (sim as any).banterL = createCharacter('left', pL, labelFromKey(kL));
       (sim as any).banterR = createCharacter('right', pR, labelFromKey(kR));
-      (sim as any).matchPersonaL = kL; (sim as any).matchPersonaR = kR;
+      (sim as any).matchPersonaL = kL;
+      (sim as any).matchPersonaR = kR;
     } else {
       // Manual
-      const chosen = (() => { try { return readCharacterProfiles(); } catch { return null; } })();
+      const chosen = (() => {
+        try {
+          return readCharacterProfiles();
+        } catch {
+          return null;
+        }
+      })();
       if (chosen) {
         (sim as any).banterL = createCharacter('left', chosen.left, chosen.leftName);
         (sim as any).banterR = createCharacter('right', chosen.right, chosen.rightName);
-        (sim as any).matchPersonaL = null; (sim as any).matchPersonaR = null;
+        (sim as any).matchPersonaL = null;
+        (sim as any).matchPersonaR = null;
       } else {
         (sim as any).banterL = createCharacter('left', LightCore, 'Light');
         (sim as any).banterR = createCharacter('right', DarkCore, 'Dark');
-        (sim as any).matchPersonaL = 'LightCore'; (sim as any).matchPersonaR = 'DarkCore';
+        (sim as any).matchPersonaL = 'LightCore';
+        (sim as any).matchPersonaR = 'DarkCore';
       }
     }
   } catch {
@@ -164,15 +201,24 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // P4: defer audio preload past the first paint so it doesn't compete with
   // initial rendering. preloadAll() fires async decodeAudioData calls and can
   // add latency to the first visible frame if run synchronously at game start.
-  setTimeout(() => { try { audio.preloadAll(); } catch { /* ignore */ } }, 0);
+  setTimeout(() => {
+    try {
+      audio.preloadAll();
+    } catch {
+      /* ignore */
+    }
+  }, 0);
   // Initialize music playlist only once; keep music playing across matches
   // Skip in non-web-audio environments (e.g., tests/JS DOM) to avoid network calls
-  const canUseWebAudio = (typeof window !== 'undefined') && ((window as any).AudioContext !== undefined);
+  const canUseWebAudio =
+    typeof window !== 'undefined' && (window as any).AudioContext !== undefined;
   if (canUseWebAudio) {
     void (async () => {
       try {
         if (!audio.hasPlaylist()) {
-          const res = await fetch(`${import.meta.env.BASE_URL}assets/music/playlist.json`, { cache: 'no-cache' });
+          const res = await fetch(`${import.meta.env.BASE_URL}assets/music/playlist.json`, {
+            cache: 'no-cache',
+          });
           if (res.ok) {
             const files = (await res.json()) as string[];
             const urls = Array.isArray(files)
@@ -185,18 +231,25 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
             }
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       try {
         // Start music only if not already playing
         if (!audio.isMusicPlaying()) {
           if (!audio.hasPlaylist()) {
             // Fallback: try a default track
-            const probe = await fetch(`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`, { method: 'HEAD' });
-            if (probe.ok) audio.setMusicPlaylist([`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`]);
+            const probe = await fetch(`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`, {
+              method: 'HEAD',
+            });
+            if (probe.ok)
+              audio.setMusicPlaylist([`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`]);
           }
           if (audio.hasPlaylist()) audio.playMusic();
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }
 
@@ -250,7 +303,11 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   sim.wepR = wepR;
 
   // Optional: mirror arena geometry horizontally (diagnostic)
-  try { maybeMirrorArena(); } catch { /* ignore */ void 0; }
+  try {
+    maybeMirrorArena();
+  } catch {
+    /* ignore */ void 0;
+  }
 
   // Dev hotkeys
   const detachHotkeys = attachDevHotkeys(wepL, wepR);
@@ -277,7 +334,11 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     if (sim.engine) sim.engine.timing.timeScale = stg.timescale ?? 1;
 
     runPhysics(scaled);
-    try { (sim as any).banter?.step(scaled); } catch { /* ignore */ }
+    try {
+      (sim as any).banter?.step(scaled);
+    } catch {
+      /* ignore */
+    }
     runFXPrune(performance.now());
     runSpawn(scaled);
     runTriggers();
@@ -315,9 +376,22 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
     detachCollisions?.();
     clearWorld();
     updateHUD();
-    try { audio.stopLoop('alarm_L'); audio.stopLoop('alarm_R'); } catch { /* ignore */ void 0; }
-    try { audio.stopMusic(); } catch { /* ignore */ void 0; }
-    try { audio.stopAnnouncer(); } catch { /* ignore */ void 0; }
+    try {
+      audio.stopLoop('alarm_L');
+      audio.stopLoop('alarm_R');
+    } catch {
+      /* ignore */ void 0;
+    }
+    try {
+      audio.stopMusic();
+    } catch {
+      /* ignore */ void 0;
+    }
+    try {
+      audio.stopAnnouncer();
+    } catch {
+      /* ignore */ void 0;
+    }
   };
 }
 
@@ -360,8 +434,8 @@ function maybeMirrorArena(): void {
     for (const b of Object.values(bins as Record<string, any>)) {
       if (!b) continue;
       if (b.pos) b.pos.x = W - b.pos.x;
-      const by = (b.box?.position?.y ?? 0);
-      const iy = (b.intake?.position?.y ?? 0);
+      const by = b.box?.position?.y ?? 0;
+      const iy = b.intake?.position?.y ?? 0;
       if (b.box) Body.setPosition(b.box, { x: W - (b.box.position?.x ?? 0), y: by });
       if (b.intake) Body.setPosition(b.intake, { x: W - (b.intake.position?.x ?? 0), y: iy });
     }

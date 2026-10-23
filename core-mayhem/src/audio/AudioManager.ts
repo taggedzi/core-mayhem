@@ -38,7 +38,14 @@ export class AudioManager {
 
   constructor(
     private sounds: Record<SoundKey, SoundSpec>,
-    private defaults: { masterVolume: number; sfxVolume: number; musicVolume: number; announcerVolume: number; duckReleaseMs: number; enabled: boolean },
+    private defaults: {
+      masterVolume: number;
+      sfxVolume: number;
+      musicVolume: number;
+      announcerVolume: number;
+      duckReleaseMs: number;
+      enabled: boolean;
+    },
   ) {
     this.enabled = !!defaults.enabled;
   }
@@ -64,7 +71,9 @@ export class AudioManager {
         this.musicAnalyser.smoothingTimeConstant = 0.85;
         this.musicAnalyser.minDecibels = -90;
         this.musicAnalyser.maxDecibels = -10;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       this.master.gain.value = this.defaults.masterVolume;
       (this.bus.sfx as GainNode).gain.value = this.defaults.sfxVolume;
       (this.bus.music as GainNode).gain.value = this.defaults.musicVolume;
@@ -177,7 +186,11 @@ export class AudioManager {
       this.musicEl.crossOrigin = 'anonymous';
       this.musicEl.loop = false;
       this.musicEl.addEventListener('ended', () => this.nextTrack());
-      try { this.musicNode = this.ctx.createMediaElementSource(this.musicEl); } catch { /* ignore */ }
+      try {
+        this.musicNode = this.ctx.createMediaElementSource(this.musicEl);
+      } catch {
+        /* ignore */
+      }
       if (this.musicNode) {
         if (this.musicAnalyser) {
           this.musicNode.connect(this.musicAnalyser);
@@ -188,12 +201,20 @@ export class AudioManager {
       }
     }
     this.musicEl!.src = url;
-    try { await this.musicEl!.play(); } catch { /* will resume on user gesture */ }
+    try {
+      await this.musicEl!.play();
+    } catch {
+      /* will resume on user gesture */
+    }
   }
 
   stopMusic(): void {
     if (this.musicEl) {
-      try { this.musicEl.pause(); } catch { /* ignore */ }
+      try {
+        this.musicEl.pause();
+      } catch {
+        /* ignore */
+      }
       this.musicEl.currentTime = 0;
     }
   }
@@ -233,7 +254,10 @@ export class AudioManager {
   }
 
   // Play an arbitrary URL (used by announcer); cached and routed to a channel
-  async playUrl(url: string, opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number }): Promise<void> {
+  async playUrl(
+    url: string,
+    opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number },
+  ): Promise<void> {
     if (!this.enabled) return;
     this.ensure();
     if (!this.ctx) return;
@@ -245,8 +269,18 @@ export class AudioManager {
     src.buffer = buf;
     const rate = opts?.rate ?? 1.0;
     const detune = opts?.detune ?? 0;
-    try { src.playbackRate.value = rate; } catch { /* ignore */ }
-    try { if ((src as any).detune) { ((src as any).detune.value = detune); } } catch { /* ignore */ }
+    try {
+      src.playbackRate.value = rate;
+    } catch {
+      /* ignore */
+    }
+    try {
+      if ((src as any).detune) {
+        (src as any).detune.value = detune;
+      }
+    } catch {
+      /* ignore */
+    }
     const gain = this.ctx.createGain();
     const vol = Math.max(0, Math.min(1, opts?.volume ?? 1.0));
     gain.gain.value = vol;
@@ -258,13 +292,20 @@ export class AudioManager {
     this.chanNodes[ch].add({ src, gain });
     src.start();
     src.addEventListener('ended', () => {
-      try { src.disconnect(); gain.disconnect(); } catch { /* ignore */ }
+      try {
+        src.disconnect();
+        gain.disconnect();
+      } catch {
+        /* ignore */
+      }
       // remove from tracking set
       try {
         for (const pair of Array.from(this.chanNodes[ch])) {
           if (pair.src === src) this.chanNodes[ch].delete(pair);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     });
   }
 
@@ -273,8 +314,17 @@ export class AudioManager {
     const set = this.chanNodes[ch];
     if (!set || set.size === 0) return;
     for (const pair of Array.from(set)) {
-      try { pair.src.stop(); } catch { /* ignore */ }
-      try { pair.src.disconnect(); pair.gain.disconnect(); } catch { /* ignore */ }
+      try {
+        pair.src.stop();
+      } catch {
+        /* ignore */
+      }
+      try {
+        pair.src.disconnect();
+        pair.gain.disconnect();
+      } catch {
+        /* ignore */
+      }
       set.delete(pair);
     }
   }
@@ -303,8 +353,18 @@ export class AudioManager {
     // pitch/rate
     const rate = overrides?.rate ?? spec.rate ?? 1.0;
     const detune = overrides?.detune ?? spec.detune ?? 0;
-    try { src.playbackRate.value = rate; } catch { /* ignore */ }
-    try { if ((src as any).detune) { ((src as any).detune.value = detune); } } catch { /* ignore */ }
+    try {
+      src.playbackRate.value = rate;
+    } catch {
+      /* ignore */
+    }
+    try {
+      if ((src as any).detune) {
+        (src as any).detune.value = detune;
+      }
+    } catch {
+      /* ignore */
+    }
 
     const gain = this.ctx.createGain();
     const vol = overrides?.volume ?? spec.volume ?? 1.0;
@@ -320,7 +380,12 @@ export class AudioManager {
     this.instances.set(key, current + 1);
     src.addEventListener('ended', () => {
       this.instances.set(key, Math.max(0, (this.instances.get(key) ?? 1) - 1));
-      try { src.disconnect(); gain.disconnect(); } catch { /* ignore */ }
+      try {
+        src.disconnect();
+        gain.disconnect();
+      } catch {
+        /* ignore */
+      }
     });
 
     if (typeof spec.duckMusic === 'number' && spec.duckMusic < 1) {
@@ -355,7 +420,13 @@ export class AudioManager {
   stopLoop(id: string): void {
     const l = this.loops.get(id);
     if (!l) return;
-    try { l.src.stop(); l.src.disconnect(); l.gain.disconnect(); } catch { /* ignore */ }
+    try {
+      l.src.stop();
+      l.src.disconnect();
+      l.gain.disconnect();
+    } catch {
+      /* ignore */
+    }
     this.loops.delete(id);
   }
 
@@ -371,7 +442,13 @@ export class AudioManager {
 
   stopAll(): void {
     for (const [, l] of this.loops) {
-      try { l.src.stop(); l.src.disconnect(); l.gain.disconnect(); } catch { /* ignore */ }
+      try {
+        l.src.stop();
+        l.src.disconnect();
+        l.gain.disconnect();
+      } catch {
+        /* ignore */
+      }
     }
     this.loops.clear();
   }

@@ -18,4 +18,3 @@ export function runPhysics(dtMs: number): void {
   const cR = sim.coreR as any;
   if (cR && typeof cR.rot === 'number' && typeof cR.rotSpeed === 'number') cR.rot += cR.rotSpeed;
 }
-

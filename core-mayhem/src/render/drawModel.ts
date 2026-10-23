@@ -221,7 +221,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const buf: Uint8Array = fft;
       const lastSpec = Number((sim as any)._musicFFTLastT ?? 0);
       let updated = false;
-      if (now - lastSpec > 33) { // throttle ~30Hz
+      if (now - lastSpec > 33) {
+        // throttle ~30Hz
         if (audio.getMusicSpectrum(buf)) {
           (sim as any)._musicFFTLastT = now;
           updated = true;
@@ -230,13 +231,20 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const L = buf.length;
       const idx = (p: number): number => Math.max(0, Math.min(L, Math.floor(L * p)));
       // Chiptune-friendly bands: very small bass, wide mid, substantial high
-      const b0 = idx(0.00), b1 = idx(0.06);
-      const m0 = idx(0.12), m1 = idx(0.55);
-      const t0 = idx(0.55), t1 = idx(0.90);
+      const b0 = idx(0.0),
+        b1 = idx(0.06);
+      const m0 = idx(0.12),
+        m1 = idx(0.55);
+      const t0 = idx(0.55),
+        t1 = idx(0.9);
       const avg = (a: number, b: number): number => {
         const span = Math.max(1, b - a);
-        let s = 0; for (let i = a; i < b; i++) { const v = buf[i] ?? 0; s += v | 0; }
-        return (s / span) / 255;
+        let s = 0;
+        for (let i = a; i < b; i++) {
+          const v = buf[i] ?? 0;
+          s += v | 0;
+        }
+        return s / span / 255;
       };
       // Spectral flux (positive change only), normalized
       let flux = Number((sim as any)._musicFlux ?? 0);
@@ -248,13 +256,22 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         }
         const prev: Uint8Array = prev0;
         // Compute two flux measures: low (kick-ish) and chip (mid/high onset)
-        const lf0 = idx(0.03), lf1 = idx(0.25);
-        const cf0 = m0, cf1 = t1;
-        let fLow = 0, fChip = 0;
-        for (let i = lf0; i < lf1; i++) { const d = ((buf[i] ?? 0) | 0) - ((prev[i] ?? 0) | 0); if (d > 0) fLow += d; }
-        for (let i = cf0; i < cf1; i++) { const d = ((buf[i] ?? 0) | 0) - ((prev[i] ?? 0) | 0); if (d > 0) fChip += d; }
-        fLow /= Math.max(1, (lf1 - lf0)) * 255;
-        fChip /= Math.max(1, (cf1 - cf0)) * 255;
+        const lf0 = idx(0.03),
+          lf1 = idx(0.25);
+        const cf0 = m0,
+          cf1 = t1;
+        let fLow = 0,
+          fChip = 0;
+        for (let i = lf0; i < lf1; i++) {
+          const d = ((buf[i] ?? 0) | 0) - ((prev[i] ?? 0) | 0);
+          if (d > 0) fLow += d;
+        }
+        for (let i = cf0; i < cf1; i++) {
+          const d = ((buf[i] ?? 0) | 0) - ((prev[i] ?? 0) | 0);
+          if (d > 0) fChip += d;
+        }
+        fLow /= Math.max(1, lf1 - lf0) * 255;
+        fChip /= Math.max(1, cf1 - cf0) * 255;
         // Weight toward chiptune if mids/highs dominate over bass
         const eBass = avg(b0, b1);
         const eMT = (avg(m0, m1) + avg(t0, t1)) * 0.5;
@@ -278,10 +295,11 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const energyRaw = Math.min(1, 0.5 * bBass + 0.35 * bMid + 0.15 * bTreble);
     const eLastT = ((sim as any).musicEnvLastT as number) || now;
     const eDt = Math.max(1, now - eLastT);
-    const atk = 1 - Math.exp(-eDt / 40);   // faster attack
-    const dec = 1 - Math.exp(-eDt / 220);  // faster decay for quicker drop-off
+    const atk = 1 - Math.exp(-eDt / 40); // faster attack
+    const dec = 1 - Math.exp(-eDt / 220); // faster decay for quicker drop-off
     let env = ((sim as any).musicEnv as number) ?? 0;
-    if (energyRaw > env) env += (energyRaw - env) * atk; else env += (energyRaw - env) * dec;
+    if (energyRaw > env) env += (energyRaw - env) * atk;
+    else env += (energyRaw - env) * dec;
     env = Math.max(0, Math.min(1.5, env));
     (sim as any).musicEnv = env;
     (sim as any).musicEnvLastT = now;
@@ -292,7 +310,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const pDec = 1 - Math.exp(-pDt / 140);
     const fluxIn = Math.max(0, Math.min(1, feat.flux * (0.6 + 0.8 * sens)));
     let pulse = ((sim as any).musicPulse as number) ?? 0;
-    if (fluxIn > pulse) pulse += (fluxIn - pulse) * pAtk; else pulse += (fluxIn - pulse) * pDec;
+    if (fluxIn > pulse) pulse += (fluxIn - pulse) * pAtk;
+    else pulse += (fluxIn - pulse) * pDec;
     pulse = Math.max(0, Math.min(1.8, pulse));
     (sim as any).musicPulse = pulse;
     (sim as any).musicPulseLastT = now;
@@ -362,7 +381,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const step = busy > 0.66 ? 3 : busy > 0.33 ? 2 : 1; // draw fewer stars when busy
         let idx = 0;
         for (const s of m.stars as any[]) {
-          if ((idx++ % step) !== 0) continue;
+          if (idx++ % step !== 0) continue;
           const tw = 0.4 + 0.6 * Math.sin(now * J + s.ph);
           const boost = Math.min(2.5, 0.6 + 1.6 * bTreble + 0.8 * env);
           const aS = baseA * tw * fade * boost;
@@ -389,13 +408,17 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const busy = 1 - quiet;
         for (let i = 0; i < n; i++) {
           const r = baseR + i * gap;
-          let w = (0.9 + 0.25 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1))) * (1.0 + (1.2 * bMid + 2.2 * pulse + 0.4 * bTreble + 0.3 * env) * (1 - 0.35 * busy));
+          let w =
+            (0.9 + 0.25 * Math.sin((now * 0.0004 + i * 0.6) * (i % 2 ? 1 : -1))) *
+            (1.0 + (1.2 * bMid + 2.2 * pulse + 0.4 * bTreble + 0.3 * env) * (1 - 0.35 * busy));
           // Aim arc toward the midline for both sides so visuals mirror.
           const base = cx < W * 0.5 ? 0 : Math.PI; // left→right or right→left
           const drift = 0.4 * Math.sin(now * 0.00025 + i * 0.7);
           const aC = base + drift;
           // Stronger music-driven span: favor mid-range with some bass + overall energy
-          let musicSpan = (1.3 * bMid + 2.5 * pulse + 0.6 * bTreble + 0.1 * bBass + 0.15 * env) * (1 - 0.45 * busy); // chiptune-weighted span
+          let musicSpan =
+            (1.3 * bMid + 2.5 * pulse + 0.6 * bTreble + 0.1 * bBass + 0.15 * env) *
+            (1 - 0.45 * busy); // chiptune-weighted span
           musicSpan = Math.min(1.8, musicSpan); // cap to avoid full circles
           let span = 0.7 + 0.45 * Math.sin(now * 0.0003 + i * 1.2) + musicSpan;
           span = Math.min(3.0, span); // hard cap to keep arcs readable
@@ -427,7 +450,14 @@ export function toDrawCommands(now: number = performance.now()): Scene {
             stroke: color,
             lineWidth: MESMER.arcs.width * w,
             // Arcs fade with global fade, current quietness, and beat prominence (drop faster when quiet)
-            alpha: MESMER.arcs.alpha * fade * quiet * Math.min(2.0, (0.35 + 1.1 * bMid + 1.6 * pulse + 0.5 * bTreble + 0.3 * env) * (1 - 0.28 * busy)),
+            alpha:
+              MESMER.arcs.alpha *
+              fade *
+              quiet *
+              Math.min(
+                2.0,
+                (0.35 + 1.1 * bMid + 1.6 * pulse + 0.5 * bTreble + 0.3 * env) * (1 - 0.28 * busy),
+              ),
             composite: 'lighter',
             shadowBlur: MESMER.arcs.blur * (1 + 1.2 * env) * (1 - 0.5 * busy),
             shadowColor: glow,
@@ -609,16 +639,52 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const glow = (cfg.damageRow.glow as number) ?? 12;
 
       // Base pads (optional, faint)
-      for (let i = 1; i <= maxN_L; i++) cmds.push({ kind: 'circle', x: mid - (i - 0.5) * step, y: rowY, r: rSize * 0.5, fill: '#070a14', alpha: padA });
-      for (let i = 1; i <= maxN_R; i++) cmds.push({ kind: 'circle', x: mid + (i - 0.5) * step, y: rowY, r: rSize * 0.5, fill: '#070a14', alpha: padA });
+      for (let i = 1; i <= maxN_L; i++)
+        cmds.push({
+          kind: 'circle',
+          x: mid - (i - 0.5) * step,
+          y: rowY,
+          r: rSize * 0.5,
+          fill: '#070a14',
+          alpha: padA,
+        });
+      for (let i = 1; i <= maxN_R; i++)
+        cmds.push({
+          kind: 'circle',
+          x: mid + (i - 0.5) * step,
+          y: rowY,
+          r: rSize * 0.5,
+          fill: '#070a14',
+          alpha: padA,
+        });
 
       // Lit extent expands symmetrically from center
       for (let i = 1; i <= lit; i++) {
         const xl = mid - (i - 0.5) * step;
         const xr = mid + (i - 0.5) * step;
         const aCell = 0.45 + 0.55 * frac; // brightness follows asymptotic fraction
-        cmds.push({ kind: 'circle', x: xl, y: rowY, r: rSize * 0.5, fill: red, alpha: aCell, composite: 'lighter', shadowBlur: glow, shadowColor: red });
-        cmds.push({ kind: 'circle', x: xr, y: rowY, r: rSize * 0.5, fill: red, alpha: aCell, composite: 'lighter', shadowBlur: glow, shadowColor: red });
+        cmds.push({
+          kind: 'circle',
+          x: xl,
+          y: rowY,
+          r: rSize * 0.5,
+          fill: red,
+          alpha: aCell,
+          composite: 'lighter',
+          shadowBlur: glow,
+          shadowColor: red,
+        });
+        cmds.push({
+          kind: 'circle',
+          x: xr,
+          y: rowY,
+          r: rSize * 0.5,
+          fill: red,
+          alpha: aCell,
+          composite: 'lighter',
+          shadowBlur: glow,
+          shadowColor: red,
+        });
       }
     }
   }
@@ -737,13 +803,13 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const len = Math.max(4, SHIELD_VFX.sparks.len ?? 10);
         const baseAlpha = SHIELD_VFX.sparks.alpha ?? 0.5;
         // simple deterministic pseudo-random from time + index
-      const rand = (s: number): number => {
-        let t = Math.imul(s ^ 0x9e3779b9, 0x85ebca6b);
-        t ^= t >>> 13;
-        t = Math.imul(t, 0xc2b2ae35);
-        t ^= t >>> 16;
-        return (t >>> 0) / 4294967296;
-      };
+        const rand = (s: number): number => {
+          let t = Math.imul(s ^ 0x9e3779b9, 0x85ebca6b);
+          t ^= t >>> 13;
+          t = Math.imul(t, 0xc2b2ae35);
+          t ^= t >>> 16;
+          return (t >>> 0) / 4294967296;
+        };
         for (let i = 0; i < count; i++) {
           const seed = ((now * 33) | 0) + i * 9173 + (core.side < 0 ? 37 : 61);
           const u = rand(seed);
@@ -1292,8 +1358,14 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       text?: string;
       strokePx?: number;
     }
-    interface Vec2 { x: number; y: number }
-    interface BodyLike { bounds: { min: Vec2; max: Vec2 }; position?: Vec2 }
+    interface Vec2 {
+      x: number;
+      y: number;
+    }
+    interface BodyLike {
+      bounds: { min: Vec2; max: Vec2 };
+      position?: Vec2;
+    }
     interface RenderBin {
       body?: any;
       fill: number;
@@ -1454,8 +1526,14 @@ export function toDrawCommands(now: number = performance.now()): Scene {
       const nowMs = now;
       const fontPx = Math.max(12, sim.H * 0.018);
       // Config values are in BL coordinates; fall back preserves legacy top offsets
-      const posL_buff = ((BADGES as any)?.left?.buff as [number, number] | undefined) ?? [sim.W * 0.22, sim.H - 26];
-      const posL_debuff = ((BADGES as any)?.left?.debuff as [number, number] | undefined) ?? [sim.W * 0.22, sim.H - 52];
+      const posL_buff = ((BADGES as any)?.left?.buff as [number, number] | undefined) ?? [
+        sim.W * 0.22,
+        sim.H - 26,
+      ];
+      const posL_debuff = ((BADGES as any)?.left?.debuff as [number, number] | undefined) ?? [
+        sim.W * 0.22,
+        sim.H - 52,
+      ];
       const place = (side: number, pBL: [number, number]): { x: number; y: number } => {
         const x = side < 0 ? pBL[0] : sim.W - pBL[0];
         const y = sim.H - pBL[1];
@@ -1471,16 +1549,24 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const active = nowMs < until;
         if (active) {
           const tLeft = Math.max(0, Math.ceil((until - nowMs) / 1000));
-          const kind = String((m as any).buffKind ?? (nowMs < ((m as any).dmgUntil ?? 0) ? 'damage' : 'buff'));
+          const kind = String(
+            (m as any).buffKind ?? (nowMs < ((m as any).dmgUntil ?? 0) ? 'damage' : 'buff'),
+          );
           let text: string;
           if (kind === 'damage') {
-            const mul = (m as any).dmgMul?.toFixed ? (m as any).dmgMul.toFixed(1) : String((m as any).dmgMul ?? 1);
+            const mul = (m as any).dmgMul?.toFixed
+              ? (m as any).dmgMul.toFixed(1)
+              : String((m as any).dmgMul ?? 1);
             text = `DMG x${mul}  ${tLeft}s`;
           } else if (kind === 'binBoost') {
-            const mul = (m as any).binFillMul?.toFixed ? (m as any).binFillMul.toFixed(1) : String((m as any).binFillMul ?? 1);
+            const mul = (m as any).binFillMul?.toFixed
+              ? (m as any).binFillMul.toFixed(1)
+              : String((m as any).binFillMul ?? 1);
             text = `BIN x${mul}  ${tLeft}s`;
           } else if (kind === 'cooldown') {
-            const mul = (m as any).cooldownMul?.toFixed ? (m as any).cooldownMul.toFixed(2) : String((m as any).cooldownMul ?? 1);
+            const mul = (m as any).cooldownMul?.toFixed
+              ? (m as any).cooldownMul.toFixed(2)
+              : String((m as any).cooldownMul ?? 1);
             text = `CD x${mul}  ${tLeft}s`;
           } else {
             text = `${kind.toUpperCase()}  ${tLeft}s`;
@@ -1534,7 +1620,9 @@ export function toDrawCommands(now: number = performance.now()): Scene {
   // Avatars — procedural retro arcade characters, below turrets / above name tags
   try {
     for (const cmd of buildAvatarCmds(now, W, H)) cmds.push(cmd);
-  } catch { /* non-fatal: never crash the render loop */ }
+  } catch {
+    /* non-fatal: never crash the render loop */
+  }
 
   // Overlays — Core Name + Persona tags (mirrored placement like badges)
   {
@@ -1564,7 +1652,9 @@ export function toDrawCommands(now: number = performance.now()): Scene {
             const obj = JSON.parse(raw);
             if (obj && typeof obj.persona === 'string') personaKey = obj.persona;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
         const personaLabel = (personaKey ?? '').replace(/\s*Core$/i, '').trim();
         const pName0 = String(c.personality?.name ?? '').trim();
         const fallbackLabel = pName0.replace(/\s*Core$/i, '').trim();
@@ -1574,10 +1664,15 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (!baseName) baseName = String(c.displayName ?? '').trim();
         if (!baseName) {
           const id = String(c.id ?? '').toLowerCase();
-          baseName = id === 'left' || id === 'right' ? defaultSideName : (String(c.id ?? defaultSideName));
+          baseName =
+            id === 'left' || id === 'right' ? defaultSideName : String(c.id ?? defaultSideName);
         }
         // Avoid duplicate like "Light (Light)"; prefer side name in that case
-        const norm = (s: string): string => s.replace(/\s*Core$/i, '').trim().toLowerCase();
+        const norm = (s: string): string =>
+          s
+            .replace(/\s*Core$/i, '')
+            .trim()
+            .toLowerCase();
         if (inParens && norm(baseName) === norm(inParens)) baseName = defaultSideName;
         const label = inParens ? `${baseName} (${inParens})` : baseName;
         return label;
@@ -1586,7 +1681,8 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         const text = makeText(side);
         if (!text) return;
         const p = place(side);
-        const stroke = side < 0 ? (style.strokeLeft ?? 'var(--left)') : (style.strokeRight ?? 'var(--right)');
+        const stroke =
+          side < 0 ? (style.strokeLeft ?? 'var(--left)') : (style.strokeRight ?? 'var(--right)');
         const fill = style.fill ?? '#0e1730';
         const textFill = style.text ?? '#ffffff';
         cmds.push({
@@ -1752,7 +1848,7 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     const delayMs = (GAMEOVER as any).bannerDelayMs ?? 0;
     if (now - t0 >= delayMs) {
       const remainMs = Math.max(0, GAMEOVER.bannerMs - (now - t0));
-    const remainSec = Math.ceil(remainMs / 1000);
+      const remainSec = Math.ceil(remainMs / 1000);
 
       const bw = Math.min(W * 0.8, 720);
       const bh = Math.min(H * 0.22, 180);
@@ -1770,7 +1866,9 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         align: 'center',
         baseline: 'middle',
       });
-      const sub = GAMEOVER.autoRestart ? `Restarting in ${remainSec}s` : 'Press START to play again';
+      const sub = GAMEOVER.autoRestart
+        ? `Restarting in ${remainSec}s`
+        : 'Press START to play again';
       cmds.push({
         kind: 'text',
         x: W / 2,

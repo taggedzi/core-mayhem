@@ -63,7 +63,15 @@ function explodeAt(
   for (let i = 0; i < 24; i++) {
     const a = Math.random() * Math.PI * 2;
     const s = 1.6 + Math.random() * 3.2;
-    sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t0: now, ms: 600 + Math.random() * 400, color });
+    sparks.push({
+      x,
+      y,
+      vx: Math.cos(a) * s,
+      vy: Math.sin(a) * s,
+      t0: now,
+      ms: 600 + Math.random() * 400,
+      color,
+    });
   }
 
   const r = EXPLOSION.radius;
@@ -155,17 +163,37 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 
     if (excess <= 0) {
       // play shield impact for absorbed shots
-      try { audio.play('impact_shield'); } catch { /* ignore */ void 0; }
+      try {
+        audio.play('impact_shield');
+      } catch {
+        /* ignore */ void 0;
+      }
       // If shield collapsed exactly on absorption, signal collapse
       if (shieldBefore > SHIELD_EPS && core.shieldHP <= SHIELD_EPS) {
-        try { audio.play('core_shield_down'); } catch { /* ignore */ void 0; }
-        try { void speakBanterSmart('shields_down' as any, side === SIDE.LEFT ? 'L' : 'R'); } catch { /* ignore */ }
+        try {
+          audio.play('core_shield_down');
+        } catch {
+          /* ignore */ void 0;
+        }
+        try {
+          void speakBanterSmart('shields_down' as any, side === SIDE.LEFT ? 'L' : 'R');
+        } catch {
+          /* ignore */
+        }
       }
       // Shot fully absorbed by the shield
       try {
-        recordProjectileHit(proj?.plugin?.side, proj?.plugin?.ptype ?? 'cannon', shieldBefore - core.shieldHP, 0, 0);
+        recordProjectileHit(
+          proj?.plugin?.side,
+          proj?.plugin?.ptype ?? 'cannon',
+          shieldBefore - core.shieldHP,
+          0,
+          0,
+        );
         proj.plugin.didDamage = true;
-      } catch { /* ignore */ void 0; }
+      } catch {
+        /* ignore */ void 0;
+      }
       World.remove(w, proj);
       onPostHit?.();
       return;
@@ -174,8 +202,16 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     dmg = excess;
     // If shield just broke this hit, signal collapse
     if (shieldBefore > SHIELD_EPS && core.shieldHP <= SHIELD_EPS) {
-      try { audio.play('core_shield_down'); } catch { /* ignore */ void 0; }
-      try { void speakBanterSmart('shields_down' as any, side === SIDE.LEFT ? 'L' : 'R'); } catch { /* ignore */ }
+      try {
+        audio.play('core_shield_down');
+      } catch {
+        /* ignore */ void 0;
+      }
+      try {
+        void speakBanterSmart('shields_down' as any, side === SIDE.LEFT ? 'L' : 'R');
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -197,7 +233,9 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
         break;
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   const centerAfter = core.centerHP | 0;
   try {
     recordProjectileHit(
@@ -240,7 +278,13 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   const w = sim.world;
   assertWorld(w);
   const ringColor2 = sty?.glow ?? (shooterSide === SIDE.LEFT ? css('--left') : css('--right'));
-  explodeAt(proj.position.x, proj.position.y, proj.plugin.side, ringColor2, Number(dmg) || undefined);
+  explodeAt(
+    proj.position.x,
+    proj.position.y,
+    proj.plugin.side,
+    ringColor2,
+    Number(dmg) || undefined,
+  );
   World.remove(w, proj);
   // choose impact sound based on where damage landed
   try {
@@ -249,7 +293,9 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     if (centerDelta > 0) audio.play('impact_core');
     else if (segDelta > 0) audio.play('impact_armor');
     if (centerBefore > 0 && centerAfter <= 0) audio.play('core_death');
-  } catch { /* ignore */ void 0; }
+  } catch {
+    /* ignore */ void 0;
+  }
   // minor shake for direct hits
   (sim as any).shakeT0 = performance.now();
   (sim as any).shakeMs = 160;
@@ -257,10 +303,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   onPostHit?.();
 }
 
-export function registerCollisions(
-  eng: Engine,
-  opts?: { onPostHit?: () => void },
-): () => void {
+export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void }): () => void {
   const onStart = (e: IEventCollision<Engine>): void => {
     for (const p of e.pairs) {
       const A = p.bodyA as any,
@@ -297,7 +340,8 @@ export function registerCollisions(
           // Nudge position slightly away from the paddle to avoid re-trigger jitter
           const r = (ammo as any).circleRadius ?? 4;
           if (vy < 0) Body.setPosition(ammo, { x: ammo.position.x, y: paddle.position.y - r - 1 });
-          else if (vy > 0) Body.setPosition(ammo, { x: ammo.position.x, y: paddle.position.y + r + 1 });
+          else if (vy > 0)
+            Body.setPosition(ammo, { x: ammo.position.x, y: paddle.position.y + r + 1 });
         } catch {
           /* ignore */ void 0;
         }
@@ -350,36 +394,46 @@ export function registerCollisions(
         continue;
       }
 
-  const explodeIf = (proj: any, other: any): void => {
-    const pp = proj?.plugin ?? {};
-    if (pp.kind !== 'projectile') return;
-    if (other?.plugin?.kind === 'weaponMount') return;
-    if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
-    // Record first impact kind for missiles if not already recorded
-    try {
-      if (pp.ptype === 'missile' && !pp._firstImpactKind) {
-        const k = String(other?.plugin?.kind ?? 'unknown');
-        pp._firstImpactKind = k;
-        recordMissileFirstImpact(pp.side, k);
-      }
-    } catch {
-      /* ignore */ void 0;
-    }
+      const explodeIf = (proj: any, other: any): void => {
+        const pp = proj?.plugin ?? {};
+        if (pp.kind !== 'projectile') return;
+        if (other?.plugin?.kind === 'weaponMount') return;
+        if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
+        // Record first impact kind for missiles if not already recorded
+        try {
+          if (pp.ptype === 'missile' && !pp._firstImpactKind) {
+            const k = String(other?.plugin?.kind ?? 'unknown');
+            pp._firstImpactKind = k;
+            recordMissileFirstImpact(pp.side, k);
+          }
+        } catch {
+          /* ignore */ void 0;
+        }
         const ptype = String(pp.ptype ?? 'cannon');
         const sty = (PROJECTILE_STYLE as any)[ptype];
         const ringColor = sty?.glow ?? (pp.side === SIDE.LEFT ? css('--left') : css('--right'));
-    explodeAt(proj.position.x, proj.position.y, pp.side, ringColor, Number(pp.dmg) || undefined);
-    const w = sim.world;
-    assertWorld(w);
-    World.remove(w, proj);
-    // count miss if no damage was recorded
-    try {
-      if (!pp.didDamage) recordMiss(pp.side, pp.ptype ?? 'cannon');
-    } catch {
-      /* ignore */ void 0;
-    }
-    try { if (!pp.didDamage) audio.play('impact_miss'); } catch { /* ignore */ void 0; }
-  };
+        explodeAt(
+          proj.position.x,
+          proj.position.y,
+          pp.side,
+          ringColor,
+          Number(pp.dmg) || undefined,
+        );
+        const w = sim.world;
+        assertWorld(w);
+        World.remove(w, proj);
+        // count miss if no damage was recorded
+        try {
+          if (!pp.didDamage) recordMiss(pp.side, pp.ptype ?? 'cannon');
+        } catch {
+          /* ignore */ void 0;
+        }
+        try {
+          if (!pp.didDamage) audio.play('impact_miss');
+        } catch {
+          /* ignore */ void 0;
+        }
+      };
 
       explodeIf(A, B);
       explodeIf(B, A);

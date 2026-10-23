@@ -30,10 +30,9 @@ describe('match flow', () => {
   });
 
   it('checkTimeLimit ties on timeout', () => {
-    (sim as any).matchStart = performance.now() - (31 * 60 * 1000);
+    (sim as any).matchStart = performance.now() - 31 * 60 * 1000;
     checkTimeLimit();
     expect((sim as any).gameOver).toBe(true);
     expect((sim as any).winner).toBe(0);
   });
 });
-

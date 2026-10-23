@@ -73,7 +73,8 @@ const urls = import.meta.glob('../audio/announcer/*.wav', {
 }) as Record<string, string>;
 
 function clipsFor(pool: PoolId): readonly string[] {
-  return manifest.clips.filter((clip) => clip.pools.includes(pool))
+  return manifest.clips
+    .filter((clip) => clip.pools.includes(pool))
     .map((clip) => urls[`../audio/announcer/${clip.id}.wav`])
     .filter((url): url is string => typeof url === 'string');
 }
@@ -94,13 +95,14 @@ export const POOLS = {
   time_countdown_3: clipsFor('time_countdown_3'),
 };
 
-export const CLIP_DURATION_MS = Object.fromEntries(manifest.clips.map((clip) => [
-  urls[`../audio/announcer/${clip.id}.wav`], clip.durationMs,
-]));
+export const CLIP_DURATION_MS = Object.fromEntries(
+  manifest.clips.map((clip) => [urls[`../audio/announcer/${clip.id}.wav`], clip.durationMs]),
+);
 
-export const RECORDED_ANNOUNCER_AVAILABLE = manifest.clips.length === 49
-  && manifest.clips.every((clip) => !!urls[`../audio/announcer/${clip.id}.wav`])
-  && Object.keys(poolNames).every((pool) => POOLS[pool as PoolId].length > 0);
+export const RECORDED_ANNOUNCER_AVAILABLE =
+  manifest.clips.length === 49 &&
+  manifest.clips.every((clip) => !!urls[`../audio/announcer/${clip.id}.wav`]) &&
+  Object.keys(poolNames).every((pool) => POOLS[pool as PoolId].length > 0);
 
 // Event mapping to pools with priorities and per-event cooldowns
 export const EVENTS: Record<

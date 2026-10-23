@@ -20,12 +20,22 @@ describe('collisions edge cases', () => {
     sim.world = eng.world;
     // setup minimal cores matching assertCoreFull
     (sim as any).coreL = {
-      center: { x: 100, y: 100 }, segHP: new Array(8).fill(100), segHPmax: 100,
-      centerHP: 400, centerHPmax: 400, shieldHP: 0, shieldHPmax: 200,
+      center: { x: 100, y: 100 },
+      segHP: new Array(8).fill(100),
+      segHPmax: 100,
+      centerHP: 400,
+      centerHPmax: 400,
+      shieldHP: 0,
+      shieldHPmax: 200,
     };
     (sim as any).coreR = {
-      center: { x: 540, y: 100 }, segHP: new Array(8).fill(100), segHPmax: 100,
-      centerHP: 400, centerHPmax: 400, shieldHP: 0, shieldHPmax: 200,
+      center: { x: 540, y: 100 },
+      segHP: new Array(8).fill(100),
+      segHPmax: 100,
+      centerHP: 400,
+      centerHPmax: 400,
+      shieldHP: 0,
+      shieldHPmax: 200,
     };
 
     // bins used by deposit; simple shape with cannon
@@ -39,9 +49,16 @@ describe('collisions edge cases', () => {
     const ammo = add(Bodies.circle(0, 0, 3));
     (ammo as any).plugin = { kind: 'ammo', type: 'basic', side: SIDE.LEFT };
     const cont = add(Bodies.rectangle(0, 0, 10, 10));
-    (cont as any).plugin = { kind: 'container', accept: ['basic'], label: 'cannon', side: SIDE.LEFT };
+    (cont as any).plugin = {
+      kind: 'container',
+      accept: ['basic'],
+      label: 'cannon',
+      side: SIDE.LEFT,
+    };
 
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: ammo, bodyB: cont }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: ammo, bodyB: cont }],
+    } as any);
 
     // body removed and bin incremented
     expect(sim.world!.bodies.includes(ammo)).toBe(false);
@@ -59,9 +76,17 @@ describe('collisions edge cases', () => {
     // Case A: fully absorbed by shield
     (sim as any).coreR.shieldHP = 50;
     const projA = add(Bodies.circle(520, 100, 3));
-    (projA as any).plugin = { kind: 'projectile', ptype: 'cannon', side: SIDE.LEFT, dmg: 10, spawnT: 0 };
+    (projA as any).plugin = {
+      kind: 'projectile',
+      ptype: 'cannon',
+      side: SIDE.LEFT,
+      dmg: 10,
+      spawnT: 0,
+    };
     const c0 = (sim as any).coreR.centerHP;
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: projA, bodyB: ring }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: projA, bodyB: ring }],
+    } as any);
     expect((sim as any).coreR.centerHP).toBe(c0); // no core damage
     expect((sim as any).coreR.shieldHP).toBe(40); // shield reduced
     expect(sim.world!.bodies.includes(projA)).toBe(false); // projectile removed
@@ -69,9 +94,17 @@ describe('collisions edge cases', () => {
     // Case B: excess penetrates
     (sim as any).coreR.shieldHP = 5;
     const projB = add(Bodies.circle(520, 100, 3));
-    (projB as any).plugin = { kind: 'projectile', ptype: 'cannon', side: SIDE.LEFT, dmg: 20, spawnT: 0 };
+    (projB as any).plugin = {
+      kind: 'projectile',
+      ptype: 'cannon',
+      side: SIDE.LEFT,
+      dmg: 20,
+      spawnT: 0,
+    };
     const segSum0 = (sim as any).coreR.segHP.reduce((a: number, b: number) => a + b, 0);
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: projB, bodyB: ring }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: projB, bodyB: ring }],
+    } as any);
     const segSum1 = (sim as any).coreR.segHP.reduce((a: number, b: number) => a + b, 0);
     expect(segSum1).toBeLessThan(segSum0);
     det();
@@ -80,18 +113,28 @@ describe('collisions edge cases', () => {
   it('projectile ignores weaponMount but explodes on other after grace', () => {
     const det = registerCollisions(sim.engine!);
     const proj = add(Bodies.circle(300, 120, 5));
-    (proj as any).plugin = { kind: 'projectile', ptype: 'missile', side: SIDE.LEFT, dmg: 10, spawnT: performance.now() - 1000 };
+    (proj as any).plugin = {
+      kind: 'projectile',
+      ptype: 'missile',
+      side: SIDE.LEFT,
+      dmg: 10,
+      spawnT: performance.now() - 1000,
+    };
     const mount = add(Bodies.circle(300, 120, 5, { isSensor: true }));
     (mount as any).plugin = { kind: 'weaponMount', side: SIDE.RIGHT, label: 'laser' };
     const other = add(Bodies.circle(300, 120, 5));
     (other as any).plugin = { kind: 'wall' };
 
     // collide with weaponMount first → no explosion
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: proj, bodyB: mount }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: proj, bodyB: mount }],
+    } as any);
     expect(sim.world!.bodies.includes(proj)).toBe(true);
 
     // collide with other → explosion removes projectile and adds FX
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: proj, bodyB: other }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: proj, bodyB: other }],
+    } as any);
     expect(sim.world!.bodies.includes(proj)).toBe(false);
     expect((sim.fxImp ?? []).length).toBeGreaterThan(0);
     det();

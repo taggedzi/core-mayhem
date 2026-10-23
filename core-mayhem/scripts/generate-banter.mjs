@@ -319,8 +319,7 @@ const PERSONAS = [
       'Badge expired.',
       'Phone\u2019s busy.',
     ],
-    searchRegex:
-      / {4}tauntSoft: \[\n {6}'That.s not on my calendar\.',\n(?: {6}'.*',\n)+ {4}\],/,
+    searchRegex: / {4}tauntSoft: \[\n {6}'That.s not on my calendar\.',\n(?: {6}'.*',\n)+ {4}\],/,
   },
   {
     name: 'Flynn',

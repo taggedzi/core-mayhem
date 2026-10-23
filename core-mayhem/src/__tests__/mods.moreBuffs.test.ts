@@ -61,4 +61,3 @@ describe('additional buffs behavior', () => {
     expect(currentBinFillMul(SIDE.LEFT)).toBeGreaterThan(1);
   });
 });
-

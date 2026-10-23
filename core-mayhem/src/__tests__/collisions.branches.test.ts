@@ -12,15 +12,35 @@ function add(body: Matter.Body): Matter.Body {
 }
 
 describe('collisions branches', () => {
-  const orig = { enabled: EXPLOSION.enabled, maxPerSec: EXPLOSION.maxPerSec, ammoDestroyPct: EXPLOSION.ammoDestroyPct } as any;
+  const orig = {
+    enabled: EXPLOSION.enabled,
+    maxPerSec: EXPLOSION.maxPerSec,
+    ammoDestroyPct: EXPLOSION.ammoDestroyPct,
+  } as any;
   beforeEach(() => {
     resetSimState();
     const eng = Matter.Engine.create();
     sim.engine = eng;
     sim.world = eng.world;
     // cores for hit/asserts
-    (sim as any).coreL = { center: { x: 100, y: 100 }, segHP: new Array(8).fill(100), segHPmax: 100, centerHP: 400, centerHPmax: 400, shieldHP: 0, shieldHPmax: 200 };
-    (sim as any).coreR = { center: { x: 540, y: 100 }, segHP: new Array(8).fill(100), segHPmax: 100, centerHP: 400, centerHPmax: 400, shieldHP: 0, shieldHPmax: 200 };
+    (sim as any).coreL = {
+      center: { x: 100, y: 100 },
+      segHP: new Array(8).fill(100),
+      segHPmax: 100,
+      centerHP: 400,
+      centerHPmax: 400,
+      shieldHP: 0,
+      shieldHPmax: 200,
+    };
+    (sim as any).coreR = {
+      center: { x: 540, y: 100 },
+      segHP: new Array(8).fill(100),
+      segHPmax: 100,
+      centerHP: 400,
+      centerHPmax: 400,
+      shieldHP: 0,
+      shieldHPmax: 200,
+    };
   });
 
   afterEach(() => {
@@ -31,7 +51,12 @@ describe('collisions branches', () => {
 
   it('deposit shows binBoost FX when multiplier > 1', () => {
     // Enable binBoost
-    (sim as any).modsL = { ...(sim as any).modsL, buffKind: 'binBoost', buffUntil: performance.now() + 10000, binFillMul: 2 };
+    (sim as any).modsL = {
+      ...(sim as any).modsL,
+      buffKind: 'binBoost',
+      buffUntil: performance.now() + 10000,
+      binFillMul: 2,
+    };
     (sim as any).binsL = { laser: { fill: 0, cap: 10 } };
     const det = registerCollisions(sim.engine!);
     sim.ammoL = 1 as any;
@@ -39,7 +64,9 @@ describe('collisions branches', () => {
     (ammo as any).plugin = { kind: 'ammo', type: 'emp', side: SIDE.LEFT };
     const cont = add(Bodies.rectangle(0, 0, 10, 10));
     (cont as any).plugin = { kind: 'container', accept: ['emp'], label: 'laser', side: SIDE.LEFT };
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: ammo, bodyB: cont }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: ammo, bodyB: cont }],
+    } as any);
     expect((sim as any).binsL.laser.fill).toBe(2);
     expect(((sim as any).binsL.laser as any)._fxLastAdd).toBe(2);
     expect(((sim as any).binsL.laser as any)._fxT0).toBeGreaterThan(0);
@@ -50,11 +77,19 @@ describe('collisions branches', () => {
     (EXPLOSION as any).enabled = false;
     const det = registerCollisions(sim.engine!);
     const proj = add(Bodies.circle(300, 120, 5));
-    (proj as any).plugin = { kind: 'projectile', ptype: 'cannon', side: SIDE.LEFT, dmg: 5, spawnT: performance.now() - 1000 };
+    (proj as any).plugin = {
+      kind: 'projectile',
+      ptype: 'cannon',
+      side: SIDE.LEFT,
+      dmg: 5,
+      spawnT: performance.now() - 1000,
+    };
     const other = add(Bodies.circle(300, 120, 5));
     (other as any).plugin = { kind: 'wall' };
     const fx0 = (sim.fxImp ?? []).length;
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: proj, bodyB: other }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: proj, bodyB: other }],
+    } as any);
     expect(sim.world!.bodies.includes(proj)).toBe(false);
     expect((sim.fxImp ?? []).length).toBe(fx0); // unchanged
     det();
@@ -66,17 +101,27 @@ describe('collisions branches', () => {
     const det = registerCollisions(sim.engine!);
     const makeProj = (): Matter.Body => {
       const p = add(Bodies.circle(310, 120, 5));
-      (p as any).plugin = { kind: 'projectile', ptype: 'cannon', side: SIDE.LEFT, dmg: 5, spawnT: performance.now() - 1000 };
+      (p as any).plugin = {
+        kind: 'projectile',
+        ptype: 'cannon',
+        side: SIDE.LEFT,
+        dmg: 5,
+        spawnT: performance.now() - 1000,
+      };
       return p;
     };
     const other = add(Bodies.circle(310, 120, 5));
     (other as any).plugin = { kind: 'wall' };
     const fx0 = (sim.fxImp ?? []).length;
     const p1 = makeProj();
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: p1, bodyB: other }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: p1, bodyB: other }],
+    } as any);
     const fx1 = (sim.fxImp ?? []).length;
     const p2 = makeProj();
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: p2, bodyB: other }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: p2, bodyB: other }],
+    } as any);
     const fx2 = (sim.fxImp ?? []).length;
     expect(fx1).toBe(fx0 + 1);
     expect(fx2).toBe(fx1); // second suppressed
@@ -89,12 +134,20 @@ describe('collisions branches', () => {
     const det = registerCollisions(sim.engine!);
     sim.ammoR = 1 as any;
     const proj = add(Bodies.circle(400, 160, 5));
-    (proj as any).plugin = { kind: 'projectile', ptype: 'mortar', side: SIDE.LEFT, dmg: 5, spawnT: performance.now() - 1000 };
+    (proj as any).plugin = {
+      kind: 'projectile',
+      ptype: 'mortar',
+      side: SIDE.LEFT,
+      dmg: 5,
+      spawnT: performance.now() - 1000,
+    };
     const other = add(Bodies.circle(400, 160, 5));
     (other as any).plugin = { kind: 'wall' };
     const ammo = add(Bodies.circle(400, 160, 3));
     (ammo as any).plugin = { kind: 'ammo', type: 'basic', side: SIDE.RIGHT };
-    Matter.Events.trigger(sim.engine as any, 'collisionStart', { pairs: [{ bodyA: proj, bodyB: other }] } as any);
+    Matter.Events.trigger(sim.engine as any, 'collisionStart', {
+      pairs: [{ bodyA: proj, bodyB: other }],
+    } as any);
     expect(sim.world!.bodies.includes(ammo)).toBe(false);
     expect(sim.ammoR).toBe(0);
     det();

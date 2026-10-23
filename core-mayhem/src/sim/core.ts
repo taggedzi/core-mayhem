@@ -78,7 +78,10 @@ export function makeCore(world: World, side: Side, teamColor: string): Core {
   const ringBody = Bodies.circle(cxClamped, cyClamped, ringR, { isStatic: true, isSensor: true });
   (ringBody as any).plugin = { kind: 'coreRing', side };
 
-  const centerBody = Bodies.circle(cxClamped, cyClamped, centerR, { isStatic: true, isSensor: true });
+  const centerBody = Bodies.circle(cxClamped, cyClamped, centerR, {
+    isStatic: true,
+    isSensor: true,
+  });
   (centerBody as any).plugin = { kind: 'coreCenter', side };
 
   World.add(w, [ringBody, centerBody]);

@@ -165,7 +165,9 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
   try {
     const avatarEmo = banterToAvatarEmotion(ev as string);
     if (avatarEmo) setAvatarEmotion(side, avatarEmo);
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
 
   const b: any = (sim as any).banter;
   const L: any = (sim as any).banterL;
@@ -189,7 +191,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
 
   // Pacing gate — applies to ALL paths (LLM and deterministic alike)
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const gate = (((sim as any).banterGate ??= { L: 0, R: 0, lastAny: 0 }) as any);
+  const gate = ((sim as any).banterGate ??= { L: 0, R: 0, lastAny: 0 }) as any;
   const pacing = (() => {
     try {
       return readBanterPacing();
@@ -198,7 +200,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
     }
   })();
   const sideTooSoon = now - (gate[side] ?? 0) < Math.max(0, pacing.sideMinGapMs | 0);
-  const crossMin = Math.max(800, Math.round(((pacing.sideMinGapMs ?? 2000)) * 0.35));
+  const crossMin = Math.max(800, Math.round((pacing.sideMinGapMs ?? 2000) * 0.35));
   const anyTooSoon = now - (gate.lastAny ?? 0) < crossMin;
   if (sideTooSoon || anyTooSoon) return;
 
@@ -212,7 +214,9 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
         gate[side] = t;
         gate.lastAny = t;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   // If event not in mask → deterministic fallback
@@ -228,7 +232,7 @@ export async function speakBanterSmart(ev: BanterEvent, side: SideLR): Promise<v
   }
 
   // Per-side generation counter to drop stale async completions
-  const seq = (((sim as any).banterSeq ??= { L: 0, R: 0 }) as Record<SideLR, number>);
+  const seq = ((sim as any).banterSeq ??= { L: 0, R: 0 }) as Record<SideLR, number>;
   const myGen = ++seq[side];
 
   if (inflight[side]) {

@@ -26,4 +26,3 @@ describe('buildLanes', () => {
     expect(sim.gels.length).toBe(4);
   });
 });
-

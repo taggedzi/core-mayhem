@@ -23,13 +23,21 @@ describe('tickHoming', () => {
   it('steers missiles toward the target and accelerates', () => {
     // Left fires toward right core
     const m = Bodies.circle(200, 200, 5);
-    (m as any).plugin = { kind: 'projectile', ptype: 'missile', side: SIDE.LEFT, spawnT: performance.now() };
+    (m as any).plugin = {
+      kind: 'projectile',
+      ptype: 'missile',
+      side: SIDE.LEFT,
+      spawnT: performance.now(),
+    };
     World.add(sim.world as any, m);
     // initial velocity roughly downward (wrong direction)
     Body.setVelocity(m, { x: 0, y: 1 });
     sim.homing.push(m);
 
-    const desired = angleOf((sim as any).coreR.center.x - m.position.x, (sim as any).coreR.center.y - m.position.y);
+    const desired = angleOf(
+      (sim as any).coreR.center.x - m.position.x,
+      (sim as any).coreR.center.y - m.position.y,
+    );
     const ang0 = angleOf((m as any).velocity.x, (m as any).velocity.y);
     const sp0 = Math.hypot((m as any).velocity.x, (m as any).velocity.y);
 
@@ -47,7 +55,12 @@ describe('tickHoming', () => {
 
   it('removes missiles on TTL expiry', () => {
     const m = Bodies.circle(300, 120, 5);
-    (m as any).plugin = { kind: 'projectile', ptype: 'missile', side: SIDE.RIGHT, spawnT: performance.now() - 10_000 };
+    (m as any).plugin = {
+      kind: 'projectile',
+      ptype: 'missile',
+      side: SIDE.RIGHT,
+      spawnT: performance.now() - 10_000,
+    };
     World.add(sim.world as any, m);
     sim.homing.push(m);
     const beforeBodies = sim.world!.bodies.length;
@@ -57,4 +70,3 @@ describe('tickHoming', () => {
     expect(sim.world!.bodies.length).toBeLessThan(beforeBodies);
   });
 });
-

@@ -8,7 +8,6 @@ import { runTriggers } from './systems/triggers';
 
 import type { WeaponsType } from '../sim/weapons';
 
-
 let devKeysOn = import.meta.env?.DEV === true || DEV_KEYS.enabledInProd;
 
 export function isDevModeEnabled(): boolean {
@@ -37,12 +36,17 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
   let toastTO = 0;
   const toast = (msg: string, ms = 1500): void => {
     const el = document.getElementById('state');
-    if (!el) { console.warn(msg); return; }
+    if (!el) {
+      console.warn(msg);
+      return;
+    }
     const prev = el.textContent ?? '';
     el.textContent = msg;
     console.warn(msg);
     if (toastTO) clearTimeout(toastTO);
-    toastTO = window.setTimeout(() => { el.textContent = prev || 'Idle'; }, ms);
+    toastTO = window.setTimeout(() => {
+      el.textContent = prev || 'Idle';
+    }, ms);
   };
 
   const onKey = (e: KeyboardEvent): void => {
@@ -109,7 +113,9 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             const elR = document.getElementById('banterR');
             if (elL) elL.textContent = '';
             if (elR) elR.textContent = '';
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
         break;
       }
@@ -146,13 +152,19 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       // Pipe vertical lift speed (slower/faster in the side pipes)
       case ',': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
-        stg.pipeUpSpeed = Math.max(6, Math.round(((stg.pipeUpSpeed ?? DEFAULTS.pipeUpSpeed ?? 22) - 2)));
+        stg.pipeUpSpeed = Math.max(
+          6,
+          Math.round((stg.pipeUpSpeed ?? DEFAULTS.pipeUpSpeed ?? 22) - 2),
+        );
         toast(`PipeUpSpeed ${stg.pipeUpSpeed}px/s`);
         break;
       }
       case '.': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
-        stg.pipeUpSpeed = Math.max(6, Math.round(((stg.pipeUpSpeed ?? DEFAULTS.pipeUpSpeed ?? 22) + 2)));
+        stg.pipeUpSpeed = Math.max(
+          6,
+          Math.round((stg.pipeUpSpeed ?? DEFAULTS.pipeUpSpeed ?? 22) + 2),
+        );
         toast(`PipeUpSpeed ${stg.pipeUpSpeed}px/s`);
         break;
       }
@@ -160,14 +172,20 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       // Pipe vertical lift responsiveness (how quickly it reaches target speed)
       case ';': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
-        stg.pipeUpGain = Math.max(0.4, Number(((stg.pipeUpGain ?? DEFAULTS.pipeUpGain ?? 3.2) - 0.2).toFixed(2)));
+        stg.pipeUpGain = Math.max(
+          0.4,
+          Number(((stg.pipeUpGain ?? DEFAULTS.pipeUpGain ?? 3.2) - 0.2).toFixed(2)),
+        );
         toast(`PipeUpGain ${stg.pipeUpGain.toFixed(2)}/s`);
         break;
       }
       case 'p':
       case 'P': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
-        stg.pipeUpGain = Math.min(8, Number(((stg.pipeUpGain ?? DEFAULTS.pipeUpGain ?? 3.2) + 0.2).toFixed(2)));
+        stg.pipeUpGain = Math.min(
+          8,
+          Number(((stg.pipeUpGain ?? DEFAULTS.pipeUpGain ?? 3.2) + 0.2).toFixed(2)),
+        );
         toast(`PipeUpGain ${stg.pipeUpGain.toFixed(2)}/s`);
         break;
       }
@@ -181,7 +199,9 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.buff.fill = bins.buff.cap;
             runTriggers();
           }
-        } catch { /* ignore */ void 0; }
+        } catch {
+          /* ignore */ void 0;
+        }
         break;
       case 'B':
         try {
@@ -190,7 +210,9 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.buff.fill = bins.buff.cap;
             runTriggers();
           }
-        } catch { /* ignore */ void 0; }
+        } catch {
+          /* ignore */ void 0;
+        }
         break;
       // d/D → simulate filling the DEBUFF bin on left/right
       case 'd':
@@ -200,7 +222,9 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.debuff.fill = bins.debuff.cap;
             runTriggers();
           }
-        } catch { /* ignore */ void 0; }
+        } catch {
+          /* ignore */ void 0;
+        }
         break;
       case 'D':
         try {
@@ -209,7 +233,9 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
             bins.debuff.fill = bins.debuff.cap;
             runTriggers();
           }
-        } catch { /* ignore */ void 0; }
+        } catch {
+          /* ignore */ void 0;
+        }
         break;
       // 'h' is handled globally by the help overlay (src/ui/help.ts)
     }

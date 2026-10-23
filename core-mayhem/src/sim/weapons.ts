@@ -157,7 +157,11 @@ export function fireCannon(
 ): void {
   if (sim.gameOver) return;
   if (isDisabled(from, 'cannon')) return;
-  try { audio.play('fire_cannon'); } catch { /* ignore */ void 0; }
+  try {
+    audio.play('fire_cannon');
+  } catch {
+    /* ignore */ void 0;
+  }
   const dir = Vector.normalise({ x: target.x - src.x, y: target.y - src.y });
   const base =
     22 *
@@ -189,7 +193,11 @@ export function fireCannon(
         World.add(w, b);
       }
       // stats: shot fired
-      try { recordShotFired(from, 'cannon'); } catch { /* ignore */ void 0; }
+      try {
+        recordShotFired(from, 'cannon');
+      } catch {
+        /* ignore */ void 0;
+      }
       const jitter = 3; // small spread
       Body.setVelocity(b, {
         x: dir.x * speed + (Math.random() - 0.5) * jitter,
@@ -202,7 +210,11 @@ export function fireCannon(
 export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(side, 'laser')) return;
-  try { audio.play('fire_laser'); } catch { /* ignore */ void 0; }
+  try {
+    audio.play('fire_laser');
+  } catch {
+    /* ignore */ void 0;
+  }
 
   // Resolve core to hit (or a point)
   const enemyCore: CoreLike =
@@ -216,7 +228,11 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
   const aim: Vec2 = target && !(target as any).center ? (target as Vec2) : enemyCore.center;
 
   // stats: count a laser shot at fire time
-  try { recordShotFired(side, 'laser'); } catch { /* ignore */ void 0; }
+  try {
+    recordShotFired(side, 'laser');
+  } catch {
+    /* ignore */ void 0;
+  }
 
   // --- Laser damage with ablative shield ---
   // Base damage for this laser pulse, scaled by side's buff
@@ -251,21 +267,36 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
         const victimSide = side === SIDE.LEFT ? 'R' : 'L';
         void speakBanterSmart('shields_down' as any, victimSide);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     const centerBefore = (enemyCore as any).centerHP | 0;
     const segBeforeArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
-    const segBefore = Array.isArray(segBeforeArr) ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
+    const segBefore = Array.isArray(segBeforeArr)
+      ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
     // Apply damage to core exactly once (your helper handles center/segments)
     applyCoreDamage(enemyCore as any, aim, toCore, angleToSeg);
     const centerAfter = (enemyCore as any).centerHP | 0;
     const segAfterArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
-    const segAfter = Array.isArray(segAfterArr) ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
-    try { recordLaserHit(side, shieldDelta, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch { /* ignore */ void 0; }
+    const segAfter = Array.isArray(segAfterArr)
+      ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
+    try {
+      recordLaserHit(
+        side,
+        shieldDelta,
+        Math.max(0, segBefore - segAfter),
+        Math.max(0, centerBefore - centerAfter),
+      );
+    } catch {
+      /* ignore */ void 0;
+    }
     // Armor break detection under laser
     try {
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
@@ -277,21 +308,36 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
           }
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   } else {
     // No shield pool: all to core
     const centerBefore = (enemyCore as any).centerHP | 0;
     const segBeforeArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
-    const segBefore = Array.isArray(segBeforeArr) ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
+    const segBefore = Array.isArray(segBeforeArr)
+      ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
     applyCoreDamage(enemyCore as any, aim, base, angleToSeg);
     const centerAfter = (enemyCore as any).centerHP | 0;
     const segAfterArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
-    const segAfter = Array.isArray(segAfterArr) ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0) : 0;
-    try { recordLaserHit(side, 0, Math.max(0, segBefore - segAfter), Math.max(0, centerBefore - centerAfter)); } catch { /* ignore */ void 0; }
+    const segAfter = Array.isArray(segAfterArr)
+      ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      : 0;
+    try {
+      recordLaserHit(
+        side,
+        0,
+        Math.max(0, segBefore - segAfter),
+        Math.max(0, centerBefore - centerAfter),
+      );
+    } catch {
+      /* ignore */ void 0;
+    }
     // Armor break detection (no shields)
     try {
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
@@ -303,7 +349,9 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
           }
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // --- FX (kept as you had it) ---
@@ -349,7 +397,11 @@ export function fireMissiles(
 ): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'missile')) return;
-  try { audio.play('fire_missile'); } catch { /* ignore */ void 0; }
+  try {
+    audio.play('fire_missile');
+  } catch {
+    /* ignore */ void 0;
+  }
   let target: Vec;
   {
     const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
@@ -387,7 +439,11 @@ export function fireMissiles(
         assertWorld(w);
         World.add(w, m);
       }
-      try { recordShotFired(from, 'missile'); } catch { /* ignore */ void 0; }
+      try {
+        recordShotFired(from, 'missile');
+      } catch {
+        /* ignore */ void 0;
+      }
 
       const t = count === 1 ? 0 : i / (count - 1) - 0.5;
       const ang = center + t * spread + (Math.random() - 0.5) * jitter;
@@ -403,7 +459,11 @@ export function fireMissiles(
 export function fireMortar(from: Side, src: { x: number; y: number }, count = 1): void {
   if ((sim as any).gameOver) return;
   if (isDisabled(from, 'mortar')) return;
-  try { audio.play('fire_mortar'); } catch { /* ignore */ void 0; }
+  try {
+    audio.play('fire_mortar');
+  } catch {
+    /* ignore */ void 0;
+  }
   let target: Vec;
   {
     const targetCore = from === SIDE.LEFT ? sim.coreR : sim.coreL;
@@ -447,7 +507,11 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
       const vy = -Math.sin(ang) * spd; // negative = up (canvas Y-down)
 
       Body.setVelocity(shell, { x: vx, y: vy });
-      try { recordShotFired(from, 'mortar'); } catch { /* ignore */ void 0; }
+      try {
+        recordShotFired(from, 'mortar');
+      } catch {
+        /* ignore */ void 0;
+      }
     }, i * 220);
   }
 }
@@ -482,7 +546,11 @@ export function tickHoming(dtMs: number): void {
         World.remove(w, m);
       }
       sim.homing.splice(i, 1);
-      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch { /* ignore */ void 0; }
+      try {
+        if (!plug.didDamage) recordMiss(plug.side, 'missile');
+      } catch {
+        /* ignore */ void 0;
+      }
       continue;
     }
 
@@ -550,13 +618,25 @@ export function tickHoming(dtMs: number): void {
         color: '#ffb700',
         kind: 'burst',
       });
-      try { if (!plug.didDamage) recordMiss(plug.side, 'missile'); } catch { /* ignore */ void 0; }
+      try {
+        if (!plug.didDamage) recordMiss(plug.side, 'missile');
+      } catch {
+        /* ignore */ void 0;
+      }
     }
   }
 }
 
-interface WeapType { pos: { x: number; y: number }; mount: Body }
-export interface WeaponsType { cannon: WeapType; laser: WeapType; missile: WeapType; mortar: WeapType }
+interface WeapType {
+  pos: { x: number; y: number };
+  mount: Body;
+}
+export interface WeaponsType {
+  cannon: WeapType;
+  laser: WeapType;
+  missile: WeapType;
+  mortar: WeapType;
+}
 
 export function makeWeapons(side: Side): WeaponsType {
   const specs = WEAPON_MOUNTS_LEFT.filter((s) => s.enabled !== false);

@@ -80,7 +80,9 @@ export function initStatsOverlay(): void {
 
   const btnAll = document.createElement('button');
   btnAll.textContent = 'Download All CSVs';
-  btnAll.onclick = (): void => { exportAllCSVs(); };
+  btnAll.onclick = (): void => {
+    exportAllCSVs();
+  };
 
   const btnReset = document.createElement('button');
   btnReset.textContent = 'Reset Stats';
@@ -179,7 +181,11 @@ export function openStatsOverlay(): void {
   if (!overlayEl) initStatsOverlay();
   if (!overlayEl) return;
   // Refresh contents on each open in case stats changed
-  try { (overlayEl as any)._statsRender?.(); } catch { /* ignore */ void 0; }
+  try {
+    (overlayEl as any)._statsRender?.();
+  } catch {
+    /* ignore */ void 0;
+  }
   lastFocusEl = document.activeElement;
   overlayEl.style.display = 'block';
   overlayEl.setAttribute('aria-hidden', 'false');
@@ -193,11 +199,17 @@ function closeStatsOverlay(): void {
     (panelEl as HTMLElement | null)?.blur?.();
     const active = document.activeElement as HTMLElement | null;
     if (active && overlayEl.contains(active)) active.blur();
-  } catch { /* ignore */ void 0; }
+  } catch {
+    /* ignore */ void 0;
+  }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
   // Restore focus to the trigger if possible
   if (lastFocusEl && (lastFocusEl as HTMLElement).focus) {
-    try { (lastFocusEl as HTMLElement).focus(); } catch { /* ignore */ void 0; }
+    try {
+      (lastFocusEl as HTMLElement).focus();
+    } catch {
+      /* ignore */ void 0;
+    }
   }
 }

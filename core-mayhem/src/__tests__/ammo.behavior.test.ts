@@ -37,7 +37,7 @@ describe('ammo + obstacles behaviors', () => {
     // left ammo placed inside board, zero velocity so idle accumulates
     const a = add(Bodies.circle(200, 200, 5));
     (a as any).plugin = { kind: 'ammo', side: SIDE.LEFT, type: 'basic', age: 0, idle: 0 };
-    const c0 = sim.ammoL = 1 as any;
+    const c0 = (sim.ammoL = 1 as any);
     // advance a large delta to exceed idle > 8s
     sim.engine!.timing.lastDelta = 9000 as any;
     beforeUpdateAmmo();
@@ -51,7 +51,8 @@ describe('ammo + obstacles behaviors', () => {
     // near intake region (outside vertical)
     const near = add(Bodies.circle(pipeL.intake.position.x, pipeL.intake.position.y, 5));
     (near as any).plugin = { kind: 'ammo', side: SIDE.LEFT };
-    const f0x = (near as any).force.x, f0y = (near as any).force.y;
+    const f0x = (near as any).force.x,
+      f0y = (near as any).force.y;
 
     // inside vertical region of right pipe (centered x)
     const inside = add(Bodies.circle(pipeR.x, (sim.H * 0.1 + sim.H * 0.925) / 2, 5));

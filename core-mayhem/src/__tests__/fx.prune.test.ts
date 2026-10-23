@@ -11,14 +11,8 @@ describe('runFXPrune', () => {
       { until: now - 1, x: 0, y: 0, color: 'x' },
       { until: now + 10, x: 0, y: 0, color: 'y' },
     ];
-    (sim as any).fxBeams = [
-      { tEnd: now - 1 },
-      { tEnd: now + 1 },
-    ];
-    (sim as any).fxBursts = [
-      { tEnd: now - 1 },
-      { tEnd: now + 1 },
-    ];
+    (sim as any).fxBeams = [{ tEnd: now - 1 }, { tEnd: now + 1 }];
+    (sim as any).fxBursts = [{ tEnd: now - 1 }, { tEnd: now + 1 }];
     (sim as any).fxBeam = [
       { t0: now - 100, ms: 50 },
       { t0: now - 10, ms: 50 },

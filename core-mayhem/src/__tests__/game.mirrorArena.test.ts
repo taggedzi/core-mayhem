@@ -28,21 +28,26 @@ vi.mock('../sim/containers', () => ({
 }));
 
 vi.mock('../sim/core', () => ({ makeCore: vi.fn(() => ({ center: { x: 10, y: 0 } })) }));
-vi.mock('../sim/obstacles', () => ({ makePipe: vi.fn(() => ({ innerX: 0 })), placeObstaclesFromSpecs: vi.fn() }));
+vi.mock('../sim/obstacles', () => ({
+  makePipe: vi.fn(() => ({ innerX: 0 })),
+  placeObstaclesFromSpecs: vi.fn(),
+}));
 vi.mock('../sim/pins', () => ({ makePins: vi.fn(() => ({ mid: 0, width: 0 })) }));
 // Weapons with mount positions to mirror
-vi.mock('../sim/weapons', () => ({ makeWeapons: vi.fn(() => ({
-  cannon: { pos: { x: 5, y: 0 } },
-  laser: { pos: { x: 15, y: 0 } },
-  missile: { pos: { x: 25, y: 0 } },
-  mortar: { pos: { x: 35, y: 0 } },
-})) }));
+vi.mock('../sim/weapons', () => ({
+  makeWeapons: vi.fn(() => ({
+    cannon: { pos: { x: 5, y: 0 } },
+    laser: { pos: { x: 15, y: 0 } },
+    missile: { pos: { x: 25, y: 0 } },
+    mortar: { pos: { x: 35, y: 0 } },
+  })),
+}));
 vi.mock('../sim/world', () => ({
   initWorld: vi.fn((canvas: HTMLCanvasElement) => {
     (sim as any).engine = { timing: { lastDelta: 16.6 } } as any;
     (sim as any).world = {} as any;
-    (sim as any).W = (canvas.width ||= 640);
-    (sim as any).H = (canvas.height ||= 360);
+    (sim as any).W = canvas.width ||= 640;
+    (sim as any).H = canvas.height ||= 360;
   }),
   clearWorld: vi.fn(() => {
     (sim as any).engine = null;
@@ -62,10 +67,19 @@ vi.mock('../app/systems/triggers', () => ({ runTriggers: vi.fn() }));
 
 // Banter minimal
 vi.mock('../banter', () => ({
-  BanterSystem: class { constructor(_o: any) {} step(): void {} },
-  createCharacter: vi.fn((side: 'left'|'right', p: any, name: string) => ({ id: side, personality: p, displayName: name })),
+  BanterSystem: class {
+    constructor(_o: any) {}
+    step(): void {}
+  },
+  createCharacter: vi.fn((side: 'left' | 'right', p: any, name: string) => ({
+    id: side,
+    personality: p,
+    displayName: name,
+  })),
 }));
-vi.mock('../ui/banterControls', () => ({ readBanterPacing: vi.fn(() => ({ cooldownMs: 5000, sideMinGapMs: 12000 })) }));
+vi.mock('../ui/banterControls', () => ({
+  readBanterPacing: vi.fn(() => ({ cooldownMs: 5000, sideMinGapMs: 12000 })),
+}));
 vi.mock('../ui/characters', () => ({ readCharacterProfiles: vi.fn(() => null) }));
 vi.mock('../audio', () => ({
   audio: {
@@ -93,9 +107,12 @@ function ctxStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 describe('maybeMirrorArena mirrors bodies, cores, weapons, and bins', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    document.body.innerHTML = '<div id="hud"><span id="fps"></span><div id="score"></div></div><canvas id="c" width="640" height="360"></canvas>';
+    document.body.innerHTML =
+      '<div id="hud"><span id="fps"></span><div id="score"></div></div><canvas id="c" width="640" height="360"></canvas>';
     const canvas = document.getElementById('c') as HTMLCanvasElement;
-    vi.spyOn(canvas, 'getContext').mockImplementation((type: string) => (type === '2d' ? ctxStub(canvas) : null));
+    vi.spyOn(canvas, 'getContext').mockImplementation((type: string) =>
+      type === '2d' ? ctxStub(canvas) : null,
+    );
     (globalThis as any).requestAnimationFrame = vi.fn(() => 1);
     (globalThis as any).cancelAnimationFrame = vi.fn();
 
@@ -112,7 +129,10 @@ describe('maybeMirrorArena mirrors bodies, cores, weapons, and bins', () => {
 
     const W = sim.W;
     // Composite bodies mirrored
-    expect((M.Body.setPosition as any)).toHaveBeenCalledWith(expect.any(Object), { x: W - 100, y: 50 });
+    expect(M.Body.setPosition as any).toHaveBeenCalledWith(expect.any(Object), {
+      x: W - 100,
+      y: 50,
+    });
 
     // Core centers mirrored
     expect(sim.coreL!.center.x).toBe(W - 10);
@@ -127,8 +147,14 @@ describe('maybeMirrorArena mirrors bodies, cores, weapons, and bins', () => {
     // Bin model and bodies mirrored
     expect((sim.binsL as any).A.pos.x).toBe(W - 30);
     // Body.setPosition called for box and intake with mirrored x
-    expect((M.Body.setPosition as any)).toHaveBeenCalledWith(expect.objectContaining({ position: expect.any(Object) }), { x: W - 30, y: 7 });
-    expect((M.Body.setPosition as any)).toHaveBeenCalledWith(expect.objectContaining({ position: expect.any(Object) }), { x: W - 40, y: 9 });
+    expect(M.Body.setPosition as any).toHaveBeenCalledWith(
+      expect.objectContaining({ position: expect.any(Object) }),
+      { x: W - 30, y: 7 },
+    );
+    expect(M.Body.setPosition as any).toHaveBeenCalledWith(
+      expect.objectContaining({ position: expect.any(Object) }),
+      { x: W - 40, y: 9 },
+    );
 
     stop();
   });

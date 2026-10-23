@@ -1,6 +1,13 @@
 import { audio } from '../audio';
 
-import { ANNOUNCER_AUDIO, CLIP_DURATION_MS, EVENTS, POOLS, RECORDED_ANNOUNCER_AVAILABLE, type AnnounceEvent } from './config';
+import {
+  ANNOUNCER_AUDIO,
+  CLIP_DURATION_MS,
+  EVENTS,
+  POOLS,
+  RECORDED_ANNOUNCER_AVAILABLE,
+  type AnnounceEvent,
+} from './config';
 
 type PoolId = keyof typeof POOLS;
 
@@ -44,8 +51,12 @@ export class AnnouncerService {
     this.lastEventAt.set(ev, now);
     const isStart = START_EVENTS.has(ev);
     const isTimer = ev.startsWith('time_countdown_');
-    const prio = isStart ? 20 : isTimer ? 30 : (spec.priority | 0) + ((opts?.priorityBoost ?? 0) | 0);
-    if (isTimer) this.q = this.q.filter(item => !item.event.startsWith('time_countdown_'));
+    const prio = isStart
+      ? 20
+      : isTimer
+        ? 30
+        : (spec.priority | 0) + ((opts?.priorityBoost ?? 0) | 0);
+    if (isTimer) this.q = this.q.filter((item) => !item.event.startsWith('time_countdown_'));
     // Urgent: stop current announcer and allow immediate playback
     if (opts?.urgent) {
       this.interrupt();
@@ -54,13 +65,24 @@ export class AnnouncerService {
     }
     this.q.push({ event: ev, pools: spec.pools, priority: prio, at: now });
     // sort by priority desc then time asc
-    this.q.sort((a, b) => (b.priority - a.priority) || (a.at - b.at));
+    this.q.sort((a, b) => b.priority - a.priority || a.at - b.at);
   }
 
   // Expire stale commentary, preserve startup order, and never overlap clips.
   run(now = performance.now()): void {
-    if (!this.enabled) { this.q.length = 0; return; }
-    this.q = this.q.filter(item => now - item.at <= (item.event === 'time_countdown_3' ? 900 : item.event === 'time_countdown_10' ? 1500 : 4500));
+    if (!this.enabled) {
+      this.q.length = 0;
+      return;
+    }
+    this.q = this.q.filter(
+      (item) =>
+        now - item.at <=
+        (item.event === 'time_countdown_3'
+          ? 900
+          : item.event === 'time_countdown_10'
+            ? 1500
+            : 4500),
+    );
     if (this.pending || now < this.busyUntil || this.q.length === 0) return;
     const next = this.q[0]!;
     const timeSensitive = START_EVENTS.has(next.event) || next.event.startsWith('time_countdown_');
@@ -75,14 +97,20 @@ export class AnnouncerService {
     const generation = this.generation;
     this.pending = true;
     this.forceNext = false;
-    void Promise.resolve(audio.playUrl(url, { channel: 'announcer', volume: this.settings.announcerVolume }))
+    void Promise.resolve(
+      audio.playUrl(url, { channel: 'announcer', volume: this.settings.announcerVolume }),
+    )
       .then(() => {
         if (generation !== this.generation) return;
         this.lastAt = performance.now();
         this.busyUntil = this.lastAt + duration + 100;
       })
-      .catch(() => { /* A failed clip must not stall subsequent announcements. */ })
-      .finally(() => { if (generation === this.generation) this.pending = false; });
+      .catch(() => {
+        /* A failed clip must not stall subsequent announcements. */
+      })
+      .finally(() => {
+        if (generation === this.generation) this.pending = false;
+      });
   }
 
   private interrupt(): void {
@@ -109,10 +137,16 @@ export class AnnouncerService {
     if (p == null) return;
     this.settings = { ...this.settings, ...p };
     if (typeof p.announcerVolume === 'number') {
-      try { audio.setAnnouncerVolume(this.settings.announcerVolume); } catch { /* ignore */ }
+      try {
+        audio.setAnnouncerVolume(this.settings.announcerVolume);
+      } catch {
+        /* ignore */
+      }
     }
   }
-  getSettings(): Readonly<typeof this.settings> { return this.settings; }
+  getSettings(): Readonly<typeof this.settings> {
+    return this.settings;
+  }
 
   private pickPool(pools: readonly PoolId[]): PoolId {
     if (pools.length === 0) return Object.keys(POOLS)[0] as PoolId;
@@ -138,6 +172,20 @@ export class AnnouncerService {
 export const announcer = new AnnouncerService();
 export const announcerControls = {
   setEnabled: (on: boolean): void => announcer.setEnabled(on),
-  updateSettings: (p: Partial<{ announcerVolume: number; duckMusic: number; duckSfx: number; duckReleaseMs: number; minGapMs: number }>): void => announcer.updateSettings(p as any),
-  getSettings: (): Readonly<{ announcerVolume: number; duckMusic: number; duckSfx: number; duckReleaseMs: number; minGapMs: number }> => announcer.getSettings() as any,
+  updateSettings: (
+    p: Partial<{
+      announcerVolume: number;
+      duckMusic: number;
+      duckSfx: number;
+      duckReleaseMs: number;
+      minGapMs: number;
+    }>,
+  ): void => announcer.updateSettings(p as any),
+  getSettings: (): Readonly<{
+    announcerVolume: number;
+    duckMusic: number;
+    duckSfx: number;
+    duckReleaseMs: number;
+    minGapMs: number;
+  }> => announcer.getSettings() as any,
 };

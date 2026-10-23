@@ -27,30 +27,53 @@ const K = {
   try {
     const stored = Number(localStorage.getItem(K.ver));
     if (stored !== BANTER_CONFIG_VERSION) {
-      const keys = Object.values(K).filter(k => k !== K.ver);
+      const keys = Object.values(K).filter((k) => k !== K.ver);
       for (const k of keys) localStorage.removeItem(k);
       localStorage.setItem(K.ver, String(BANTER_CONFIG_VERSION));
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 })();
 
 function loadBool(key: string, fallback: boolean): boolean {
-  try { const v = localStorage.getItem(key); return v == null ? fallback : v === '1'; } catch { return fallback; }
+  try {
+    const v = localStorage.getItem(key);
+    return v == null ? fallback : v === '1';
+  } catch {
+    return fallback;
+  }
 }
 function loadNum(key: string, fallback: number): number {
-  try { const raw = localStorage.getItem(key); if (raw == null) return fallback; const v = Number(raw); return Number.isFinite(v) ? v : fallback; } catch { return fallback; }
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    const v = Number(raw);
+    return Number.isFinite(v) ? v : fallback;
+  } catch {
+    return fallback;
+  }
 }
 function loadStr(key: string, fallback: string): string {
-  try { const v = localStorage.getItem(key); return v ?? fallback; } catch { return fallback; }
+  try {
+    const v = localStorage.getItem(key);
+    return v ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 function save(key: string, v: string | number | boolean): void {
-  try { localStorage.setItem(key, typeof v === 'boolean' ? (v ? '1' : '0') : String(v)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(key, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
+  } catch {
+    /* ignore */
+  }
 }
 
 function getInitial(): LLMSettings {
   return {
     llmEnabled: loadBool(K.llmOn, DEFAULT_LLM.llmEnabled),
-    provider: (loadStr(K.src, DEFAULT_LLM.provider) as any),
+    provider: loadStr(K.src, DEFAULT_LLM.provider) as any,
     ollamaUrl: loadStr(K.url, DEFAULT_LLM.ollamaUrl),
     model: loadStr(K.model, DEFAULT_LLM.model),
     timeoutMs: loadNum(K.to, DEFAULT_LLM.timeoutMs),
@@ -59,8 +82,8 @@ function getInitial(): LLMSettings {
     topP: Number(loadNum(K.topp, DEFAULT_LLM.topP).toFixed(2)),
     repeatPenalty: Number(loadNum(K.rep, DEFAULT_LLM.repeatPenalty).toFixed(2)),
     includeOpponentLast: loadBool(K.incl, DEFAULT_LLM.includeOpponentLast),
-    emojiStyle: (loadStr(K.emoji, DEFAULT_LLM.emojiStyle) as any),
-    profanityFilter: (loadStr(K.prof, DEFAULT_LLM.profanityFilter) as any),
+    emojiStyle: loadStr(K.emoji, DEFAULT_LLM.emojiStyle) as any,
+    profanityFilter: loadStr(K.prof, DEFAULT_LLM.profanityFilter) as any,
     cooldownMs: loadNum(K.cd, DEFAULT_LLM.cooldownMs),
     sideMinGapMs: loadNum(K.gap, DEFAULT_LLM.sideMinGapMs),
     events: loadStr(K.ev, DEFAULT_LLM.events),
@@ -81,11 +104,13 @@ async function listOllamaModels(base: string, timeoutMs = 1500): Promise<string[
     const url = base.replace(/\/$/, '') + '/api/tags';
     const r = await fetch(url, { method: 'GET', signal: ctrl.signal });
     if (!r.ok) throw new Error(`status ${r.status}`);
-    const data = await r.json().catch(() => ({} as any));
+    const data = await r.json().catch(() => ({}) as any);
     const arr = Array.isArray((data as any).models) ? (data as any).models : [];
     const names = arr.map((m: any) => String(m?.model ?? m?.name ?? '')).filter(Boolean);
     return names;
-  } finally { clearTimeout(t); }
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function testOllamaChat(base: string, model: string, timeoutMs = 1200): Promise<boolean> {
@@ -97,7 +122,10 @@ async function testOllamaChat(base: string, model: string, timeoutMs = 1200): Pr
     const body = {
       model,
       messages: [
-        { role: 'system', content: 'You are a concise test responder. Answer with a single short word.' },
+        {
+          role: 'system',
+          content: 'You are a concise test responder. Answer with a single short word.',
+        },
         { role: 'user', content: 'ping' },
       ],
       stream: false,
@@ -110,12 +138,15 @@ async function testOllamaChat(base: string, model: string, timeoutMs = 1200): Pr
       signal: ctrl.signal,
     });
     if (!r.ok) return false;
-    const data = await r.json().catch(() => ({} as any));
-    const msg = (data as any)?.message?.content ?? (data as any)?.choices?.[0]?.message?.content ?? '';
+    const data = await r.json().catch(() => ({}) as any);
+    const msg =
+      (data as any)?.message?.content ?? (data as any)?.choices?.[0]?.message?.content ?? '';
     return typeof msg === 'string' && msg.length > 0;
   } catch {
     return false;
-  } finally { clearTimeout(t); }
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 export function initBanterControls(): void {
@@ -145,19 +176,27 @@ export function initBanterControls(): void {
     wrap.className = 'audio-row';
     wrap.textContent = label + ' ';
     const inp = document.createElement('input');
-    inp.type = 'checkbox'; inp.id = id; inp.checked = def;
+    inp.type = 'checkbox';
+    inp.id = id;
+    inp.checked = def;
     wrap.appendChild(inp);
     pop.appendChild(wrap);
     return inp;
   };
 
-  const numberRow = (label: string, id: string, def: number, opts?: { min?: number; max?: number; step?: number }): HTMLInputElement => {
+  const numberRow = (
+    label: string,
+    id: string,
+    def: number,
+    opts?: { min?: number; max?: number; step?: number },
+  ): HTMLInputElement => {
     const wrap = document.createElement('label');
     wrap.className = 'audio-row';
     wrap.textContent = label + ' ';
     const inp = document.createElement('input');
     inp.type = 'number';
-    inp.id = id; inp.value = String(def);
+    inp.id = id;
+    inp.value = String(def);
     if (opts?.min != null) inp.min = String(opts.min);
     if (opts?.max != null) inp.max = String(opts.max);
     if (opts?.step != null) inp.step = String(opts.step);
@@ -166,32 +205,52 @@ export function initBanterControls(): void {
     return inp as HTMLInputElement;
   };
 
-  const rangeRow = (label: string, id: string, def: number, opts: { min: number; max: number; step?: number }): HTMLInputElement => {
+  const rangeRow = (
+    label: string,
+    id: string,
+    def: number,
+    opts: { min: number; max: number; step?: number },
+  ): HTMLInputElement => {
     const wrap = document.createElement('label');
     wrap.className = 'audio-row';
     wrap.textContent = label + ' ';
     const inp = document.createElement('input');
     inp.type = 'range';
-    inp.id = id; inp.value = String(def);
-    inp.min = String(opts.min); inp.max = String(opts.max);
+    inp.id = id;
+    inp.value = String(def);
+    inp.min = String(opts.min);
+    inp.max = String(opts.max);
     if (opts.step != null) inp.step = String(opts.step);
     wrap.appendChild(inp);
     pop.appendChild(wrap);
     return inp as HTMLInputElement;
   };
 
-  const textRow = (label: string, id: string, def: string, placeholder?: string): HTMLInputElement => {
+  const textRow = (
+    label: string,
+    id: string,
+    def: string,
+    placeholder?: string,
+  ): HTMLInputElement => {
     const wrap = document.createElement('label');
     wrap.className = 'audio-row';
     wrap.textContent = label + ' ';
     const inp = document.createElement('input');
-    inp.type = 'text'; inp.id = id; inp.value = def; if (placeholder) inp.placeholder = placeholder;
+    inp.type = 'text';
+    inp.id = id;
+    inp.value = def;
+    if (placeholder) inp.placeholder = placeholder;
     wrap.appendChild(inp);
     pop.appendChild(wrap);
     return inp as HTMLInputElement;
   };
 
-  const selectRow = (label: string, id: string, options: { value: string; label: string }[], def: string): HTMLSelectElement => {
+  const selectRow = (
+    label: string,
+    id: string,
+    options: { value: string; label: string }[],
+    def: string,
+  ): HTMLSelectElement => {
     const wrap = document.createElement('label');
     wrap.className = 'audio-row';
     wrap.textContent = label + ' ';
@@ -199,7 +258,8 @@ export function initBanterControls(): void {
     sel.id = id;
     for (const o of options) {
       const opt = document.createElement('option');
-      opt.value = o.value; opt.text = o.label;
+      opt.value = o.value;
+      opt.text = o.label;
       if (o.value === def) opt.selected = true;
       sel.appendChild(opt);
     }
@@ -217,10 +277,15 @@ export function initBanterControls(): void {
   pop.appendChild(headerRow('Banter'));
   const elOn = checkbox('Enabled', 'banterEnabled', enabled0);
 
-  const elProvider = selectRow('Source', 'banterSource', [
-    { value: 'deterministic', label: 'Deterministic' },
-    { value: 'ollama', label: 'Ollama' },
-  ], st.provider);
+  const elProvider = selectRow(
+    'Source',
+    'banterSource',
+    [
+      { value: 'deterministic', label: 'Deterministic' },
+      { value: 'ollama', label: 'Ollama' },
+    ],
+    st.provider,
+  );
 
   const elLLMOn = checkbox('Enable LLM calls', 'banterLLMEnabled', st.llmEnabled);
 
@@ -245,44 +310,109 @@ export function initBanterControls(): void {
     mixedContentWarn.style.display = ollamaSelected && onHttpsPage && urlIsHttp ? 'block' : 'none';
   };
   updateMixedContentWarning();
-  const elModel = selectRow('Model', 'ollamaModel', [{ value: '', label: '(select model)' }], st.model || '');
+  const elModel = selectRow(
+    'Model',
+    'ollamaModel',
+    [{ value: '', label: '(select model)' }],
+    st.model || '',
+  );
   const btnWrap = document.createElement('div');
   btnWrap.className = 'audio-row buttons';
-  const btnRefresh = document.createElement('button'); btnRefresh.type = 'button'; btnRefresh.textContent = 'Refresh Models';
-  const btnTest = document.createElement('button'); btnTest.type = 'button'; btnTest.textContent = 'Test';
-  const status = document.createElement('span'); status.style.marginLeft = '8px'; status.textContent = '';
+  const btnRefresh = document.createElement('button');
+  btnRefresh.type = 'button';
+  btnRefresh.textContent = 'Refresh Models';
+  const btnTest = document.createElement('button');
+  btnTest.type = 'button';
+  btnTest.textContent = 'Test';
+  const status = document.createElement('span');
+  status.style.marginLeft = '8px';
+  status.textContent = '';
   btnWrap.append(btnRefresh, btnTest, status);
   pop.appendChild(btnWrap);
 
   const hdrQuality = headerRow('Quality & Limits');
   pop.appendChild(hdrQuality);
-  const elTimeout = numberRow('Timeout (ms)', 'banterTimeout', st.timeoutMs, { min: 500, max: 8000, step: 100 });
-  const elChars = numberRow('Max Chars', 'banterMaxChars', st.maxChars, { min: 60, max: 240, step: 10 });
-  const elTemp = rangeRow('Temperature', 'banterTemp', st.temperature, { min: 0, max: 1, step: 0.01 });
+  const elTimeout = numberRow('Timeout (ms)', 'banterTimeout', st.timeoutMs, {
+    min: 500,
+    max: 8000,
+    step: 100,
+  });
+  const elChars = numberRow('Max Chars', 'banterMaxChars', st.maxChars, {
+    min: 60,
+    max: 240,
+    step: 10,
+  });
+  const elTemp = rangeRow('Temperature', 'banterTemp', st.temperature, {
+    min: 0,
+    max: 1,
+    step: 0.01,
+  });
   const elTopP = rangeRow('Top-p', 'banterTopP', st.topP, { min: 0, max: 1, step: 0.01 });
-  const elRep = rangeRow('Repeat Penalty', 'banterRepeat', st.repeatPenalty, { min: 1, max: 2, step: 0.05 });
+  const elRep = rangeRow('Repeat Penalty', 'banterRepeat', st.repeatPenalty, {
+    min: 1,
+    max: 2,
+    step: 0.05,
+  });
 
   pop.appendChild(headerRow('Style & Context'));
-  const elIncl = checkbox("Include opponent's last line", 'banterIncludeOpp', st.includeOpponentLast);
-  const elEmoji = selectRow('Emoji Style', 'banterEmoji', [
-    { value: 'inherit', label: 'Inherit character' },
-    { value: 'none', label: 'None' },
-    { value: 'emoji', label: 'Emoji' },
-    { value: 'kaomoji', label: 'Kaomoji' },
-  ], st.emojiStyle);
-  const elProf = selectRow('Profanity Filter', 'banterProf', [
-    { value: 'off', label: 'Off' },
-    { value: 'mild', label: 'Mild' },
-    { value: 'strict', label: 'Strict' },
-  ], st.profanityFilter);
+  const elIncl = checkbox(
+    "Include opponent's last line",
+    'banterIncludeOpp',
+    st.includeOpponentLast,
+  );
+  const elEmoji = selectRow(
+    'Emoji Style',
+    'banterEmoji',
+    [
+      { value: 'inherit', label: 'Inherit character' },
+      { value: 'none', label: 'None' },
+      { value: 'emoji', label: 'Emoji' },
+      { value: 'kaomoji', label: 'Kaomoji' },
+    ],
+    st.emojiStyle,
+  );
+  const elProf = selectRow(
+    'Profanity Filter',
+    'banterProf',
+    [
+      { value: 'off', label: 'Off' },
+      { value: 'mild', label: 'Mild' },
+      { value: 'strict', label: 'Strict' },
+    ],
+    st.profanityFilter,
+  );
 
   pop.appendChild(headerRow('Pacing'));
-  const elCd = numberRow('Cooldown (ms)', 'banterCooldown', st.cooldownMs, { min: 1000, max: 20000, step: 250 });
-  const elGap = numberRow('Side Min Gap (ms)', 'banterGap', st.sideMinGapMs, { min: 2000, max: 30000, step: 500 });
+  const elCd = numberRow('Cooldown (ms)', 'banterCooldown', st.cooldownMs, {
+    min: 1000,
+    max: 20000,
+    step: 250,
+  });
+  const elGap = numberRow('Side Min Gap (ms)', 'banterGap', st.sideMinGapMs, {
+    min: 2000,
+    max: 30000,
+    step: 500,
+  });
 
   pop.appendChild(headerRow('Events'));
-  const events = ['match_start','first_blood','big_hit','stagger','comeback','near_death','victory','taunt'];
-  const mask0 = new Set(st.events === '*' ? events : st.events.split(',').map(s => s.trim()).filter(Boolean));
+  const events = [
+    'match_start',
+    'first_blood',
+    'big_hit',
+    'stagger',
+    'comeback',
+    'near_death',
+    'victory',
+    'taunt',
+  ];
+  const mask0 = new Set(
+    st.events === '*'
+      ? events
+      : st.events
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+  );
   const evChecks: Record<string, HTMLInputElement> = {};
   for (const ev of events) {
     const cb = checkbox(ev, 'ev_' + ev, mask0.has(ev));
@@ -293,8 +423,10 @@ export function initBanterControls(): void {
 
   // Initial provider UI state
   const applyProviderVisibility = (): void => {
-    const showOllama = (elProvider.value === 'ollama');
-    const d = (el: HTMLElement): void => { el.style.display = showOllama ? '' : 'none'; };
+    const showOllama = elProvider.value === 'ollama';
+    const d = (el: HTMLElement): void => {
+      el.style.display = showOllama ? '' : 'none';
+    };
     // Ollama connection
     d(elLLMOn.parentElement!);
     d(elUrl.parentElement!);
@@ -315,7 +447,10 @@ export function initBanterControls(): void {
   // Attach listeners & persistence
   const refreshBtnLabel = (): void => {
     const on = (sim as any).banterEnabled !== false;
-    if (btn) { btn.textContent = on ? '💬 Banter' : '💬 Banter'; btn.style.opacity = on ? '1' : '0.55'; }
+    if (btn) {
+      btn.textContent = on ? '💬 Banter' : '💬 Banter';
+      btn.style.opacity = on ? '1' : '0.55';
+    }
   };
   refreshBtnLabel();
 
@@ -352,7 +487,9 @@ export function initBanterControls(): void {
     updateMixedContentWarning();
   });
   elModel.addEventListener('change', () => save(K.model, elModel.value));
-  elTimeout.addEventListener('change', () => save(K.to, Math.max(500, Number(elTimeout.value) | 0)));
+  elTimeout.addEventListener('change', () =>
+    save(K.to, Math.max(500, Number(elTimeout.value) | 0)),
+  );
   elChars.addEventListener('change', () => save(K.chars, Math.max(40, Number(elChars.value) | 0)));
   elTemp.addEventListener('input', () => save(K.temp, Number(elTemp.value)));
   elTopP.addEventListener('input', () => save(K.topp, Number(elTopP.value)));
@@ -377,21 +514,37 @@ export function initBanterControls(): void {
       const models = await listOllamaModels(elUrl.value.trim(), Number(elTimeout.value) || 1500);
       elModel.innerHTML = '';
       if (!models.length) {
-        const opt = document.createElement('option'); opt.value = ''; opt.text = '(no models)'; elModel.appendChild(opt);
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.text = '(no models)';
+        elModel.appendChild(opt);
       } else {
-        for (const m of models) { const opt = document.createElement('option'); opt.value = m; opt.text = m; if (m === st.model) opt.selected = true; elModel.appendChild(opt); }
+        for (const m of models) {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.text = m;
+          if (m === st.model) opt.selected = true;
+          elModel.appendChild(opt);
+        }
       }
       status.textContent = models.length ? '✅' : '⚠️';
     } catch {
       status.textContent = '❌';
     }
   };
-  btnRefresh.addEventListener('click', (e) => { e.preventDefault(); void populateModels(); });
+  btnRefresh.addEventListener('click', (e) => {
+    e.preventDefault();
+    void populateModels();
+  });
 
   btnTest.addEventListener('click', async (e) => {
     e.preventDefault();
     status.textContent = '⏳';
-    const ok = await testOllamaChat(elUrl.value.trim(), elModel.value, Math.max(600, Number(elTimeout.value) | 0));
+    const ok = await testOllamaChat(
+      elUrl.value.trim(),
+      elModel.value,
+      Math.max(600, Number(elTimeout.value) | 0),
+    );
     status.textContent = ok ? '✅' : '❌';
   });
 
@@ -401,49 +554,95 @@ export function initBanterControls(): void {
   const actionWrap = document.createElement('div');
   actionWrap.className = 'audio-row buttons';
   const btnSave = document.createElement('button');
-  btnSave.type = 'button'; btnSave.textContent = 'Save & Apply';
+  btnSave.type = 'button';
+  btnSave.textContent = 'Save & Apply';
   const btnReset = document.createElement('button');
-  btnReset.type = 'button'; btnReset.textContent = 'Reset to Defaults';
+  btnReset.type = 'button';
+  btnReset.textContent = 'Reset to Defaults';
   actionWrap.append(btnSave, btnReset);
   pop.appendChild(actionWrap);
 
   const setUIFrom = (cfg: LLMSettings & { enabled: boolean }): void => {
     // Enabled
-    elOn.checked = cfg.enabled; (sim as any).banterEnabled = cfg.enabled; save(K.on, cfg.enabled);
+    elOn.checked = cfg.enabled;
+    (sim as any).banterEnabled = cfg.enabled;
+    save(K.on, cfg.enabled);
     // Provider
-    elProvider.value = cfg.provider; save(K.src, cfg.provider);
+    elProvider.value = cfg.provider;
+    save(K.src, cfg.provider);
     applyProviderVisibility();
     // LLM enabled
-    elLLMOn.checked = cfg.llmEnabled; save(K.llmOn, cfg.llmEnabled);
+    elLLMOn.checked = cfg.llmEnabled;
+    save(K.llmOn, cfg.llmEnabled);
     // Ollama
-    elUrl.value = cfg.ollamaUrl; elUrl.setCustomValidity(''); save(K.url, cfg.ollamaUrl);
+    elUrl.value = cfg.ollamaUrl;
+    elUrl.setCustomValidity('');
+    save(K.url, cfg.ollamaUrl);
     updateMixedContentWarning();
     // Model: reset to value (do not repopulate list here)
     // Clear options and insert placeholder + current if provided
     elModel.innerHTML = '';
-    const opt0 = document.createElement('option'); opt0.value = ''; opt0.text = '(select model)'; elModel.appendChild(opt0);
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.text = '(select model)';
+    elModel.appendChild(opt0);
     if (cfg.model) {
-      const opt = document.createElement('option'); opt.value = cfg.model; opt.text = cfg.model; opt.selected = true; elModel.appendChild(opt);
+      const opt = document.createElement('option');
+      opt.value = cfg.model;
+      opt.text = cfg.model;
+      opt.selected = true;
+      elModel.appendChild(opt);
     }
     save(K.model, cfg.model);
     status.textContent = '';
     // Quality & limits
-    elTimeout.value = String(cfg.timeoutMs); save(K.to, cfg.timeoutMs);
-    elChars.value = String(cfg.maxChars); save(K.chars, cfg.maxChars);
-    elTemp.value = String(cfg.temperature); save(K.temp, cfg.temperature);
-    elTopP.value = String(cfg.topP); save(K.topp, cfg.topP);
-    elRep.value = String(cfg.repeatPenalty); save(K.rep, cfg.repeatPenalty);
+    elTimeout.value = String(cfg.timeoutMs);
+    save(K.to, cfg.timeoutMs);
+    elChars.value = String(cfg.maxChars);
+    save(K.chars, cfg.maxChars);
+    elTemp.value = String(cfg.temperature);
+    save(K.temp, cfg.temperature);
+    elTopP.value = String(cfg.topP);
+    save(K.topp, cfg.topP);
+    elRep.value = String(cfg.repeatPenalty);
+    save(K.rep, cfg.repeatPenalty);
     // Style & context
-    elIncl.checked = cfg.includeOpponentLast; save(K.incl, cfg.includeOpponentLast);
-    elEmoji.value = cfg.emojiStyle; save(K.emoji, cfg.emojiStyle);
-    elProf.value = cfg.profanityFilter; save(K.prof, cfg.profanityFilter);
+    elIncl.checked = cfg.includeOpponentLast;
+    save(K.incl, cfg.includeOpponentLast);
+    elEmoji.value = cfg.emojiStyle;
+    save(K.emoji, cfg.emojiStyle);
+    elProf.value = cfg.profanityFilter;
+    save(K.prof, cfg.profanityFilter);
     // Pacing
-    elCd.value = String(cfg.cooldownMs); save(K.cd, cfg.cooldownMs);
-    elGap.value = String(cfg.sideMinGapMs); save(K.gap, cfg.sideMinGapMs);
+    elCd.value = String(cfg.cooldownMs);
+    save(K.cd, cfg.cooldownMs);
+    elGap.value = String(cfg.sideMinGapMs);
+    save(K.gap, cfg.sideMinGapMs);
     // Events
-    const all = ['match_start','first_blood','big_hit','stagger','comeback','near_death','victory','taunt'];
-    const mask = cfg.events === '*' ? new Set(all) : new Set(cfg.events.split(',').map(s=>s.trim()).filter(Boolean));
-    for (const ev of all) { const on = mask.has(ev); const cb = evChecks[ev]; if (cb) cb.checked = on; }
+    const all = [
+      'match_start',
+      'first_blood',
+      'big_hit',
+      'stagger',
+      'comeback',
+      'near_death',
+      'victory',
+      'taunt',
+    ];
+    const mask =
+      cfg.events === '*'
+        ? new Set(all)
+        : new Set(
+            cfg.events
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean),
+          );
+    for (const ev of all) {
+      const on = mask.has(ev);
+      const cb = evChecks[ev];
+      if (cb) cb.checked = on;
+    }
     save(K.ev, cfg.events);
     refreshBtnLabel();
   };
@@ -469,11 +668,17 @@ export function initBanterControls(): void {
     const evList = events.filter((ev) => !!evChecks[ev]?.checked);
     save(K.ev, evList.length === events.length ? '*' : evList.join(','));
     // Reset the in-game pacing gate so new timing takes effect immediately
-    try { (sim as any).banterGate = { L: 0, R: 0, lastAny: 0 }; } catch { /* ignore */ }
+    try {
+      (sim as any).banterGate = { L: 0, R: 0, lastAny: 0 };
+    } catch {
+      /* ignore */
+    }
     // Brief visual confirmation
     const prev = btnSave.textContent;
     btnSave.textContent = 'Saved ✓';
-    setTimeout(() => { btnSave.textContent = prev; }, 1200);
+    setTimeout(() => {
+      btnSave.textContent = prev;
+    }, 1200);
   });
 
   btnReset.addEventListener('click', (e) => {
@@ -490,13 +695,16 @@ export function initBanterControls(): void {
   };
   let open = false;
   const close = (): void => {
-    open = false; pop.style.display = 'none';
+    open = false;
+    pop.style.display = 'none';
     window.removeEventListener('resize', positionPopover);
     document.removeEventListener('click', onDocClick, true);
   };
   const onDocClick = (e: MouseEvent): void => {
-    if (!open) return; const t = e.target as Node | null;
-    if (t && (t === pop || pop.contains(t) || t === btn)) return; close();
+    if (!open) return;
+    const t = e.target as Node | null;
+    if (t && (t === pop || pop.contains(t) || t === btn)) return;
+    close();
   };
   const toggle = (): void => {
     open = !open;
@@ -508,7 +716,10 @@ export function initBanterControls(): void {
       document.addEventListener('click', onDocClick, true);
     } else close();
   };
-  btn.addEventListener('click', (e) => { e.preventDefault(); toggle(); });
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggle();
+  });
 }
 
 // Helper to read pacing when (re)creating the BanterSystem at match start
@@ -517,5 +728,7 @@ export function readBanterPacing(): { cooldownMs: number; sideMinGapMs: number }
     const cooldownMs = loadNum(K.cd, DEFAULT_LLM.cooldownMs);
     const sideMinGapMs = loadNum(K.gap, DEFAULT_LLM.sideMinGapMs);
     return { cooldownMs, sideMinGapMs };
-  } catch { return { cooldownMs: DEFAULT_LLM.cooldownMs, sideMinGapMs: DEFAULT_LLM.sideMinGapMs }; }
+  } catch {
+    return { cooldownMs: DEFAULT_LLM.cooldownMs, sideMinGapMs: DEFAULT_LLM.sideMinGapMs };
+  }
 }

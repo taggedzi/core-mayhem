@@ -82,7 +82,13 @@ interface SessionStats {
   // Running counters
   nextMatchId: number;
   // Per-match mod counts (flattened)
-  modsPerMatch: { matchId: number; type: 'buff' | 'debuff'; side: SideKey; kind: string; count: number }[];
+  modsPerMatch: {
+    matchId: number;
+    type: 'buff' | 'debuff';
+    side: SideKey;
+    kind: string;
+    count: number;
+  }[];
   // Diagnostics: per-missile first impact kind and time-to-first-core-hit
   missileFirstImpacts: { matchId: number; side: SideKey; kind: string }[];
   missileCoreDelays: { matchId: number; side: SideKey; ms: number }[];
@@ -126,7 +132,7 @@ function scheduleSave(): void {
 function ensureSessionShape(s: any): SessionStats {
   s = s ?? {};
   s.version = 1;
-  s.sessionId = s.sessionId ?? (Date.now() | 0);
+  s.sessionId = s.sessionId ?? Date.now() | 0;
   s.createdAt = s.createdAt ?? performance.now();
   // weapons
   s.weapon = s.weapon ?? { L: {}, R: {} };
@@ -227,7 +233,14 @@ export function recordShotFired(side: Side, weapon: WeaponKind): void {
   session!.weapon[sk][weapon].shots++;
 }
 
-function bumpHit(side: Side, weapon: WeaponKind, dmgShield: number, dmgSeg: number, dmgCenter: number, now = performance.now()): void {
+function bumpHit(
+  side: Side,
+  weapon: WeaponKind,
+  dmgShield: number,
+  dmgSeg: number,
+  dmgCenter: number,
+  now = performance.now(),
+): void {
   ensure();
   const sk = sideKey(side);
   const a = session!.weapon[sk][weapon];
@@ -263,11 +276,24 @@ function bumpHit(side: Side, weapon: WeaponKind, dmgShield: number, dmgSeg: numb
   }
 }
 
-export function recordProjectileHit(side: Side, weapon: WeaponKind, dmgShield: number, dmgSeg: number, dmgCenter: number, now = performance.now()): void {
+export function recordProjectileHit(
+  side: Side,
+  weapon: WeaponKind,
+  dmgShield: number,
+  dmgSeg: number,
+  dmgCenter: number,
+  now = performance.now(),
+): void {
   bumpHit(side, weapon, dmgShield, dmgSeg, dmgCenter, now);
 }
 
-export function recordLaserHit(side: Side, dmgShield: number, dmgSeg: number, dmgCenter: number, now = performance.now()): void {
+export function recordLaserHit(
+  side: Side,
+  dmgShield: number,
+  dmgSeg: number,
+  dmgCenter: number,
+  now = performance.now(),
+): void {
   bumpHit(side, 'laser', dmgShield, dmgSeg, dmgCenter, now);
 }
 
@@ -288,7 +314,11 @@ export function recordMissileFirstImpact(side: Side, kind: string): void {
 export function recordMissileCoreDelay(side: Side, ms: number): void {
   ensure();
   if (!inMatch) return;
-  session!.missileCoreDelays.push({ matchId: inMatch.matchId, side: sideKey(side), ms: Math.max(0, ms | 0) });
+  session!.missileCoreDelays.push({
+    matchId: inMatch.matchId,
+    side: sideKey(side),
+    ms: Math.max(0, ms | 0),
+  });
   scheduleSave();
 }
 
@@ -332,7 +362,8 @@ export function recordMatchEnd(): void {
 
   const coreL = (sim as any).coreL;
   const coreR = (sim as any).coreR;
-  const sumSeg = (arr: number[] | null | undefined): number => (Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0);
+  const sumSeg = (arr: number[] | null | undefined): number =>
+    Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
   const leftSegHP = sumSeg(coreL?.segHP);
   const leftCenterHP = coreL?.centerHP | 0;
   const leftShieldHP = coreL?.shieldHP | 0;
@@ -368,11 +399,13 @@ export function recordMatchEnd(): void {
   // Flush per-match mod counts
   for (const sk of ['L', 'R'] as const) {
     const b = inMatch.buffCounts[sk];
-    for (const [k, v] of Object.entries(b)) session!.modsPerMatch.push({ matchId, type: 'buff', side: sk, kind: k, count: v });
+    for (const [k, v] of Object.entries(b))
+      session!.modsPerMatch.push({ matchId, type: 'buff', side: sk, kind: k, count: v });
   }
   for (const sk of ['L', 'R'] as const) {
     const d = inMatch.debuffCounts[sk];
-    for (const [k, v] of Object.entries(d)) session!.modsPerMatch.push({ matchId, type: 'debuff', side: sk, kind: k, count: v });
+    for (const [k, v] of Object.entries(d))
+      session!.modsPerMatch.push({ matchId, type: 'debuff', side: sk, kind: k, count: v });
   }
 
   // End the in-match state
@@ -385,7 +418,9 @@ function toCsvRow(vals: (string | number)[]): string {
   return vals
     .map((v) => {
       const s = String(v ?? '');
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
     })
     .join(',');
 }
@@ -448,7 +483,18 @@ export function buildCSVs(): Record<string, string> {
   // bin_cycles.csv
   {
     const rows: string[] = [];
-    rows.push(toCsvRow(['side', 'bin', 'cycles', 'avgMs', 'minMs', 'maxMs', 'totalDeposits', 'totalAmount']));
+    rows.push(
+      toCsvRow([
+        'side',
+        'bin',
+        'cycles',
+        'avgMs',
+        'minMs',
+        'maxMs',
+        'totalDeposits',
+        'totalAmount',
+      ]),
+    );
     for (const sk of ['L', 'R'] as const) {
       for (const b of ALL_BINS) {
         const a = session!.bins[sk][b];
@@ -546,11 +592,11 @@ export function buildCSVs(): Record<string, string> {
     const rows: string[] = [];
     rows.push(toCsvRow(['type', 'side', 'kind', 'count']));
     for (const sk of ['L', 'R'] as const) {
-      const b = (session!.buffCounts && session!.buffCounts[sk]) ? session!.buffCounts[sk] : {};
+      const b = session!.buffCounts && session!.buffCounts[sk] ? session!.buffCounts[sk] : {};
       for (const [k, v] of Object.entries(b)) rows.push(toCsvRow(['buff', sk, k, v]));
     }
     for (const sk of ['L', 'R'] as const) {
-      const d = (session!.debuffCounts && session!.debuffCounts[sk]) ? session!.debuffCounts[sk] : {};
+      const d = session!.debuffCounts && session!.debuffCounts[sk] ? session!.debuffCounts[sk] : {};
       for (const [k, v] of Object.entries(d)) rows.push(toCsvRow(['debuff', sk, k, v]));
     }
     files['mods_agg.csv'] = rows.join('\n');
@@ -570,7 +616,11 @@ export function buildCSVs(): Record<string, string> {
     const rows: string[] = [];
     rows.push(toCsvRow(['matchId', 'side', 'kind']));
     const arr = Array.isArray((session as any).missileFirstImpacts)
-      ? ((session as any).missileFirstImpacts as { matchId: number; side: 'L' | 'R'; kind: string }[])
+      ? ((session as any).missileFirstImpacts as {
+          matchId: number;
+          side: 'L' | 'R';
+          kind: string;
+        }[])
       : [];
     for (const r of arr) rows.push(toCsvRow([r.matchId, r.side, r.kind]));
     files['missile_first_impacts.csv'] = rows.join('\n');
@@ -611,7 +661,11 @@ export function exportAllCSVs(): void {
 
 export function resetStats(): void {
   // Clear localStorage and start a fresh session
-  try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ void 0; }
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch {
+    /* ignore */ void 0;
+  }
   session = null;
   inMatch = null;
   initStats();
@@ -655,7 +709,9 @@ export function getSummary(): {
 } {
   ensure();
   const matches = Array.isArray(session!.matches) ? session!.matches.length : 0;
-  let leftWins = 0, rightWins = 0, ties = 0;
+  let leftWins = 0,
+    rightWins = 0,
+    ties = 0;
   if (Array.isArray(session!.matches)) {
     for (const m of session!.matches) {
       if (m.winner === -1) leftWins++;
@@ -663,7 +719,8 @@ export function getSummary(): {
       else ties++;
     }
   }
-  const sumVals = (o: Record<string, number> | undefined): number => (o ? Object.values(o).reduce((a, b) => a + (b | 0), 0) : 0);
+  const sumVals = (o: Record<string, number> | undefined): number =>
+    o ? Object.values(o).reduce((a, b) => a + (b | 0), 0) : 0;
   const buffsL = sumVals(session!.buffCounts?.L);
   const buffsR = sumVals(session!.buffCounts?.R);
   const debuffsL = sumVals(session!.debuffCounts?.L);

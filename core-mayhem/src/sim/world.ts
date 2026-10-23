@@ -23,8 +23,8 @@ function validateWorld(world: MatterWorld): void {
     }
     for (const v of b.vertices) {
       if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) {
-      console.error('Invalid vertex (NaN/∞):', describeBody(b), v);
-      return;
+        console.error('Invalid vertex (NaN/∞):', describeBody(b), v);
+        return;
       }
     }
     if (!Number.isFinite(b.area) || b.area <= 0) {

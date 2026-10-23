@@ -17,7 +17,7 @@ describe('simulate batch (harness)', () => {
     }
 
     const pick = <T>(env: unknown, cfgVal: T | undefined, fallback: T): T =>
-      ((env ?? (cfgVal ?? fallback)) as T);
+      (env ?? cfgVal ?? fallback) as T;
 
     const matches = Number(pick(process.env.MATCHES, cfg.matches, 10)) | 0;
     const alt = pick<string | undefined>(process.env.ALT_ORDER, cfg.altOrderMode, undefined) as any; // 'LR' | 'RL' | 'alternateTick' | 'alternateMatch'
@@ -25,7 +25,11 @@ describe('simulate batch (harness)', () => {
     const timescale = Number(pick(process.env.TIMESCALE, cfg.timescale, 3.0));
     const seed = pick<string | undefined>(process.env.SEED, cfg.seed, undefined);
     const fullLength = String(pick(process.env.FULL_LENGTH, cfg.fullLength, false)) === 'true';
-    const primeVolley = pick<string | undefined>(process.env.PRIME_VOLLEY, cfg.primeVolley, undefined);
+    const primeVolley = pick<string | undefined>(
+      process.env.PRIME_VOLLEY,
+      cfg.primeVolley,
+      undefined,
+    );
     const spawnRate = pick<string | undefined>(process.env.SPAWN_RATE, cfg.spawnRate, undefined);
     const targetAmmo = pick<string | undefined>(process.env.TARGET_AMMO, cfg.targetAmmo, undefined);
     const hpScale = pick<string | undefined>(process.env.HP_SCALE, cfg.hpScale, undefined);
@@ -40,7 +44,7 @@ describe('simulate batch (harness)', () => {
       targetAmmo: targetAmmo === undefined ? undefined : Number(targetAmmo),
       hpScale: hpScale === undefined ? undefined : Number(hpScale),
       fullLength,
-      primeVolley: primeVolley === undefined ? undefined : (String(primeVolley) === 'true'),
+      primeVolley: primeVolley === undefined ? undefined : String(primeVolley) === 'true',
     });
 
     // Write CSVs under stats/ with a timestamped prefix

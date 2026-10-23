@@ -5,7 +5,8 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
   const ui: any = (sim as any).banterUI;
   if (!ui) return;
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const W = sim.W, H = sim.H;
+  const W = sim.W,
+    H = sim.H;
 
   /**
    * Draw a speech bubble with the tail pointing downward toward the speaker (avatar).
@@ -59,7 +60,10 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
     for (const w0 of words) {
       const candidate = cur ? cur + ' ' + w0 : w0;
       if (widthPx(candidate) <= maxPx || !cur) cur = candidate;
-      else { lines.push(cur); cur = w0; }
+      else {
+        lines.push(cur);
+        cur = w0;
+      }
     }
     if (cur) lines.push(cur);
 
@@ -76,7 +80,7 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
     const tailBaseY = by + bh;
 
     // Tail geometry: a triangular tongue pointing downward
-    const tailHW = 9 / sx;   // half-width of tail base
+    const tailHW = 9 / sx; // half-width of tail base
     const tailBX = Math.max(bx + tailHW * 2, Math.min(bx + bw - tailHW * 2, anchorX));
 
     const r = 10 / scale;
@@ -129,7 +133,7 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
     const bezelHalf = orbR + 37;
 
     const avatarCX = side === 'L' ? blCX : W - blCX;
-    const avatarCY = H - blCY;             // canvas Y of avatar center
+    const avatarCY = H - blCY; // canvas Y of avatar center
     const avatarTop = avatarCY - bezelHalf; // topmost visible pixel of the avatar
 
     const m = ctx.getTransform();
@@ -145,8 +149,11 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
       String(uiSide.text),
       avatarCX,
       anchorBottomY,
-      tipX, tipY,
-      side, uiSide.t0 ?? now, uiSide.until ?? now,
+      tipX,
+      tipY,
+      side,
+      uiSide.t0 ?? now,
+      uiSide.until ?? now,
     );
   };
 
@@ -161,16 +168,23 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
  */
 function _bubblePath(
   ctx: CanvasRenderingContext2D,
-  bx: number, by: number, bw: number, bh: number, r: number,
-  tailBX: number, tailHW: number, tailBaseY: number,
-  tipX: number, tipY: number,
+  bx: number,
+  by: number,
+  bw: number,
+  bh: number,
+  r: number,
+  tailBX: number,
+  tailHW: number,
+  tailBaseY: number,
+  tipX: number,
+  tipY: number,
 ): void {
   // Top-left → clockwise
   ctx.moveTo(bx + r, by);
   // Top-right corner
-  ctx.arcTo(bx + bw, by,      bx + bw, by + bh, r);
+  ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
   // Bottom-right corner
-  ctx.arcTo(bx + bw, by + bh, bx,      by + bh, r);
+  ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
   // Bottom edge right section → tail right base
   ctx.lineTo(tailBX + tailHW, tailBaseY);
   // Tail: down to tip and back up
@@ -179,7 +193,7 @@ function _bubblePath(
   // Bottom edge left section → bottom-left corner
   ctx.arcTo(bx, by + bh, bx, by, r);
   // Left side → top-left corner
-  ctx.arcTo(bx, by,      bx + bw, by, r);
+  ctx.arcTo(bx, by, bx + bw, by, r);
   ctx.closePath();
 }
 

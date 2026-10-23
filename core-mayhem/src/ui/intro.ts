@@ -117,7 +117,9 @@ function closeIntroOverlay(): void {
   try {
     const active = document.activeElement as HTMLElement | null;
     if (active && overlayEl.contains(active)) active.blur();
-  } catch { /* ignore */ void 0; }
+  } catch {
+    /* ignore */ void 0;
+  }
   overlayEl.style.display = 'none';
   overlayEl.setAttribute('aria-hidden', 'true');
 }

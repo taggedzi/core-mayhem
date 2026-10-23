@@ -16,4 +16,3 @@ describe('colorForAmmo', () => {
     expect(colorForAmmo('something-else')).toBe('#b6ff00');
   });
 });
-

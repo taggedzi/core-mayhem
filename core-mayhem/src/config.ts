@@ -7,4 +7,3 @@ export * from './configs/core';
 export * from './configs/weapons';
 export * from './configs/fx';
 export * from './configs/ui';
-

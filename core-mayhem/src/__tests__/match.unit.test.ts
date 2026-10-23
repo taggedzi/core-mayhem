@@ -105,15 +105,18 @@ describe('systems/match unit', () => {
     // Sanity: config enables autoRestart by default
     expect(GAMEOVER.autoRestart).toBe(true);
     let fired = 0;
-    window.addEventListener('coreMayhem:restart', () => { fired++; });
+    window.addEventListener('coreMayhem:restart', () => {
+      fired++;
+    });
     // Intercept setTimeout to avoid advancing unrelated timers from other tests
     let scheduled: (() => void) | null = null;
-    const spyTO = vi
-      .spyOn(globalThis, 'setTimeout')
-      .mockImplementation(((cb: TimerHandler, _ms?: number | undefined) => {
-        if (typeof cb === 'function') scheduled = cb as any;
-        return 111 as unknown as number;
-      }) as any);
+    const spyTO = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      cb: TimerHandler,
+      _ms?: number | undefined,
+    ) => {
+      if (typeof cb === 'function') scheduled = cb as any;
+      return 111 as unknown as number;
+    }) as any);
     declareWinner(SIDE.LEFT);
     expect(spyTO).toHaveBeenCalled();
     // Expect delay argument equals bannerMs

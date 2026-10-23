@@ -18,4 +18,3 @@ export function runAudioMonitors(): void {
   if (on((sim as any).coreR)) audio.startLoop(alarmIdR, 'core_low_hp_alarm', 0.35);
   else audio.stopLoop(alarmIdR);
 }
-

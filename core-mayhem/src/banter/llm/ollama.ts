@@ -36,8 +36,9 @@ export async function ollamaChat(
       signal: ctrl.signal,
     });
     if (!r.ok) return null;
-    const data = await r.json().catch(() => ({} as any));
-    const content = (data as any)?.message?.content ?? (data as any)?.choices?.[0]?.message?.content ?? '';
+    const data = await r.json().catch(() => ({}) as any);
+    const content =
+      (data as any)?.message?.content ?? (data as any)?.choices?.[0]?.message?.content ?? '';
     if (typeof content !== 'string') return null;
     return content;
   } catch {
@@ -46,4 +47,3 @@ export async function ollamaChat(
     clearTimeout(t);
   }
 }
-

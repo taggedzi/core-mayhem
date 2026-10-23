@@ -38,26 +38,26 @@ const _state: Record<SideLR, AvatarState> = {
 
 // How long each emotion lasts before auto-returning to idle (0 = sticky)
 const DURATION: Record<AvatarEmotion, number> = {
-  idle:       0,
+  idle: 0,
   entrance: 1800,
-  taunt:    2200,
-  flinch:   1000,
-  near_death:  0,  // driven by HP each frame
-  powerup:  1600,
-  victory:     0,
-  dead:        0,
+  taunt: 2200,
+  flinch: 1000,
+  near_death: 0, // driven by HP each frame
+  powerup: 1600,
+  victory: 0,
+  dead: 0,
 };
 
 // Higher = harder to interrupt
 const PRIORITY: Record<AvatarEmotion, number> = {
-  idle:       0,
+  idle: 0,
   near_death: 1,
-  entrance:   2,
-  taunt:      3,
-  powerup:    3,
-  flinch:     4,
-  victory:   10,
-  dead:      10,
+  entrance: 2,
+  taunt: 3,
+  powerup: 3,
+  flinch: 4,
+  victory: 10,
+  dead: 10,
 };
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -83,13 +83,25 @@ export function resetAvatarState(): void {
 /** Map a banter event string to an avatar emotion for the speaking side. */
 export function banterToAvatarEmotion(ev: string): AvatarEmotion | null {
   switch (ev) {
-    case 'match_start':                                         return 'entrance';
-    case 'big_hit': case 'stagger':
-    case 'shields_down': case 'armor_break': case 'debuffed':  return 'flinch';
-    case 'near_death':                                         return 'near_death';
-    case 'taunt': case 'first_blood':                          return 'taunt';
-    case 'comeback': case 'shields_up': case 'repair':         return 'powerup';
-    default:                                                   return null;
+    case 'match_start':
+      return 'entrance';
+    case 'big_hit':
+    case 'stagger':
+    case 'shields_down':
+    case 'armor_break':
+    case 'debuffed':
+      return 'flinch';
+    case 'near_death':
+      return 'near_death';
+    case 'taunt':
+    case 'first_blood':
+      return 'taunt';
+    case 'comeback':
+    case 'shields_up':
+    case 'repair':
+      return 'powerup';
+    default:
+      return null;
   }
 }
 
@@ -134,7 +146,12 @@ function _resolveState(side: SideLR, now: number): { emotion: AvatarEmotion; t: 
 // ── Internal: draw one side ───────────────────────────────────────────────────
 
 function _drawSide(
-  cmds: DrawCommand[], side: SideLR, now: number, W: number, H: number, cfg: any,
+  cmds: DrawCommand[],
+  side: SideLR,
+  now: number,
+  W: number,
+  H: number,
+  cfg: any,
 ): void {
   const blCX: number = cfg?.left?.cx ?? 250;
   const blCY: number = cfg?.left?.cy ?? 155;
@@ -150,24 +167,42 @@ function _drawSide(
   // ── Global alpha for entrance/death transitions ──
   let ga = 1.0;
   if (emotion === 'entrance') ga = Math.min(1, t / 900);
-  if (emotion === 'dead')     ga = Math.max(0, 1 - t / 2200);
+  if (emotion === 'dead') ga = Math.max(0, 1 - t / 2200);
 
   // ── Orb pulse radius ──
   const pAmp: Record<AvatarEmotion, number> = {
-    idle: 2, entrance: 5, taunt: 7, flinch: 5,
-    near_death: 1.5, powerup: 9, victory: 12, dead: 0,
+    idle: 2,
+    entrance: 5,
+    taunt: 7,
+    flinch: 5,
+    near_death: 1.5,
+    powerup: 9,
+    victory: 12,
+    dead: 0,
   };
   const pSpd: Record<AvatarEmotion, number> = {
-    idle: 800, entrance: 400, taunt: 170, flinch: 220,
-    near_death: 2000, powerup: 200, victory: 140, dead: 1000,
+    idle: 800,
+    entrance: 400,
+    taunt: 170,
+    flinch: 220,
+    near_death: 2000,
+    powerup: 200,
+    victory: 140,
+    dead: 1000,
   };
   let pulseR = orbR + Math.sin(now / pSpd[emotion]) * pAmp[emotion];
   if (emotion === 'near_death' && Math.random() < 0.08) pulseR += Math.random() * 3 - 1.5;
 
   // ── Ring rotation speeds (rad/ms) ──
   const r1Spd: Record<AvatarEmotion, number> = {
-    idle: 4e-4, entrance: 12e-4, taunt: 20e-4, flinch: 5e-4,
-    near_death: 1.2e-4, powerup: 28e-4, victory: 50e-4, dead: 0,
+    idle: 4e-4,
+    entrance: 12e-4,
+    taunt: 20e-4,
+    flinch: 5e-4,
+    near_death: 1.2e-4,
+    powerup: 28e-4,
+    victory: 50e-4,
+    dead: 0,
   };
   let ang1 = now * r1Spd[emotion];
   let ang2 = now * r1Spd[emotion] * -0.62; // outer ring counter-rotates slower
@@ -180,41 +215,92 @@ function _drawSide(
   }
 
   // ── Draw outer ring (4 segments) ──
-  const r2 = cfg?.ring2 ?? { iR: 21, oR: 33, segs: 4, gap: 0.30 };
+  const r2 = cfg?.ring2 ?? { iR: 21, oR: 33, segs: 4, gap: 0.3 };
   const outerA: Record<AvatarEmotion, number> = {
-    idle: 0.55, entrance: 0.55, taunt: 0.75, flinch: 0.60,
-    near_death: 0.30, powerup: 0.80, victory: 0.90, dead: 0.15,
+    idle: 0.55,
+    entrance: 0.55,
+    taunt: 0.75,
+    flinch: 0.6,
+    near_death: 0.3,
+    powerup: 0.8,
+    victory: 0.9,
+    dead: 0.15,
   };
-  const outerGlow = emotion === 'victory' ? 16 : emotion === 'taunt' ? 10 : emotion === 'near_death' ? 0 : 5;
-  _ringSegs(cmds, cx, cy, orbR + r2.iR, orbR + r2.oR, r2.segs, r2.gap, ang2,
-    color, outerA[emotion] * ga, outerGlow);
+  const outerGlow =
+    emotion === 'victory' ? 16 : emotion === 'taunt' ? 10 : emotion === 'near_death' ? 0 : 5;
+  _ringSegs(
+    cmds,
+    cx,
+    cy,
+    orbR + r2.iR,
+    orbR + r2.oR,
+    r2.segs,
+    r2.gap,
+    ang2,
+    color,
+    outerA[emotion] * ga,
+    outerGlow,
+  );
 
   // ── Draw inner ring (6 segments) ──
   const r1 = cfg?.ring1 ?? { iR: 10, oR: 18, segs: 6, gap: 0.27 };
   const innerA: Record<AvatarEmotion, number> = {
-    idle: 0.70, entrance: 0.70, taunt: 0.90, flinch: 0.75,
-    near_death: 0.25, powerup: 0.95, victory: 1.00, dead: 0.10,
+    idle: 0.7,
+    entrance: 0.7,
+    taunt: 0.9,
+    flinch: 0.75,
+    near_death: 0.25,
+    powerup: 0.95,
+    victory: 1.0,
+    dead: 0.1,
   };
-  _ringSegs(cmds, cx, cy, orbR + r1.iR, orbR + r1.oR, r1.segs, r1.gap, ang1,
-    color, innerA[emotion] * ga, 0);
+  _ringSegs(
+    cmds,
+    cx,
+    cy,
+    orbR + r1.iR,
+    orbR + r1.oR,
+    r1.segs,
+    r1.gap,
+    ang1,
+    color,
+    innerA[emotion] * ga,
+    0,
+  );
 
   // ── Orb background circle ──
   const orbA: Record<AvatarEmotion, number> = {
-    idle: 1, entrance: 1, taunt: 1, flinch: 1,
-    near_death: 0.65, powerup: 1, victory: 1, dead: 0.5,
+    idle: 1,
+    entrance: 1,
+    taunt: 1,
+    flinch: 1,
+    near_death: 0.65,
+    powerup: 1,
+    victory: 1,
+    dead: 0.5,
   };
-  const orbGlow = emotion === 'victory' ? 22 : emotion === 'taunt' ? 12 : emotion === 'near_death' ? 0 : 7;
+  const orbGlow =
+    emotion === 'victory' ? 22 : emotion === 'taunt' ? 12 : emotion === 'near_death' ? 0 : 7;
   cmds.push({
-    kind: 'circle', x: cx, y: cy, r: pulseR,
-    fill: '#040912', stroke: color, lineWidth: 3,
+    kind: 'circle',
+    x: cx,
+    y: cy,
+    r: pulseR,
+    fill: '#040912',
+    stroke: color,
+    lineWidth: 3,
     alpha: orbA[emotion] * ga,
-    shadowBlur: orbGlow, shadowColor: color,
+    shadowBlur: orbGlow,
+    shadowColor: color,
   });
 
   // ── Flinch: brief red flash ──
   if (emotion === 'flinch' && t < 320) {
     cmds.push({
-      kind: 'circle', x: cx, y: cy, r: pulseR,
+      kind: 'circle',
+      x: cx,
+      y: cy,
+      r: pulseR,
       fill: '#ff2020',
       alpha: (1 - t / 320) * 0.38 * ga,
       composite: 'lighter',
@@ -224,9 +310,12 @@ function _drawSide(
   // ── Victory: gold aura pulse ──
   if (emotion === 'victory') {
     cmds.push({
-      kind: 'circle', x: cx, y: cy, r: pulseR + 7,
+      kind: 'circle',
+      x: cx,
+      y: cy,
+      r: pulseR + 7,
       fill: '#ffd700',
-      alpha: (0.10 + Math.sin(now / 280) * 0.05) * ga,
+      alpha: (0.1 + Math.sin(now / 280) * 0.05) * ga,
       composite: 'lighter',
     } as any);
   }
@@ -234,7 +323,8 @@ function _drawSide(
   // ── Glint highlight (arcade token look) ──
   cmds.push({
     kind: 'circle',
-    x: cx - orbR * 0.28, y: cy - orbR * 0.28,
+    x: cx - orbR * 0.28,
+    y: cy - orbR * 0.28,
     r: orbR * 0.22,
     fill: '#ffffff',
     alpha: 0.07 * ga,
@@ -245,7 +335,7 @@ function _drawSide(
 
   // ── Arcade bezel corners ──
   const half = orbR + 37;
-  const cornerA = (emotion === 'near_death' ? 0.30 : 0.50) * ga;
+  const cornerA = (emotion === 'near_death' ? 0.3 : 0.5) * ga;
   _drawCorners(cmds, cx, cy, half, color, cornerA);
 }
 
@@ -253,21 +343,33 @@ function _drawSide(
 
 function _ringSegs(
   cmds: DrawCommand[],
-  cx: number, cy: number,
-  r0: number, r1: number,
-  nSegs: number, gapFrac: number,
+  cx: number,
+  cy: number,
+  r0: number,
+  r1: number,
+  nSegs: number,
+  gapFrac: number,
   baseAngle: number,
-  color: string, alpha: number, shadowBlur: number,
+  color: string,
+  alpha: number,
+  shadowBlur: number,
 ): void {
-  const step   = (Math.PI * 2) / nSegs;
+  const step = (Math.PI * 2) / nSegs;
   const segArc = step * (1 - gapFrac);
   for (let i = 0; i < nSegs; i++) {
     const a0 = baseAngle + i * step;
     cmds.push({
-      kind: 'wedge', cx, cy, r0, r1,
-      a0, a1: a0 + segArc,
-      fill: color, alpha,
-      shadowBlur, shadowColor: color,
+      kind: 'wedge',
+      cx,
+      cy,
+      r0,
+      r1,
+      a0,
+      a1: a0 + segArc,
+      fill: color,
+      alpha,
+      shadowBlur,
+      shadowColor: color,
     });
   }
 }
@@ -276,22 +378,32 @@ function _ringSegs(
 
 function _drawFace(
   cmds: DrawCommand[],
-  cx: number, cy: number, orbR: number,
-  emotion: AvatarEmotion, t: number, now: number,
+  cx: number,
+  cy: number,
+  orbR: number,
+  emotion: AvatarEmotion,
+  t: number,
+  now: number,
   ga: number,
 ): void {
-  const px      = Math.max(3, Math.round(orbR * 0.095)); // pixel-block size
-  const eyeY    = cy - orbR * 0.18;
-  const eyeOffX = orbR * 0.30;
-  const mouthY  = cy + orbR * 0.35;
-  const mouthW  = orbR * 0.64;
+  const px = Math.max(3, Math.round(orbR * 0.095)); // pixel-block size
+  const eyeY = cy - orbR * 0.18;
+  const eyeOffX = orbR * 0.3;
+  const mouthY = cy + orbR * 0.35;
+  const mouthW = orbR * 0.64;
 
   let fc = '#ffffff';
   let fa = ga;
-  if (emotion === 'flinch')     fc = '#ff7070';
-  if (emotion === 'victory')    fc = '#ffd700';
-  if (emotion === 'near_death') { fc = '#ff5050'; fa *= 0.60 + Math.sin(now / 380) * 0.35; }
-  if (emotion === 'dead')       { fc = '#777777'; fa *= 0.40; }
+  if (emotion === 'flinch') fc = '#ff7070';
+  if (emotion === 'victory') fc = '#ffd700';
+  if (emotion === 'near_death') {
+    fc = '#ff5050';
+    fa *= 0.6 + Math.sin(now / 380) * 0.35;
+  }
+  if (emotion === 'dead') {
+    fc = '#777777';
+    fa *= 0.4;
+  }
 
   _drawEye(cmds, cx - eyeOffX, eyeY, px, emotion, t, now, fc, fa);
   _drawEye(cmds, cx + eyeOffX, eyeY, px, emotion, t, now, fc, fa);
@@ -302,31 +414,69 @@ function _drawFace(
 
 function _drawEye(
   cmds: DrawCommand[],
-  ex: number, ey: number, px: number,
-  emotion: AvatarEmotion, t: number, now: number,
-  color: string, alpha: number,
+  ex: number,
+  ey: number,
+  px: number,
+  emotion: AvatarEmotion,
+  t: number,
+  now: number,
+  color: string,
+  alpha: number,
 ): void {
   switch (emotion) {
     case 'flinch':
     case 'dead': {
       // X eyes
       const r = px * 1.6;
-      cmds.push({ kind: 'line', x1: ex - r, y1: ey - r, x2: ex + r, y2: ey + r, stroke: color, lineWidth: px * 0.9, alpha } as any);
-      cmds.push({ kind: 'line', x1: ex + r, y1: ey - r, x2: ex - r, y2: ey + r, stroke: color, lineWidth: px * 0.9, alpha } as any);
+      cmds.push({
+        kind: 'line',
+        x1: ex - r,
+        y1: ey - r,
+        x2: ex + r,
+        y2: ey + r,
+        stroke: color,
+        lineWidth: px * 0.9,
+        alpha,
+      } as any);
+      cmds.push({
+        kind: 'line',
+        x1: ex + r,
+        y1: ey - r,
+        x2: ex - r,
+        y2: ey + r,
+        stroke: color,
+        lineWidth: px * 0.9,
+        alpha,
+      } as any);
       break;
     }
     case 'victory': {
       // Star eyes: block + 4 sparkle arms
       _px(cmds, ex, ey, px * 2.5, px * 2.5, color, alpha);
       for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
-        _px(cmds, ex + Math.cos(a) * px * 3, ey + Math.sin(a) * px * 3, px * 0.9, px * 0.9, color, alpha * 0.7);
+        _px(
+          cmds,
+          ex + Math.cos(a) * px * 3,
+          ey + Math.sin(a) * px * 3,
+          px * 0.9,
+          px * 0.9,
+          color,
+          alpha * 0.7,
+        );
       }
       break;
     }
     case 'near_death': {
       // Droopy dot + sweat bead
       _px(cmds, ex, ey + px * 0.4, px * 1.4, px * 1.4, color, alpha);
-      cmds.push({ kind: 'circle', x: ex + px * 1.6, y: ey + px * 2.0, r: px * 0.55, fill: '#3399ff', alpha: alpha * 0.75 } as any);
+      cmds.push({
+        kind: 'circle',
+        x: ex + px * 1.6,
+        y: ey + px * 2.0,
+        r: px * 0.55,
+        fill: '#3399ff',
+        alpha: alpha * 0.75,
+      } as any);
       break;
     }
     case 'taunt': {
@@ -362,9 +512,14 @@ function _drawEye(
 
 function _drawMouth(
   cmds: DrawCommand[],
-  cx: number, mouthY: number, mouthW: number, px: number,
-  emotion: AvatarEmotion, t: number,
-  color: string, alpha: number,
+  cx: number,
+  mouthY: number,
+  mouthW: number,
+  px: number,
+  emotion: AvatarEmotion,
+  t: number,
+  color: string,
+  alpha: number,
 ): void {
   switch (emotion) {
     case 'idle': {
@@ -380,12 +535,18 @@ function _drawMouth(
     }
     case 'flinch': {
       // Zigzag grimace: 5 alternating-height segments
-      const nz = 5, sw = mouthW / nz;
+      const nz = 5,
+        sw = mouthW / nz;
       for (let i = 0; i < nz; i++) {
-        _px(cmds,
+        _px(
+          cmds,
           cx - mouthW / 2 + (i + 0.5) * sw,
           mouthY + (i % 2 === 0 ? 0 : px * 1.4),
-          sw - px * 0.25, px * 0.75, color, alpha * 0.9);
+          sw - px * 0.25,
+          px * 0.75,
+          color,
+          alpha * 0.9,
+        );
       }
       break;
     }
@@ -399,9 +560,15 @@ function _drawMouth(
     case 'victory': {
       // Open O mouth
       cmds.push({
-        kind: 'arc', cx, cy: mouthY,
-        r: mouthW * 0.38, a0: 0, a1: Math.PI * 2,
-        stroke: color, lineWidth: px * 1.2, alpha,
+        kind: 'arc',
+        cx,
+        cy: mouthY,
+        r: mouthW * 0.38,
+        a0: 0,
+        a1: Math.PI * 2,
+        stroke: color,
+        lineWidth: px * 1.2,
+        alpha,
       } as any);
       break;
     }
@@ -416,9 +583,18 @@ function _drawMouth(
     }
     case 'dead': {
       // Dim wavy flatline
-      const nd = 4, ds = mouthW / nd;
+      const nd = 4,
+        ds = mouthW / nd;
       for (let i = 0; i < nd; i++) {
-        _px(cmds, cx - mouthW / 2 + (i + 0.5) * ds, mouthY + (i % 2 === 0 ? 0 : px), ds - 1, px * 0.5, color, alpha * 0.4);
+        _px(
+          cmds,
+          cx - mouthW / 2 + (i + 0.5) * ds,
+          mouthY + (i % 2 === 0 ? 0 : px),
+          ds - 1,
+          px * 0.5,
+          color,
+          alpha * 0.4,
+        );
       }
       break;
     }
@@ -436,21 +612,42 @@ function _drawMouth(
 
 function _drawCorners(
   cmds: DrawCommand[],
-  cx: number, cy: number, half: number,
-  color: string, alpha: number,
+  cx: number,
+  cy: number,
+  half: number,
+  color: string,
+  alpha: number,
 ): void {
   const arm = 12;
   const corners: [number, number, number, number][] = [
-    [-1, -1,  1,  1],
-    [-1,  1,  1, -1],
-    [ 1, -1, -1,  1],
-    [ 1,  1, -1, -1],
+    [-1, -1, 1, 1],
+    [-1, 1, 1, -1],
+    [1, -1, -1, 1],
+    [1, 1, -1, -1],
   ];
   for (const [dx, dy, sx, sy] of corners) {
     const bx = cx + dx * half;
     const by = cy + dy * half;
-    cmds.push({ kind: 'line', x1: bx, y1: by, x2: bx + sx * arm, y2: by,             stroke: color, lineWidth: 2, alpha } as any);
-    cmds.push({ kind: 'line', x1: bx, y1: by, x2: bx,             y2: by + sy * arm, stroke: color, lineWidth: 2, alpha } as any);
+    cmds.push({
+      kind: 'line',
+      x1: bx,
+      y1: by,
+      x2: bx + sx * arm,
+      y2: by,
+      stroke: color,
+      lineWidth: 2,
+      alpha,
+    } as any);
+    cmds.push({
+      kind: 'line',
+      x1: bx,
+      y1: by,
+      x2: bx,
+      y2: by + sy * arm,
+      stroke: color,
+      lineWidth: 2,
+      alpha,
+    } as any);
   }
 }
 
@@ -459,8 +656,12 @@ function _drawCorners(
 /** Draws a centered filled rectangle (the "pixel" of our pixel-art face). */
 function _px(
   cmds: DrawCommand[],
-  x: number, y: number, w: number, h: number,
-  fill: string, alpha: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill: string,
+  alpha: number,
 ): void {
   cmds.push({ kind: 'rect', x: x - w / 2, y: y - h / 2, w, h, fill, alpha } as any);
 }

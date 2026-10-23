@@ -31,7 +31,10 @@ describe('render/banter helpers', () => {
 
   it('clearBanter clears DOM overlay text and sim state per side and both', () => {
     // seed sim ui
-    (sim as any).banterUI = { L: { text: 'L', t0: 1, until: 2 }, R: { text: 'R', t0: 3, until: 4 } };
+    (sim as any).banterUI = {
+      L: { text: 'L', t0: 1, until: 2 },
+      R: { text: 'R', t0: 3, until: 4 },
+    };
     // set visible text
     const elL = document.getElementById('banterL')!;
     const elR = document.getElementById('banterR')!;
@@ -51,7 +54,10 @@ describe('render/banter helpers', () => {
   });
 
   it('setBanterEnabled(false) flips flag and clears banter', () => {
-    (sim as any).banterUI = { L: { text: 'L', t0: 1, until: 2 }, R: { text: 'R', t0: 3, until: 4 } };
+    (sim as any).banterUI = {
+      L: { text: 'L', t0: 1, until: 2 },
+      R: { text: 'R', t0: 3, until: 4 },
+    };
     const elL = document.getElementById('banterL')!;
     elL.textContent = 'T';
     setBanterEnabled(false);
@@ -61,4 +67,3 @@ describe('render/banter helpers', () => {
     expect((sim as any).banterUI.R.text).toBe('');
   });
 });
-

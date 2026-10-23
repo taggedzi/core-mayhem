@@ -3,13 +3,16 @@ import * as P from './personalities';
 import type { Personality } from './index';
 
 function isPersonality(o: any): o is Personality {
-  return !!o && typeof o === 'object'
-    && typeof o.name === 'string'
-    && typeof o.aggression === 'number'
-    && typeof o.humor === 'number'
-    && typeof o.formality === 'number'
-    && typeof o.optimism === 'number'
-    && typeof o.sarcasm === 'number';
+  return (
+    !!o &&
+    typeof o === 'object' &&
+    typeof o.name === 'string' &&
+    typeof o.aggression === 'number' &&
+    typeof o.humor === 'number' &&
+    typeof o.formality === 'number' &&
+    typeof o.optimism === 'number' &&
+    typeof o.sarcasm === 'number'
+  );
 }
 
 /**
@@ -21,8 +24,8 @@ export const PERSONA_CATALOG: Readonly<Record<string, Personality>> = Object.fre
   Object.fromEntries(
     Object.entries(P)
       .filter(([, v]) => isPersonality(v))
-      .map(([k, v]) => [k, v as Personality])
-  )
+      .map(([k, v]) => [k, v as Personality]),
+  ),
 );
 
 export default PERSONA_CATALOG;

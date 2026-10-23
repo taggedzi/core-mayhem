@@ -19,15 +19,15 @@ let lastDpr = window.devicePixelRatio;
 let dprIntervalId: number | null = null;
 
 // Debounce helper with cancel()
-  function debounce<F extends (...args: any[]) => void>(
-    fn: F,
-    wait: number,
-  ): F & { cancel: () => void } {
-    let t: number | null = null;
-    const debounced: (...args: Parameters<F>) => void = (...args: Parameters<F>) => {
-      if (t !== null) window.clearTimeout(t);
-      t = window.setTimeout(() => fn(...args), wait);
-    };
+function debounce<F extends (...args: any[]) => void>(
+  fn: F,
+  wait: number,
+): F & { cancel: () => void } {
+  let t: number | null = null;
+  const debounced: (...args: Parameters<F>) => void = (...args: Parameters<F>) => {
+    if (t !== null) window.clearTimeout(t);
+    t = window.setTimeout(() => fn(...args), wait);
+  };
   (debounced as any).cancel = () => {
     if (t !== null) {
       window.clearTimeout(t);
@@ -67,7 +67,11 @@ function init(): void {
   };
   updateHeaderInset();
   // Ensure canvas initially matches stage before any start
-  try { resizeCanvas(safeCanvas); } catch { /* ignore */ }
+  try {
+    resizeCanvas(safeCanvas);
+  } catch {
+    /* ignore */
+  }
 
   // Debounced canvas-only resize (no sim restart)
   const scheduleResize = debounce(() => {
@@ -138,13 +142,21 @@ function init(): void {
   const btnStats = document.getElementById('btnStats') as HTMLButtonElement | null;
   if (btnStats) btnStats.onclick = () => openStatsOverlay();
   // Banter popover (like Audio)
-  try { initBanterControls(); } catch { /* ignore */ }
+  try {
+    initBanterControls();
+  } catch {
+    /* ignore */
+  }
 
   // Window resize (debounced)
-  window.addEventListener('resize', () => {
-    updateHeaderInset();
-    scheduleResize();
-  }, { passive: true });
+  window.addEventListener(
+    'resize',
+    () => {
+      updateHeaderInset();
+      scheduleResize();
+    },
+    { passive: true },
+  );
 
   // Stage resize (letterboxing / flex changes)
   if (stage) {

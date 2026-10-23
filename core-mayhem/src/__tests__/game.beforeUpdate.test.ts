@@ -30,9 +30,12 @@ describe('game beforeUpdate loop', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     resetSimState();
-    document.body.innerHTML = '<div id="hud"><span id="fps"></span><div id="score"></div></div><canvas id="c" width="640" height="360"></canvas>';
+    document.body.innerHTML =
+      '<div id="hud"><span id="fps"></span><div id="score"></div></div><canvas id="c" width="640" height="360"></canvas>';
     const canvas = document.getElementById('c') as HTMLCanvasElement;
-    vi.spyOn(canvas, 'getContext').mockImplementation((type: string) => (type === '2d' ? ctxStub(canvas) : null));
+    vi.spyOn(canvas, 'getContext').mockImplementation((type: string) =>
+      type === '2d' ? ctxStub(canvas) : null,
+    );
     // seed css vars
     document.documentElement.style.setProperty('--left', '#5cf');
     document.documentElement.style.setProperty('--right', '#f76');
@@ -68,4 +71,3 @@ describe('game beforeUpdate loop', () => {
     stop();
   });
 });
-

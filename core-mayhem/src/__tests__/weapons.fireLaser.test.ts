@@ -33,4 +33,3 @@ describe('weapons.fireLaser', () => {
     expect(sim.fxBursts!.length).toBeGreaterThan(0);
   });
 });
-
