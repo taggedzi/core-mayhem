@@ -35,7 +35,8 @@ describe('collisions: projectile hits shielded core', () => {
     registerCollisions(eng);
   });
 
-  it('reduces shield and removes projectile', () => {
+  it.each([false, true])('handles shield hits with gameOver=%s', (gameOver) => {
+    sim.gameOver = gameOver;
     const proj = Bodies.circle(100, 100, 3);
     (proj as any).plugin = {
       kind: 'projectile',
@@ -55,9 +56,9 @@ describe('collisions: projectile hits shielded core', () => {
       pairs: [{ bodyA: proj, bodyB: coreCenter }],
     } as any);
 
-    expect((sim as any).coreR.shieldHP).toBeLessThan(shield0);
-    expect(sim.world!.bodies.length).toBeLessThan(before);
+    expect((sim as any).coreR.shieldHP).toBe(gameOver ? shield0 : shield0 - 10);
+    expect(sim.world!.bodies.length).toBe(before - (gameOver ? 0 : 1));
     // impact fx queued
-    expect((sim as any).fxImp.length).toBeGreaterThan(0);
+    expect((sim as any).fxImp.length > 0).toBe(!gameOver);
   });
 });

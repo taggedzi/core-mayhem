@@ -25,7 +25,8 @@ describe('collisions: deposit ammo into container', () => {
     registerCollisions(eng);
   });
 
-  it('removes ammo from world and increments bin fill', () => {
+  it.each([false, true])('handles deposits with gameOver=%s', (gameOver) => {
+    sim.gameOver = gameOver;
     const ammo = Bodies.circle(10, 10, 4);
     (ammo as any).plugin = { kind: 'ammo', side: SIDE.LEFT, type: 'basic' };
     const box = Bodies.rectangle(10, 10, 10, 10, { isStatic: true });
@@ -42,8 +43,8 @@ describe('collisions: deposit ammo into container', () => {
     Events.trigger(eng as any, 'collisionStart', { pairs: [{ bodyA: ammo, bodyB: box }] } as any);
 
     // ammo removed and fill incremented
-    expect(sim.world!.bodies.length).toBeLessThan(before);
-    expect((sim as any).binsL.cannon.fill).toBe(1);
-    expect(sim.ammoL).toBe(0);
+    expect(sim.world!.bodies.length).toBe(before - (gameOver ? 0 : 1));
+    expect((sim as any).binsL.cannon.fill).toBe(gameOver ? 0 : 1);
+    expect(sim.ammoL).toBe(gameOver ? 1 : 0);
   });
 });

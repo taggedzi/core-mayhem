@@ -34,6 +34,10 @@ The game renders on a 1920 × 1080 logical canvas that scales to fit the availab
 
 Normal play requires no aiming or manual weapon control. Use the header controls while watching:
 
+When a match ends, gameplay freezes during the result banner. Health, collected
+resources, and final statistics stay fixed; low-health alarms stop. A time-limit
+tie also shows **Game Over** in the HUD.
+
 Stopping or ending a match cancels pending weapon windups and burst shots. Starting
 a new match never resumes a previous match's unfinished volleys.
 
@@ -47,12 +51,19 @@ a new match never resumes a previous match's unfinished volleys.
 | **Help** or **H** | Open the developer hotkey reference.                 |
 
 Developer hotkeys are enabled in development builds and disabled in production by default.
+Help and developer shortcuts pause while editing settings or using a dialog.
+Dialog keyboard focus stays inside the open panel and returns to its opener on close.
 
 ### Optional generated banter
 
 Built-in banter works without an AI service. For generated dialogue, the **Banter** panel supports an optional Ollama connection with a configurable server URL and model. LLM requests are disabled by default; the default server address is `http://localhost:11434`.
 
 Ollama must be running with an available model, and the browser must be allowed to reach it. Neither Ollama nor a model download is required to play or build the game.
+
+The selected model is saved after refresh and used by both Test and gameplay.
+Clearing every event checkbox disables generated requests for those events;
+built-in dialogue remains available. Save, Test, and Refresh accept only HTTP(S)
+server URLs and apply the numeric limits shown by the controls.
 
 Generated replies belong to the match and settings that requested them. Stop,
 restart, and settings changes cancel pending replies. Each side keeps its first
@@ -133,6 +144,10 @@ core-mayhem/                 # Repository root
 - Edit `batch.config.json`, then run `npm run sim` to compare simulation outcomes. Reports are written under the application's `stats/` directory.
 
 During development, press **H** to see the available hotkeys. For example, `c / l / m / o` fire the left core's cannon, laser, missiles, or mortar; uppercase versions fire the right core's weapons. `[` and `]` adjust simulation speed.
+
+Simulation speed scales Matter physics, spawning, paddles, homing, core rotation,
+and the banter simulation step once per engine update. Presentation effects,
+audio, match deadlines, and weapon windup/burst timers use wall-clock time.
 
 ### Contributing and reporting issues
 
