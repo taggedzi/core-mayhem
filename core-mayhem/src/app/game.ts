@@ -327,6 +327,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
 
     // Time-limit
     checkTimeLimit();
+    if (sim.gameOver) return;
 
     // Apply configurable time scale (slow down/speed up sim)
     const stg = (sim as any).settings ?? DEFAULTS;

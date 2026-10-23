@@ -174,6 +174,7 @@ export function fireCannon(
 
   for (let i = 0; i < burst; i++)
     setTimeout(() => {
+      if (sim.gameOver) return;
       const b = Bodies.circle(src.x, src.y, 4, {
         restitution: 0.2,
         friction: 0.01,
@@ -425,6 +426,7 @@ export function fireMissiles(
   const stepMs = Math.max(0, staggerMs ?? MISSILE_STAGGER_MS);
   for (let i = 0; i < count; i++)
     setTimeout(() => {
+      if (sim.gameOver) return;
       const m = Bodies.circle(src.x, src.y, 5, { density: 0.003, frictionAir: 0.02 });
       (m as any).plugin = {
         kind: 'projectile',
@@ -473,6 +475,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
 
   for (let i = 0; i < count; i++) {
     setTimeout(() => {
+      if (sim.gameOver) return;
       const shell = Bodies.circle(src.x, src.y, 6, {
         density: 0.004,
         restitution: 0.2,

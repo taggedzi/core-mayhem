@@ -306,6 +306,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void }): () => void {
   const onStart = (e: IEventCollision<Engine>): void => {
     for (const p of e.pairs) {
+      if (sim.gameOver) return;
       const A = p.bodyA as any,
         B = p.bodyB as any;
       const a = A.plugin ?? {},
