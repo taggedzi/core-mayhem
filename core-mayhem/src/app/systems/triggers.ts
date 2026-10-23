@@ -30,6 +30,11 @@ export function runTriggers(now = performance.now()): void {
 
     if (bins.buff && bins.buff.fill >= bins.buff.cap) {
       bins.buff.fill = 0;
+      try {
+        recordBinCap(side, 'buff', now);
+      } catch {
+        /* Statistics must not block the trigger. */
+      }
       // Preserve prior behavior by default; allow random pool via config
       if (((MODS as any).buffChooser ?? 'damageOnly') === 'randomPool') applyRandomBuff(side);
       else applyBuff(side);
@@ -41,6 +46,11 @@ export function runTriggers(now = performance.now()): void {
     }
     if (bins.debuff && bins.debuff.fill >= bins.debuff.cap) {
       bins.debuff.fill = 0;
+      try {
+        recordBinCap(side, 'debuff', now);
+      } catch {
+        /* Statistics must not block the trigger. */
+      }
       const victim = side === SIDE.LEFT ? SIDE.RIGHT : SIDE.LEFT;
       applyDebuff(victim);
       try {

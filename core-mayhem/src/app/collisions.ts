@@ -129,6 +129,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   const coreMaybe = side === SIDE.LEFT ? sim.coreL : sim.coreR;
   assertCoreFull(coreMaybe);
   const core = coreMaybe;
+  const shieldStart = Number(core.shieldHP ?? 0);
   let dmg = proj?.plugin?.dmg ?? 8;
   const isCenter = coreBody.plugin.kind === 'coreCenter';
 
@@ -217,17 +218,17 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 
   // Snapshot before
   const segBeforeArr = core.segHP.slice();
-  const segBefore = segBeforeArr.reduce((a, b) => a + (b | 0), 0);
-  const centerBefore = core.centerHP | 0;
+  const segBefore = segBeforeArr.reduce((a, b) => a + Number(b), 0);
+  const centerBefore = Number(core.centerHP ?? 0);
   if (isCenter) core.centerHP = Math.max(0, core.centerHP - dmg);
   else applyCoreDamage(core, proj.position, dmg, angleToSeg);
   const segAfterArr = core.segHP.slice();
-  const segAfter = segAfterArr.reduce((a, b) => a + (b | 0), 0);
+  const segAfter = segAfterArr.reduce((a, b) => a + Number(b), 0);
   // Armor segment break detection: any index crossed >0 -> 0
   try {
     for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-      const before = (segBeforeArr[i] ?? 0) | 0;
-      const after = (segAfterArr[i] ?? 0) | 0;
+      const before = Number(segBeforeArr[i] ?? 0);
+      const after = Number(segAfterArr[i] ?? 0);
       if (before > 0 && after <= 0) {
         void speakBanterSmart('armor_break' as any, side === SIDE.LEFT ? 'L' : 'R');
         break;
@@ -236,12 +237,13 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   } catch {
     /* ignore */
   }
-  const centerAfter = core.centerHP | 0;
+  const centerAfter = Number(core.centerHP ?? 0);
   try {
+    // One record for a breaking shot: shield absorbed plus damage that reached the core.
     recordProjectileHit(
       proj?.plugin?.side,
       proj?.plugin?.ptype ?? 'cannon',
-      0,
+      Math.max(0, shieldStart - core.shieldHP),
       Math.max(0, segBefore - segAfter),
       Math.max(0, centerBefore - centerAfter),
     );
