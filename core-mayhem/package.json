@@ -8,6 +8,7 @@
     "release": "node scripts/release.mjs",
     "release:check": "node scripts/release.mjs --dry-run",
     "test:release": "node --test scripts/release-version.check.mjs",
+    "test:clean-build": "node --test scripts/clean-build.check.mjs",
     "audio:generate": "node scripts/generate-sfx.mjs",
     "audio:announcer": "node scripts/generate-announcer.mjs",
     "predev": "node scripts/sync-license-notices.mjs",
@@ -27,7 +28,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "sim": "vitest run --coverage=false src/__tests__/simulate.batch.test.ts",
-    "ci": "npm run typecheck && npm run lint && npm run test:coverage && npm run build",
+    "ci": "npm run typecheck && npm run lint && npm run test:coverage && npm run test:clean-build && npm run build",
     "clean:build": "node scripts/clean-build.mjs"
   },
   "dependencies": {
