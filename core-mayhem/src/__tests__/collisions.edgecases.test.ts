@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { registerCollisions } from '../app/collisions';
 import * as stats from '../app/stats';
 import { EXPLOSION } from '../config';
+import { useGameplayRandom } from '../sim/rng';
 import { tickHoming } from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
@@ -231,23 +232,28 @@ describe('collision terminal outcomes', () => {
   });
 
   it('does not deposit ammo destroyed by an earlier explosion in the event', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const projectile = missile();
-    const ammo = Bodies.circle(100, 100, 3);
-    ammo.plugin = { kind: 'ammo', side: SIDE.LEFT, type: 'basic' };
-    const bin = Bodies.rectangle(100, 100, 10, 10);
-    bin.plugin = { kind: 'container', side: SIDE.LEFT, accept: ['basic'], label: 'cannon' };
-    World.add(sim.world!, [ammo, bin]);
-    sim.ammoL = 1;
-    expect(EXPLOSION.ammoDestroyPct).toBeGreaterThan(0);
-    Events.trigger(sim.engine!, 'collisionStart', {
-      pairs: [
-        { bodyA: projectile, bodyB: Bodies.rectangle(100, 100, 10, 10) },
-        { bodyA: ammo, bodyB: bin },
-      ],
-    });
-    expect(ammo.plugin.consumed).toBe(true);
-    expect(sim.ammoL).toBe(0);
-    expect(sim.binsL!.cannon.fill).toBe(0);
+    // Explosions roll the seeded gameplay stream, not Math.random.
+    const restore = useGameplayRandom(() => 0);
+    try {
+      const projectile = missile();
+      const ammo = Bodies.circle(100, 100, 3);
+      ammo.plugin = { kind: 'ammo', side: SIDE.LEFT, type: 'basic' };
+      const bin = Bodies.rectangle(100, 100, 10, 10);
+      bin.plugin = { kind: 'container', side: SIDE.LEFT, accept: ['basic'], label: 'cannon' };
+      World.add(sim.world!, [ammo, bin]);
+      sim.ammoL = 1;
+      expect(EXPLOSION.ammoDestroyPct).toBeGreaterThan(0);
+      Events.trigger(sim.engine!, 'collisionStart', {
+        pairs: [
+          { bodyA: projectile, bodyB: Bodies.rectangle(100, 100, 10, 10) },
+          { bodyA: ammo, bodyB: bin },
+        ],
+      });
+      expect(ammo.plugin.consumed).toBe(true);
+      expect(sim.ammoL).toBe(0);
+      expect(sim.binsL!.cannon.fill).toBe(0);
+    } finally {
+      restore();
+    }
   });
 });
