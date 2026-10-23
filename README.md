@@ -54,6 +54,11 @@ Built-in banter works without an AI service. For generated dialogue, the **Bante
 
 Ollama must be running with an available model, and the browser must be allowed to reach it. Neither Ollama nor a model download is required to play or build the game.
 
+Both characters may deliver one opening line immediately after Start. Later lines
+follow the configured pacing. Pacing changes apply during play, and emoji/profanity
+settings apply to both built-in and generated dialogue. Turning banter off clears
+its visible bubbles immediately.
+
 ## Run locally
 
 **Requirements:** Git, npm, and Node.js **22.12 or newer in the 22.x line, or Node.js 24+**, compatible with the installed Vite and Vitest dependencies.
