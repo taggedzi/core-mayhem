@@ -13,13 +13,19 @@ vi.mock('../render/score', () => ({
 vi.mock('../app/speakBanterLLM', () => ({
   speakBanterSmart: vi.fn(async () => {}),
 }));
-vi.mock('../app/stats', () => ({
-  recordMatchEnd: vi.fn(() => {}),
-}));
+vi.mock('../app/stats', async () => {
+  const actual = await vi.importActual<Record<string, (...args: never[]) => void>>('../app/stats');
+  return {
+    ...actual,
+    recordMatchEnd: vi.fn(() => {
+      actual.recordMatchEnd();
+    }),
+  };
+});
 
 import { announcer } from '../announcer';
 import { speakBanterSmart } from '../app/speakBanterLLM';
-import { recordMatchEnd } from '../app/stats';
+import { recordMatchEnd, resetStats, startNewMatch } from '../app/stats';
 import * as matchMod from '../app/systems/match';
 import { declareWinner, maybeEndMatch, checkTimeLimit } from '../app/systems/match';
 import { MATCH_LIMIT, GAMEOVER } from '../config';
@@ -33,7 +39,10 @@ describe('systems/match unit', () => {
     vi.useFakeTimers();
     vi.spyOn(performance, 'now').mockReturnValue(10_000);
     // Reset global sim and counters
+    resetStats();
     resetSimState();
+    (sim as any).matchStart = 10_000;
+    startNewMatch();
     (sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 };
     // Clear mocks
     vi.clearAllMocks();

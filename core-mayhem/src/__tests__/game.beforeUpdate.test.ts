@@ -7,7 +7,21 @@ vi.mock('../app/systems/spawn', () => ({ runSpawn: vi.fn() }));
 vi.mock('../app/systems/triggers', () => ({ runTriggers: vi.fn() }));
 vi.mock('../app/systems/match', () => ({ checkTimeLimit: vi.fn(), maybeEndMatch: vi.fn() }));
 vi.mock('../app/devKeys', () => ({ attachDevHotkeys: () => () => {} }));
-vi.mock('../app/stats', () => ({ startNewMatch: vi.fn() }));
+vi.mock('../app/stats', () => ({
+  startNewMatch: vi.fn(),
+  abortOpenMatch: vi.fn(),
+  initStats: vi.fn(),
+  getSummary: vi.fn(() => ({
+    matches: 0,
+    leftWins: 0,
+    rightWins: 0,
+    ties: 0,
+    buffsL: 0,
+    buffsR: 0,
+    debuffsL: 0,
+    debuffsR: 0,
+  })),
+}));
 
 import { startGame } from '../app/game';
 import { runFXPrune } from '../app/systems/fx';

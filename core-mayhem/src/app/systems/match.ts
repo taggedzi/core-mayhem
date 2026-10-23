@@ -52,19 +52,14 @@ export function declareWinner(winner: Side | 0): void {
     /* ignore */
   }
 
-  const stats = (sim as any).stats ?? ((sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 });
-  if (winner === SIDE.LEFT) stats.leftWins++;
-  else if (winner === SIDE.RIGHT) stats.rightWins++;
-  else stats.ties++;
-
-  updateScoreboard();
-
-  // Record match summary into stats
+  // Record the declared result, then draw the scoreboard from that session.
   try {
     recordMatchEnd();
   } catch {
     // ignore stats errors
   }
+
+  updateScoreboard();
 
   // Tournament bookkeeping: advance pairing and record winner
   try {

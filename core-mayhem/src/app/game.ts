@@ -24,7 +24,7 @@ import { readCharacterProfiles } from '../ui/characters';
 
 import { registerCollisions } from './collisions';
 import { attachDevHotkeys } from './devKeys';
-import { startNewMatch } from './stats';
+import { abortOpenMatch, startNewMatch } from './stats';
 import { runAnnouncer } from './systems/announcer';
 import { runAudioMonitors } from './systems/audioMonitors';
 import { runFXPrune } from './systems/fx';
@@ -71,7 +71,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   (sim as any).tick = 0;
   (sim as any).matchIndex = ((sim as any).matchIndex | 0) + 1;
   (sim as any).stats = (sim as any).stats ?? { leftWins: 0, rightWins: 0, ties: 0 };
-  updateScoreboard(); // draw initial 0–0
+  updateScoreboard(); // draw the session scoreboard, including restored results
 
   if ((sim as any).restartTO) {
     clearTimeout((sim as any).restartTO);
@@ -373,6 +373,12 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
 
   return function stop(): void {
     cancelWeaponTimers();
+    // Unfinished matches are discarded. They are not recorded as ties.
+    try {
+      abortOpenMatch();
+    } catch {
+      /* ignore */ void 0;
+    }
     sim.started = false;
     cancelAnimationFrame(raf);
     detachHotkeys?.();
