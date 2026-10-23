@@ -12,6 +12,7 @@ import {
 } from '../app/mods';
 import { MODS } from '../config';
 import { repair } from '../core/repair';
+import { useGameplayRandom } from '../sim/rng';
 import { resetSimState, sim } from '../state';
 import { SIDE } from '../types';
 
@@ -91,8 +92,9 @@ describe('modifier and state boundaries', () => {
     sim.coreR = {} as any;
     expect(() => repair(SIDE.RIGHT)).toThrow('Core not initialized');
     sim.coreR = { segHP: [undefined], segHPmax: 100, centerHP: 100, centerHPmax: 100 } as any;
-    vi.spyOn(Math, 'random').mockReturnValue(1);
+    const restore = useGameplayRandom(() => 1);
     repair(SIDE.RIGHT);
+    restore();
     expect(sim.coreR!.segHP[0]).toBeGreaterThan(0);
   });
 });

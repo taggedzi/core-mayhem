@@ -122,4 +122,28 @@ describe('ollamaChat', () => {
     expect((globalThis.fetch as unknown as vi.Mock).mock.calls.length).toBe(1);
     expect(vi.getTimerCount()).toBe(0);
   });
+  it('honors match cancellation and removes its timeout', async () => {
+    vi.mocked(fetch).mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init!.signal!.addEventListener('abort', () => reject(new Error('cancelled')), {
+            once: true,
+          });
+        }),
+    );
+    const controller = new AbortController();
+    const task = ollamaChat(base, model, system, user, {}, 1000, controller.signal);
+    controller.abort();
+    await expect(task).resolves.toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('does not fetch for an already-cancelled match', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      ollamaChat(base, model, system, user, {}, 1000, controller.signal),
+    ).resolves.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

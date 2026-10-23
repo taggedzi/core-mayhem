@@ -17,7 +17,10 @@ export function getHudData(): HudData {
   const rSegSum = i((sim.coreR?.segHP ?? []).reduce((a, b) => a + Math.max(0, b), 0));
 
   let state = sim.started ? 'Running' : 'Idle';
-  if (sim.coreL && sim.coreR && (sim.coreL.centerHP <= 0 || sim.coreR.centerHP <= 0)) {
+  if (
+    sim.gameOver ||
+    (sim.coreL && sim.coreR && (sim.coreL.centerHP <= 0 || sim.coreR.centerHP <= 0))
+  ) {
     state = 'Game Over';
   }
 

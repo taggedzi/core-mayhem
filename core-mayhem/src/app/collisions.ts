@@ -1,9 +1,12 @@
-import { Events, World, Body, Query, Composite } from 'matter-js';
+import { Events, Body, Query, Composite } from 'matter-js';
 
 import { audio } from '../audio';
 import { EXPLOSION, FX_MS, PROJECTILE_STYLE } from '../config';
+import { simNowMs } from '../sim/clock';
+import { consumeBody } from '../sim/consumeBody';
 import { angleToSeg } from '../sim/core';
 import { applyCoreDamage } from '../sim/damage';
+import { gameplayRandom } from '../sim/rng';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
@@ -37,6 +40,12 @@ const css = (name: string): string =>
 let _explosionCount = 0;
 let _explosionWindowT0 = 0;
 
+/** Fresh matches share the same one-second explosion window, including a rewound sim clock. */
+export function resetExplosionLimiter(): void {
+  _explosionCount = 0;
+  _explosionWindowT0 = 0;
+}
+
 function explodeAt(
   x: number,
   y: number,
@@ -46,7 +55,7 @@ function explodeAt(
 ): void {
   if (!EXPLOSION.enabled) return;
 
-  const now = performance.now();
+  const now = simNowMs();
   if (now - _explosionWindowT0 > 1000) {
     _explosionWindowT0 = now;
     _explosionCount = 0;
@@ -61,15 +70,15 @@ function explodeAt(
   (sim as any).shakeAmp = Math.max(2, Math.min(8, (sim as any).shakeAmp ?? 0 + 3));
   const sparks = (sim as any).fxSparks ?? ((sim as any).fxSparks = []);
   for (let i = 0; i < 24; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const s = 1.6 + Math.random() * 3.2;
+    const a = gameplayRandom() * Math.PI * 2;
+    const s = 1.6 + gameplayRandom() * 3.2;
     sparks.push({
       x,
       y,
       vx: Math.cos(a) * s,
       vy: Math.sin(a) * s,
       t0: now,
-      ms: 600 + Math.random() * 400,
+      ms: 600 + gameplayRandom() * 400,
       color,
     });
   }
@@ -89,10 +98,8 @@ function explodeAt(
       const k = EXPLOSION.force / dist;
       Body.applyForce(b, b.position, { x: dx * k * b.mass, y: dy * k * b.mass });
 
-      if (plug.kind === 'ammo' && Math.random() < EXPLOSION.ammoDestroyPct) {
-        World.remove(w, b);
-        if (plug.side === SIDE.LEFT) sim.ammoL = Math.max(0, sim.ammoL - 1);
-        else if (plug.side === SIDE.RIGHT) sim.ammoR = Math.max(0, sim.ammoR - 1);
+      if (plug.kind === 'ammo' && gameplayRandom() < EXPLOSION.ammoDestroyPct) {
+        consumeBody(b);
       }
     }
   }
@@ -103,9 +110,7 @@ function deposit(ammo: any, container: any): void {
   if (!accept.includes(ammo.plugin.type)) return;
   const w = sim.world;
   assertWorld(w);
-  World.remove(w, ammo);
-  if (ammo.plugin.side === SIDE.LEFT) sim.ammoL--;
-  else sim.ammoR--;
+  if (!consumeBody(ammo)) return;
   const bins = (container.plugin.side === SIDE.LEFT ? sim.binsL : sim.binsR) as any;
   const key = container.plugin.label as string;
   if (bins[key]) {
@@ -119,7 +124,7 @@ function deposit(ammo: any, container: any): void {
     }
     if (add > 1) {
       (bins[key] as any)._fxLastAdd = add;
-      (bins[key] as any)._fxT0 = performance.now();
+      (bins[key] as any)._fxT0 = simNowMs();
     }
   }
 }
@@ -129,6 +134,9 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   const coreMaybe = side === SIDE.LEFT ? sim.coreL : sim.coreR;
   assertCoreFull(coreMaybe);
   const core = coreMaybe;
+  if (!consumeBody(proj)) return;
+  proj.plugin.didDamage = true;
+  const shieldStart = Number(core.shieldHP ?? 0);
   let dmg = proj?.plugin?.dmg ?? 8;
   const isCenter = coreBody.plugin.kind === 'coreCenter';
 
@@ -150,7 +158,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     (sim.fxImp ||= []).push({
       x: proj.position.x,
       y: proj.position.y,
-      t0: performance.now(),
+      t0: simNowMs(),
       ms: FX_MS.impact,
       color,
       kind: 'burst',
@@ -190,11 +198,10 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
           0,
           0,
         );
-        proj.plugin.didDamage = true;
       } catch {
         /* ignore */ void 0;
       }
-      World.remove(w, proj);
+
       onPostHit?.();
       return;
     }
@@ -217,17 +224,17 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 
   // Snapshot before
   const segBeforeArr = core.segHP.slice();
-  const segBefore = segBeforeArr.reduce((a, b) => a + (b | 0), 0);
-  const centerBefore = core.centerHP | 0;
+  const segBefore = segBeforeArr.reduce((a, b) => a + Number(b), 0);
+  const centerBefore = Number(core.centerHP ?? 0);
   if (isCenter) core.centerHP = Math.max(0, core.centerHP - dmg);
   else applyCoreDamage(core, proj.position, dmg, angleToSeg);
   const segAfterArr = core.segHP.slice();
-  const segAfter = segAfterArr.reduce((a, b) => a + (b | 0), 0);
+  const segAfter = segAfterArr.reduce((a, b) => a + Number(b), 0);
   // Armor segment break detection: any index crossed >0 -> 0
   try {
     for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-      const before = (segBeforeArr[i] ?? 0) | 0;
-      const after = (segAfterArr[i] ?? 0) | 0;
+      const before = Number(segBeforeArr[i] ?? 0);
+      const after = Number(segAfterArr[i] ?? 0);
       if (before > 0 && after <= 0) {
         void speakBanterSmart('armor_break' as any, side === SIDE.LEFT ? 'L' : 'R');
         break;
@@ -236,21 +243,22 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   } catch {
     /* ignore */
   }
-  const centerAfter = core.centerHP | 0;
+  const centerAfter = Number(core.centerHP ?? 0);
   try {
+    // One record for a breaking shot: shield absorbed plus damage that reached the core.
     recordProjectileHit(
       proj?.plugin?.side,
       proj?.plugin?.ptype ?? 'cannon',
-      0,
+      Math.max(0, shieldStart - core.shieldHP),
       Math.max(0, segBefore - segAfter),
       Math.max(0, centerBefore - centerAfter),
     );
-    proj.plugin.didDamage = true;
+
     // Diagnostics: time from missile spawn to first core damage
     try {
       if (proj?.plugin?.ptype === 'missile' && proj?.plugin && !proj?.plugin?._coreHitLogged) {
-        const t0 = Number(proj.plugin.spawnT ?? performance.now());
-        const ms = Math.max(0, Math.round(performance.now() - t0));
+        const t0 = Number(proj.plugin.spawnT ?? simNowMs());
+        const ms = Math.max(0, Math.round(simNowMs() - t0));
         recordMissileCoreDelay(proj.plugin.side, ms);
         proj.plugin._coreHitLogged = true;
       }
@@ -268,7 +276,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
   (sim.fxImp ||= []).push({
     x: proj.position.x,
     y: proj.position.y,
-    t0: performance.now(),
+    t0: simNowMs(),
     ms: ptype === 'laser' ? FX_MS.burn : FX_MS.impact,
     color,
     kind: ptype === 'laser' ? 'burn' : 'burst',
@@ -285,7 +293,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     ringColor2,
     Number(dmg) || undefined,
   );
-  World.remove(w, proj);
+
   // choose impact sound based on where damage landed
   try {
     const segDelta = Math.max(0, segBefore - segAfter);
@@ -297,7 +305,7 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
     /* ignore */ void 0;
   }
   // minor shake for direct hits
-  (sim as any).shakeT0 = performance.now();
+  (sim as any).shakeT0 = simNowMs();
   (sim as any).shakeMs = 160;
   (sim as any).shakeAmp = Math.max(2, Math.min(6, (sim as any).shakeAmp ?? 0 + 2));
   onPostHit?.();
@@ -306,10 +314,12 @@ function hit(proj: any, coreBody: any, onPostHit?: () => void): void {
 export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void }): () => void {
   const onStart = (e: IEventCollision<Engine>): void => {
     for (const p of e.pairs) {
+      if (sim.gameOver) return;
       const A = p.bodyA as any,
         B = p.bodyB as any;
       const a = A.plugin ?? {},
         b = B.plugin ?? {};
+      if (a.consumed || b.consumed) continue;
 
       // Ammo interacts with paddles: bounce off top or underside and add sideways shove
       const batAmmo = (ammo: any, paddle: any): void => {
@@ -396,9 +406,9 @@ export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void 
 
       const explodeIf = (proj: any, other: any): void => {
         const pp = proj?.plugin ?? {};
-        if (pp.kind !== 'projectile') return;
+        if (pp.kind !== 'projectile' || pp.consumed) return;
         if (other?.plugin?.kind === 'weaponMount') return;
-        if (performance.now() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
+        if (simNowMs() - (pp.spawnT ?? 0) < EXPLOSION.graceMs) return;
         // Record first impact kind for missiles if not already recorded
         try {
           if (pp.ptype === 'missile' && !pp._firstImpactKind) {
@@ -409,6 +419,7 @@ export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void 
         } catch {
           /* ignore */ void 0;
         }
+        if (!consumeBody(proj)) return;
         const ptype = String(pp.ptype ?? 'cannon');
         const sty = (PROJECTILE_STYLE as any)[ptype];
         const ringColor = sty?.glow ?? (pp.side === SIDE.LEFT ? css('--left') : css('--right'));
@@ -421,7 +432,7 @@ export function registerCollisions(eng: Engine, opts?: { onPostHit?: () => void 
         );
         const w = sim.world;
         assertWorld(w);
-        World.remove(w, proj);
+
         // count miss if no damage was recorded
         try {
           if (!pp.didDamage) recordMiss(pp.side, pp.ptype ?? 'cannon');

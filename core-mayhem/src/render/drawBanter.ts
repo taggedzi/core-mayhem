@@ -4,6 +4,7 @@ import { sim } from '../state';
 import { beginThemeFrame, cssVar, endThemeFrame } from './theme';
 
 export function drawBanter(ctx: CanvasRenderingContext2D): void {
+  if ((sim as any).banterEnabled === false) return;
   beginThemeFrame();
   try {
     drawBanterFrame(ctx);

@@ -323,4 +323,100 @@ describe('AudioManager', () => {
     expect(ok).toBe(true);
     expect(out[0]).toBe(1);
   });
+  function deferredFetch(): () => void {
+    let resolve!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((done) => {
+          resolve = done;
+        }),
+    );
+    return () => resolve({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) } as Response);
+  }
+
+  it('shares a pending load and reserves the concurrent slot before awaiting', async () => {
+    const finish = deferredFetch();
+    const mgr = makeMgr({ fire_cannon: { src: 'shared.wav', maxConcurrent: 1 } } as any);
+    const a = mgr.play('fire_cannon');
+    const b = mgr.play('fire_cannon');
+    const c = mgr.playUrl('shared.wav');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    finish();
+    await Promise.all([a, b, c]);
+    expect(createdSources).toHaveLength(2);
+    mgr.stopAll();
+    expect(createdSources.every((source) => source.stop.mock.calls.length === 1)).toBe(true);
+  });
+
+  it('reserves cooldown before a concurrent first load', async () => {
+    const finish = deferredFetch();
+    const mgr = makeMgr({ fire_cannon: { src: 'cooldown.wav', cooldownMs: 1000 } } as any);
+    const a = mgr.play('fire_cannon');
+    const b = mgr.play('fire_cannon');
+    finish();
+    await Promise.all([a, b]);
+    expect(createdSources).toHaveLength(1);
+  });
+
+  it('deduplicates pending loops and allows stopping them before loading completes', async () => {
+    const finish = deferredFetch();
+    const mgr = makeMgr({ core_low_hp_alarm: { src: 'alarm.wav' } } as any);
+    const a = mgr.startLoop('alarm', 'core_low_hp_alarm');
+    const b = mgr.startLoop('alarm', 'core_low_hp_alarm');
+    mgr.stopLoop('alarm');
+    finish();
+    await Promise.all([a, b]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(createdSources).toHaveLength(0);
+    await mgr.startLoop('alarm', 'core_low_hp_alarm');
+    await mgr.startLoop('alarm', 'core_low_hp_alarm');
+    expect(createdSources).toHaveLength(1);
+    mgr.stopAll();
+    expect(createdSources[0]!.stop).toHaveBeenCalledOnce();
+  });
+
+  it.each(['stopAll', 'disable'] as const)(
+    'cancels every pending channel on %s',
+    async (action) => {
+      const finish = deferredFetch();
+      const mgr = makeMgr({
+        fire_cannon: { src: 'shared.wav' },
+        core_low_hp_alarm: { src: 'shared.wav' },
+      } as any);
+      const tasks = [
+        mgr.play('fire_cannon'),
+        mgr.startLoop('alarm', 'core_low_hp_alarm'),
+        mgr.playUrl('shared.wav', { channel: 'announcer' }),
+      ];
+      if (action === 'disable') mgr.setEnabled(false);
+      else mgr.stopAll();
+      finish();
+      await Promise.all(tasks);
+      expect(createdSources).toHaveLength(0);
+    },
+  );
+
+  it('retries failed loads without leaking a playback reservation or cooldown', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));
+    const mgr = makeMgr({
+      fire_cannon: { src: 'retry.wav', maxConcurrent: 1, cooldownMs: 1000 },
+    } as any);
+    await expect(mgr.play('fire_cannon')).rejects.toThrow('offline');
+    await mgr.play('fire_cannon');
+    expect(createdSources).toHaveLength(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('disable silences music, announcer and one-shots already playing', async () => {
+    const mgr = makeMgr({ fire_cannon: { src: 'sound.wav' } } as any);
+    mgr.setMusicPlaylist(['music.mp3']);
+    await mgr.playMusic();
+    await mgr.play('fire_cannon');
+    await mgr.playUrl('voice.wav', { channel: 'announcer' });
+    mgr.setEnabled(false);
+    expect(mgr.isMusicPlaying()).toBe(false);
+    expect(createdSources.every((source) => source.stop.mock.calls.length === 1)).toBe(true);
+    await mgr.playMusic();
+    expect(mgr.isMusicPlaying()).toBe(false);
+  });
 });

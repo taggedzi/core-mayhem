@@ -39,7 +39,10 @@ vi.mock('../sim/weapons', () => ({
     mortar: { pos: { x: 0, y: 0 } },
   })),
 }));
-vi.mock('../app/collisions', () => ({ registerCollisions: vi.fn(() => vi.fn()) }));
+vi.mock('../app/collisions', () => ({
+  registerCollisions: vi.fn(() => vi.fn()),
+  resetExplosionLimiter: vi.fn(),
+}));
 vi.mock('../app/devKeys', () => ({ attachDevHotkeys: vi.fn(() => vi.fn()) }));
 vi.mock('../app/stats', () => ({ startNewMatch: vi.fn(), recordMatchEnd: vi.fn() }));
 vi.mock('../announcer', () => ({ announcer: { trigger: vi.fn(), run: vi.fn() } }));
