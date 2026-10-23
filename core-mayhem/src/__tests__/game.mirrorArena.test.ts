@@ -1,161 +1,94 @@
-import * as M from 'matter-js';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Bodies, Body, Composite, Constraint, Engine, World } from 'matter-js';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-vi.mock('matter-js', () => {
-  const setPosition = vi.fn();
-  const allBodies = vi.fn(() => []);
-  return {
-    Events: { on: vi.fn(), off: vi.fn(), trigger: (_: any, __: any, ___: any) => {} },
-    Body: { setPosition },
-    Composite: { allBodies },
-  } as any;
-});
-vi.mock('../render/draw', () => ({ drawFrame: vi.fn() }));
-vi.mock('../render/hud', () => ({ updateHUD: vi.fn() }));
-vi.mock('../render/score', () => ({ updateScoreboard: vi.fn() }));
-vi.mock('../sim/channels', () => ({ buildLanes: vi.fn() }));
+import { makeBins } from '../sim/containers';
+import { mirrorArena } from '../sim/mirrorArena';
+import { applyPipeForces, makePipe, tickPaddles } from '../sim/obstacles';
+import { resetSimState, sim } from '../state';
+import { SIDE } from '../types';
 
-// Return bins with positions to be mirrored
-vi.mock('../sim/containers', () => ({
-  makeBins: vi.fn(() => ({
-    A: {
-      pos: { x: 30, y: 0 },
-      box: { position: { x: 30, y: 7 } },
-      intake: { position: { x: 40, y: 9 } },
-    },
-  })),
-  nudgeBinsFromPipes: vi.fn(),
-}));
-
-vi.mock('../sim/core', () => ({ makeCore: vi.fn(() => ({ center: { x: 10, y: 0 } })) }));
-vi.mock('../sim/obstacles', () => ({
-  makePipe: vi.fn(() => ({ innerX: 0 })),
-  placeObstaclesFromSpecs: vi.fn(),
-}));
-vi.mock('../sim/pins', () => ({ makePins: vi.fn(() => ({ mid: 0, width: 0 })) }));
-// Weapons with mount positions to mirror
-vi.mock('../sim/weapons', () => ({
-  makeWeapons: vi.fn(() => ({
-    cannon: { pos: { x: 5, y: 0 } },
-    laser: { pos: { x: 15, y: 0 } },
-    missile: { pos: { x: 25, y: 0 } },
-    mortar: { pos: { x: 35, y: 0 } },
-  })),
-}));
-vi.mock('../sim/world', () => ({
-  initWorld: vi.fn((canvas: HTMLCanvasElement) => {
-    (sim as any).engine = { timing: { lastDelta: 16.6 } } as any;
-    (sim as any).world = {} as any;
-    (sim as any).W = canvas.width ||= 640;
-    (sim as any).H = canvas.height ||= 360;
-  }),
-  clearWorld: vi.fn(() => {
-    (sim as any).engine = null;
-    (sim as any).world = null;
-  }),
-}));
-vi.mock('../app/collisions', () => ({ registerCollisions: vi.fn(() => vi.fn()) }));
-vi.mock('../app/devKeys', () => ({ attachDevHotkeys: vi.fn(() => vi.fn()) }));
-vi.mock('../app/stats', () => ({ startNewMatch: vi.fn() }));
-vi.mock('../app/systems/announcer', () => ({ runAnnouncer: vi.fn() }));
-vi.mock('../app/systems/audioMonitors', () => ({ runAudioMonitors: vi.fn() }));
-vi.mock('../app/systems/fx', () => ({ runFXPrune: vi.fn() }));
-vi.mock('../app/systems/match', () => ({ checkTimeLimit: vi.fn(), maybeEndMatch: vi.fn() }));
-vi.mock('../app/systems/physics', () => ({ runPhysics: vi.fn() }));
-vi.mock('../app/systems/spawn', () => ({ runSpawn: vi.fn() }));
-vi.mock('../app/systems/triggers', () => ({ runTriggers: vi.fn() }));
-
-// Banter minimal
-vi.mock('../banter', () => ({
-  BanterSystem: class {
-    constructor(_o: any) {}
-    step(): void {}
-  },
-  createCharacter: vi.fn((side: 'left' | 'right', p: any, name: string) => ({
-    id: side,
-    personality: p,
-    displayName: name,
-  })),
-}));
-vi.mock('../ui/banterControls', () => ({
-  readBanterPacing: vi.fn(() => ({ cooldownMs: 5000, sideMinGapMs: 12000 })),
-}));
-vi.mock('../ui/characters', () => ({ readCharacterProfiles: vi.fn(() => null) }));
-vi.mock('../audio', () => ({
-  audio: {
-    preloadAll: vi.fn(),
-    hasPlaylist: vi.fn(() => false),
-    isMusicPlaying: vi.fn(() => false),
-    setMusicPlaylist: vi.fn(),
-    playMusic: vi.fn(),
-    stopLoop: vi.fn(),
-  },
-}));
-
-import { startGame } from '../app/game';
-import { sim } from '../state';
-
-// simple 2D context stub
-function ctxStub(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const NOOP: (...args: unknown[]) => void = () => {};
-  return new Proxy(
-    { canvas, measureText: () => ({ width: 0 }) },
-    { get: (t, p) => (p in t ? (t as any)[p] : NOOP) },
-  ) as unknown as CanvasRenderingContext2D;
-}
-
-describe('maybeMirrorArena mirrors bodies, cores, weapons, and bins', () => {
+describe('arena reflection with real Matter geometry', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    document.body.innerHTML =
-      '<div id="hud"><span id="fps"></span><div id="score"></div></div><canvas id="c" width="640" height="360"></canvas>';
-    const canvas = document.getElementById('c') as HTMLCanvasElement;
-    vi.spyOn(canvas, 'getContext').mockImplementation((type: string) =>
-      type === '2d' ? ctxStub(canvas) : null,
-    );
-    (globalThis as any).requestAnimationFrame = vi.fn(() => 1);
-    (globalThis as any).cancelAnimationFrame = vi.fn();
-
-    // Provide one world body to be mirrored by x
-    (M.Composite.allBodies as any).mockReturnValue([{ position: { x: 100, y: 50 } }]);
-
-    // Enable mirror mode and stable seed
-    (sim as any).settings = { seed: 123, mirrorArena: true } as any;
+    resetSimState();
+    sim.engine = Engine.create();
+    sim.world = sim.engine.world;
+    sim.W = 1920;
+    sim.H = 1080;
   });
 
-  it('mirrors positions across vertical center (W - x)', () => {
-    const canvas = document.getElementById('c') as HTMLCanvasElement;
-    const stop = startGame(canvas);
+  it('keeps bin models aligned with shared world sensors', () => {
+    sim.binsL = makeBins(SIDE.LEFT);
+    const before = Object.values(sim.binsL!).map((b) => ({
+      bin: b,
+      x: b.pos.x,
+      boxX: b.box.position.x,
+      intakeX: b.intake.position.x,
+    }));
+    mirrorArena();
+    for (const { bin, x, boxX, intakeX } of before) {
+      expect(bin.pos.x).toBeCloseTo(sim.W - x);
+      expect(bin.box.position.x).toBeCloseTo(sim.W - boxX);
+      expect(bin.intake.position.x).toBeCloseTo(sim.W - intakeX);
+    }
+  });
 
-    const W = sim.W;
-    // Composite bodies mirrored
-    expect(M.Body.setPosition as any).toHaveBeenCalledWith(expect.any(Object), {
-      x: W - 100,
-      y: 50,
+  it('reflects rotor vertices, velocities and anchors and preserves them through engine updates', () => {
+    const rotor = Bodies.polygon(200, 100, 3, 20);
+    Body.setAngle(rotor, 0.3);
+    const points = rotor.vertices.map((v) => ({ x: sim.W - v.x, y: v.y }));
+    const anchor = Constraint.create({
+      pointA: { x: 200, y: 100 },
+      bodyB: rotor,
+      length: 0,
+      stiffness: 1,
     });
+    World.add(sim.world!, [rotor, anchor]);
+    mirrorArena();
+    expect(anchor.pointA.x).toBe(1720);
+    for (const point of points)
+      expect(rotor.vertices.some((v) => Math.hypot(v.x - point.x, v.y - point.y) < 1e-6)).toBe(
+        true,
+      );
+    for (let i = 0; i < 10; i++) Engine.update(sim.engine!, 1000 / 60);
+    expect(rotor.position.x).toBeCloseTo(anchor.pointA.x, 4);
+  });
 
-    // Core centers mirrored
-    expect(sim.coreL!.center.x).toBe(W - 10);
-    expect(sim.coreR!.center.x).toBe(W - 10);
+  it('reflects paddle trajectories and pipe forces', () => {
+    const paddle = Bodies.rectangle(400, 300, 80, 8, { isStatic: true });
+    paddle.plugin = { x0: 400, t: 0, spd: 1, amp: 60, dir: 1 };
+    World.add(sim.world!, paddle);
+    sim.paddles.push(paddle);
+    const pipe = makePipe(-1);
+    sim.pipes.push(pipe);
+    const oldPipeX = pipe.x;
+    const oldInnerX = pipe.innerX;
+    mirrorArena();
+    tickPaddles(0.5);
+    expect(paddle.position.x).toBeCloseTo(sim.W - (400 + Math.sin(0.5) * 60));
+    expect(pipe.x).toBeCloseTo(sim.W - oldPipeX);
+    expect(pipe.innerX).toBeCloseTo(sim.W - oldInnerX);
+    const ammo = Bodies.circle(pipe.x + 1, (pipe.yTop + pipe.yBottom) / 2, 3);
+    ammo.plugin = { kind: 'ammo' };
+    World.add(sim.world!, ammo);
+    applyPipeForces(sim.pipes);
+    expect(ammo.velocity.y).toBeLessThan(0);
+    expect(ammo.force.x).toBeLessThan(0);
+  });
 
-    // Weapon mounts mirrored
-    expect((sim.wepL as any).cannon.pos.x).toBe(W - 5);
-    expect((sim.wepL as any).laser.pos.x).toBe(W - 15);
-    expect((sim.wepL as any).missile.pos.x).toBe(W - 25);
-    expect((sim.wepL as any).mortar.pos.x).toBe(W - 35);
-
-    // Bin model and bodies mirrored
-    expect((sim.binsL as any).A.pos.x).toBe(W - 30);
-    // Body.setPosition called for box and intake with mirrored x
-    expect(M.Body.setPosition as any).toHaveBeenCalledWith(
-      expect.objectContaining({ position: expect.any(Object) }),
-      { x: W - 30, y: 7 },
-    );
-    expect(M.Body.setPosition as any).toHaveBeenCalledWith(
-      expect.objectContaining({ position: expect.any(Object) }),
-      { x: W - 40, y: 9 },
-    );
-
-    stop();
+  it('reflecting twice restores positions and constraint endpoints', () => {
+    const body = Bodies.rectangle(200, 300, 20, 10);
+    Body.setVelocity(body, { x: 2, y: 3 });
+    const anchor = Constraint.create({
+      bodyA: body,
+      pointA: { x: 5, y: 2 },
+      pointB: { x: 200, y: 300 },
+    });
+    World.add(sim.world!, [body, anchor]);
+    mirrorArena();
+    mirrorArena();
+    expect(Composite.allBodies(sim.world!)[0]!.position.x).toBeCloseTo(200);
+    expect(body.velocity.x).toBeCloseTo(2);
+    expect(anchor.pointA.x).toBe(5);
+    expect(anchor.pointB.x).toBe(200);
   });
 });

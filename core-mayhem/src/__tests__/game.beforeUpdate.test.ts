@@ -10,6 +10,7 @@ vi.mock('../app/devKeys', () => ({ attachDevHotkeys: () => () => {} }));
 vi.mock('../app/stats', () => ({ startNewMatch: vi.fn() }));
 
 import { startGame } from '../app/game';
+import { checkTimeLimit } from '../app/systems/match';
 import { runPhysics } from '../app/systems/physics';
 import { runSpawn } from '../app/systems/spawn';
 import { runTriggers } from '../app/systems/triggers';
@@ -76,5 +77,18 @@ describe('game beforeUpdate loop', () => {
     realPhysics(1000 / 30);
     expect(sim.coreL!.rot).toBeCloseTo(0.03);
     expect(sim.coreR!.rot).toBeCloseTo(-0.03);
+  });
+
+  it('runs no gameplay after the time limit declares a result', () => {
+    vi.clearAllMocks();
+    const stop = startGame(document.getElementById('c') as HTMLCanvasElement);
+    vi.mocked(checkTimeLimit).mockImplementationOnce(() => {
+      sim.gameOver = true;
+    });
+    Matter.Events.trigger(sim.engine!, 'beforeUpdate', {});
+    expect(runPhysics).not.toHaveBeenCalled();
+    expect(runSpawn).not.toHaveBeenCalled();
+    expect(runTriggers).not.toHaveBeenCalled();
+    stop();
   });
 });
