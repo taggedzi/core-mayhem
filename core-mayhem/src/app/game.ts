@@ -1,4 +1,4 @@
-import { Events, Body, Composite } from 'matter-js';
+import { Events } from 'matter-js';
 
 import { audio } from '../audio';
 import { BanterSystem, createCharacter } from '../banter';
@@ -12,6 +12,7 @@ import { updateScoreboard } from '../render/score';
 import { buildLanes } from '../sim/channels';
 import { makeBins, nudgeBinsFromPipes } from '../sim/containers';
 import { makeCore } from '../sim/core';
+import { mirrorArena } from '../sim/mirrorArena';
 import { makePipe, placeObstaclesFromSpecs } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
 import { makeWeapons } from '../sim/weapons';
@@ -403,43 +404,5 @@ const css = (name: string): string =>
 function maybeMirrorArena(): void {
   const stg = (sim as any).settings ?? DEFAULTS;
   if (!stg?.mirrorArena) return;
-  const wld = sim.world as any;
-  if (!wld) return;
-  const W = sim.W;
-  const bodies = Composite.allBodies(wld);
-  // Prefer using Matter namespaces if available in this module
-  // Fallback: scan known bodies by hand if Composite is not in scope
-  const all: any[] = Array.isArray(bodies) && bodies.length ? bodies : [];
-  for (const b of all) {
-    const x = b?.position?.x;
-    const y = b?.position?.y;
-    if (typeof x === 'number' && typeof y === 'number') Body.setPosition(b, { x: W - x, y });
-  }
-  // Core centers
-  if (sim.coreL?.center) sim.coreL.center.x = W - sim.coreL.center.x;
-  if (sim.coreR?.center) sim.coreR.center.x = W - sim.coreR.center.x;
-  // Weapon mount positions
-  const fixW = (w: any): void => {
-    if (!w) return;
-    if (w.cannon?.pos) w.cannon.pos.x = W - w.cannon.pos.x;
-    if (w.laser?.pos) w.laser.pos.x = W - w.laser.pos.x;
-    if (w.missile?.pos) w.missile.pos.x = W - w.missile.pos.x;
-    if (w.mortar?.pos) w.mortar.pos.x = W - w.mortar.pos.x;
-  };
-  fixW(sim.wepL);
-  fixW(sim.wepR);
-  // Bin model positions (and their bodies)
-  const fixBins = (bins: any): void => {
-    if (!bins) return;
-    for (const b of Object.values(bins as Record<string, any>)) {
-      if (!b) continue;
-      if (b.pos) b.pos.x = W - b.pos.x;
-      const by = b.box?.position?.y ?? 0;
-      const iy = b.intake?.position?.y ?? 0;
-      if (b.box) Body.setPosition(b.box, { x: W - (b.box.position?.x ?? 0), y: by });
-      if (b.intake) Body.setPosition(b.intake, { x: W - (b.intake.position?.x ?? 0), y: iy });
-    }
-  };
-  fixBins(sim.binsL);
-  fixBins(sim.binsR);
+  mirrorArena();
 }
