@@ -106,7 +106,17 @@ export function initHelpOverlay(): void {
 
   footer.append(siteLink, buildSpan);
 
-  body.append(p, grid);
+  const actions = document.createElement('div');
+  actions.className = 'help-actions';
+  const creditsLink = document.createElement('a');
+  creditsLink.className = 'game-button';
+  creditsLink.href = './licenses/MEDIA_LICENSES.txt';
+  creditsLink.target = '_blank';
+  creditsLink.rel = 'noopener noreferrer';
+  creditsLink.textContent = 'Credits';
+  actions.appendChild(creditsLink);
+
+  body.append(p, grid, actions);
   panel.append(header, body, footer);
   overlay.append(backdrop, panel);
   document.body.appendChild(overlay);

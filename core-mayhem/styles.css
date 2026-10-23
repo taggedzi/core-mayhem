@@ -74,7 +74,8 @@ header .left {
 .pill-state .tag {
   opacity: 0.8;
 }
-button {
+button,
+.game-button {
   background: linear-gradient(#19305f, #0f2149);
   border: 1px solid #3558b6;
   color: #e8f3ff;
@@ -84,6 +85,15 @@ button {
   cursor: pointer;
   /* C1: improve tap responsiveness on touch screens — removes the 300ms delay */
   touch-action: manipulation;
+}
+.game-button {
+  display: inline-block;
+  font: 700 13.3333px Arial, sans-serif;
+  text-decoration: none;
+}
+.game-button:focus-visible {
+  outline: 2px solid #7ab8ff;
+  outline-offset: 2px;
 }
 button:disabled {
   opacity: 0.4;
@@ -249,6 +259,9 @@ button:disabled {
 }
 
 /* Help overlay footer */
+#helpOverlay .help-actions {
+  margin-top: 16px;
+}
 #helpOverlay .help-footer {
   display: flex;
   justify-content: space-between;
