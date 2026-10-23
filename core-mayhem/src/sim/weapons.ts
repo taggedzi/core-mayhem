@@ -278,21 +278,21 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
       /* ignore */
     }
 
-    const centerBefore = (enemyCore as any).centerHP | 0;
+    const centerBefore = Number((enemyCore as any).centerHP ?? 0);
     const segBeforeArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segBefore = Array.isArray(segBeforeArr)
-      ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segBeforeArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     // Apply damage to core exactly once (your helper handles center/segments)
     applyCoreDamage(enemyCore as any, aim, toCore, angleToSeg);
-    const centerAfter = (enemyCore as any).centerHP | 0;
+    const centerAfter = Number((enemyCore as any).centerHP ?? 0);
     const segAfterArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segAfter = Array.isArray(segAfterArr)
-      ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segAfterArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     try {
       recordLaserHit(
@@ -308,7 +308,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     try {
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
         for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-          if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+          if (Number(segBeforeArr[i]) > 0 && Number(segAfterArr[i]) <= 0) {
             const victimSide = side === SIDE.LEFT ? 'R' : 'L';
             void speakBanterSmart('armor_break' as any, victimSide);
             break;
@@ -320,20 +320,20 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     }
   } else {
     // No shield pool: all to core
-    const centerBefore = (enemyCore as any).centerHP | 0;
+    const centerBefore = Number((enemyCore as any).centerHP ?? 0);
     const segBeforeArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segBefore = Array.isArray(segBeforeArr)
-      ? segBeforeArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segBeforeArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     applyCoreDamage(enemyCore as any, aim, base, angleToSeg);
-    const centerAfter = (enemyCore as any).centerHP | 0;
+    const centerAfter = Number((enemyCore as any).centerHP ?? 0);
     const segAfterArr = Array.isArray((enemyCore as any).segHP)
       ? (enemyCore as any).segHP.slice()
       : 0;
     const segAfter = Array.isArray(segAfterArr)
-      ? segAfterArr.reduce((a: number, b: number) => a + (b | 0), 0)
+      ? segAfterArr.reduce((a: number, b: number) => a + Number(b), 0)
       : 0;
     try {
       recordLaserHit(
@@ -349,7 +349,7 @@ export function fireLaser(side: Side, src: Vec2, target?: CoreLike | Vec2): void
     try {
       if (Array.isArray(segBeforeArr) && Array.isArray(segAfterArr)) {
         for (let i = 0; i < segBeforeArr.length && i < segAfterArr.length; i++) {
-          if ((segBeforeArr[i] | 0) > 0 && (segAfterArr[i] | 0) <= 0) {
+          if (Number(segBeforeArr[i]) > 0 && Number(segAfterArr[i]) <= 0) {
             const victimSide = side === SIDE.LEFT ? 'R' : 'L';
             void speakBanterSmart('armor_break' as any, victimSide);
             break;

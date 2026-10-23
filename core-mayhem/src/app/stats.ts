@@ -23,6 +23,8 @@ const ALL_WEAPONS: readonly WeaponKind[] = ['cannon', 'laser', 'missile', 'morta
 interface WeaponAgg {
   shots: number;
   hits: number;
+  /** Shots that dealt armor or center damage. Exported as coreHitRate, separate from damage per shot. */
+  coreHits: number;
   misses: number;
   dmgShield: number;
   dmgSeg: number;
@@ -143,6 +145,7 @@ function ensureSessionShape(s: any): SessionStats {
       s.weapon[sk][w] = {
         shots: a.shots ?? 0,
         hits: a.hits ?? 0,
+        coreHits: a.coreHits ?? 0,
         misses: a.misses ?? 0,
         dmgShield: a.dmgShield ?? 0,
         dmgSeg: a.dmgSeg ?? 0,
@@ -245,6 +248,7 @@ function bumpHit(
   const sk = sideKey(side);
   const a = session!.weapon[sk][weapon];
   a.hits++;
+  if (dmgSeg > 0 || dmgCenter > 0) a.coreHits++;
   a.dmgShield += Math.max(0, dmgShield);
   a.dmgSeg += Math.max(0, dmgSeg);
   a.dmgCenter += Math.max(0, dmgCenter);
@@ -363,13 +367,13 @@ export function recordMatchEnd(): void {
   const coreL = (sim as any).coreL;
   const coreR = (sim as any).coreR;
   const sumSeg = (arr: number[] | null | undefined): number =>
-    Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
+    Array.isArray(arr) ? arr.reduce((a, b) => a + Number(b), 0) : 0;
   const leftSegHP = sumSeg(coreL?.segHP);
-  const leftCenterHP = coreL?.centerHP | 0;
-  const leftShieldHP = coreL?.shieldHP | 0;
+  const leftCenterHP = Number(coreL?.centerHP ?? 0);
+  const leftShieldHP = Number(coreL?.shieldHP ?? 0);
   const rightSegHP = sumSeg(coreR?.segHP);
-  const rightCenterHP = coreR?.centerHP | 0;
-  const rightShieldHP = coreR?.shieldHP | 0;
+  const rightCenterHP = Number(coreR?.centerHP ?? 0);
+  const rightShieldHP = Number(coreR?.shieldHP ?? 0);
 
   session!.matches.push({
     matchId,
@@ -457,7 +461,9 @@ export function buildCSVs(): Record<string, string> {
         const hitRate = shots ? hits / shots : 0;
         const missPct = shots ? misses / shots : 0;
         const coreDmg = a.dmgSeg + a.dmgCenter;
-        const coreHitRate = shots ? coreDmg / shots : 0;
+        // Share of shots that reached armor or the center, clamped to [0, 1].
+        // Average core damage stays in coreDmgPerShot and may exceed 1.
+        const coreHitRate = shots ? Math.min(1, (a.coreHits ?? 0) / shots) : 0;
         const coreDmgPerShot = shots ? coreDmg / shots : 0;
         rows.push(
           toCsvRow([
