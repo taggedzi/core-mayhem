@@ -25,6 +25,7 @@ import { readCharacterProfiles } from '../ui/characters';
 
 import { registerCollisions } from './collisions';
 import { attachDevHotkeys } from './devKeys';
+import { startMusicForMatch } from './musicStartup';
 import { startNewMatch } from './stats';
 import { runAnnouncer } from './systems/announcer';
 import { runAudioMonitors } from './systems/audioMonitors';
@@ -215,46 +216,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   // Skip in non-web-audio environments (e.g., tests/JS DOM) to avoid network calls
   const canUseWebAudio =
     typeof window !== 'undefined' && (window as any).AudioContext !== undefined;
-  if (canUseWebAudio) {
-    void (async () => {
-      try {
-        if (!audio.hasPlaylist()) {
-          const res = await fetch(`${import.meta.env.BASE_URL}assets/music/playlist.json`, {
-            cache: 'no-cache',
-          });
-          if (res.ok) {
-            const files = (await res.json()) as string[];
-            const urls = Array.isArray(files)
-              ? files
-                  .filter((f) => typeof f === 'string' && /\.(mp3|ogg)$/i.test(f))
-                  .map((f) => `${import.meta.env.BASE_URL}assets/music/${f}`)
-              : [];
-            if (urls.length) {
-              audio.setMusicPlaylist(urls);
-            }
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      try {
-        // Start music only if not already playing
-        if (!audio.isMusicPlaying()) {
-          if (!audio.hasPlaylist()) {
-            // Fallback: try a default track
-            const probe = await fetch(`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`, {
-              method: 'HEAD',
-            });
-            if (probe.ok)
-              audio.setMusicPlaylist([`${import.meta.env.BASE_URL}assets/music/main_theme.mp3`]);
-          }
-          if (audio.hasPlaylist()) audio.playMusic();
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-  }
+  const cancelMusicStartup = canUseWebAudio ? startMusicForMatch() : null;
 
   // Edge pipes
   const pipeL = makePipe(SIDE.LEFT);
@@ -371,6 +333,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   raf = requestAnimationFrame(loop);
 
   return function stop(): void {
+    cancelMusicStartup?.();
     cancelWeaponTimers();
     sim.started = false;
     cancelAnimationFrame(raf);
