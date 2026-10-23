@@ -1,7 +1,9 @@
 import Matter from 'matter-js';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+import * as stats from '../app/stats';
 import * as weapons from '../sim/weapons';
+import { cancelWeaponTimers } from '../sim/weaponTimers';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
@@ -14,6 +16,66 @@ describe('weapons queue functions', () => {
     // minimal cores so queue functions can resolve targets
     (sim as any).coreL = { center: { x: 100, y: 100 }, shieldHP: 0, shieldHPmax: 0 };
     (sim as any).coreR = { center: { x: 540, y: 100 }, shieldHP: 0, shieldHPmax: 0 };
+  });
+
+  afterEach(() => {
+    cancelWeaponTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  function queue(kind: string): void {
+    const src = { x: 50, y: 50 };
+    if (kind === 'cannon') weapons.queueFireCannon(SIDE.LEFT, src, { x: 540, y: 100 }, 4, 100);
+    if (kind === 'laser') weapons.queueFireLaser(SIDE.LEFT, src, sim.coreR!, 100);
+    if (kind === 'missile') weapons.queueFireMissiles(SIDE.LEFT, src, 4, 100, undefined, 100);
+    if (kind === 'mortar') weapons.queueFireMortar(SIDE.LEFT, src, 4, 100);
+  }
+
+  it.each(['cannon', 'laser', 'missile', 'mortar'])(
+    'cancels %s windup before a restart',
+    (kind) => {
+      const shot = vi.spyOn(stats, 'recordShotFired');
+      const oldWorld = sim.world!;
+      const oldCore = sim.coreR!;
+      oldCore.segHP = new Array(8).fill(100);
+      oldCore.centerHP = 200;
+      const before = JSON.stringify(oldCore);
+      queue(kind);
+      cancelWeaponTimers();
+      sim.world = Matter.Engine.create().world;
+      sim.gameOver = false;
+      vi.advanceTimersByTime(2000);
+      expect(oldWorld.bodies).toHaveLength(0);
+      expect(sim.world.bodies).toHaveLength(0);
+      expect(JSON.stringify(oldCore)).toBe(before);
+      expect(shot).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
+  it.each(['cannon', 'missile', 'mortar'])('cancels remaining %s burst shots', (kind) => {
+    queue(kind);
+    vi.advanceTimersByTime(110);
+    expect(sim.world!.bodies).toHaveLength(1);
+    cancelWeaponTimers();
+    vi.advanceTimersByTime(2000);
+    expect(sim.world!.bodies).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('rejects callbacks when the world changes without explicit cancellation', () => {
+    queue('cannon');
+    sim.world = Matter.Engine.create().world;
+    vi.advanceTimersByTime(2000);
+    expect(sim.world.bodies).toHaveLength(0);
+  });
+
+  it('reset cancels pending shots', () => {
+    queue('mortar');
+    resetSimState();
+    vi.advanceTimersByTime(2000);
+    expect(sim.world!.bodies).toHaveLength(0);
   });
 
   it('queueFireMissiles schedules sweep FX and enqueues homing missiles after windup', () => {

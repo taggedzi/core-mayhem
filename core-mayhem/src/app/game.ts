@@ -15,6 +15,7 @@ import { makeCore } from '../sim/core';
 import { makePipe, placeObstaclesFromSpecs } from '../sim/obstacles';
 import { makePins } from '../sim/pins';
 import { makeWeapons } from '../sim/weapons';
+import { cancelWeaponTimers } from '../sim/weaponTimers';
 import { initWorld, clearWorld } from '../sim/world';
 import { sim } from '../state';
 import { SIDE } from '../types';
@@ -47,6 +48,7 @@ function assertEngine(e: Engine | null): asserts e is Engine {
 // explodeAt moved to app/collisions.ts
 
 export function startGame(canvas: HTMLCanvasElement): () => void {
+  cancelWeaponTimers();
   clearWorld();
   initWorld(canvas);
   const eng = sim.engine;
@@ -370,6 +372,7 @@ export function startGame(canvas: HTMLCanvasElement): () => void {
   raf = requestAnimationFrame(loop);
 
   return function stop(): void {
+    cancelWeaponTimers();
     sim.started = false;
     cancelAnimationFrame(raf);
     detachHotkeys?.();

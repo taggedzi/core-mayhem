@@ -34,6 +34,9 @@ The game renders on a 1920 × 1080 logical canvas that scales to fit the availab
 
 Normal play requires no aiming or manual weapon control. Use the header controls while watching:
 
+Stopping or ending a match cancels pending weapon windups and burst shots. Starting
+a new match never resumes a previous match's unfinished volleys.
+
 | Control           | Purpose                                              |
 | ----------------- | ---------------------------------------------------- |
 | **Start / Stop**  | Start or stop the simulation.                        |
