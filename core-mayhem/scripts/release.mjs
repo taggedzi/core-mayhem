@@ -19,7 +19,7 @@ try {
   if (args.some((arg) => arg !== '--dry-run') || args.length > 1) {
     throw new Error('Use npm run release or npm run release -- --dry-run.');
   }
-  const dryRun = args.includes('--dry-run');
+  const dryRun = args.includes('--dry-run') || process.env.npm_config_dry_run === 'true';
   gh('auth', 'status');
   if (git('branch', '--show-current') !== 'main')
     throw new Error('Switch to main before releasing.');

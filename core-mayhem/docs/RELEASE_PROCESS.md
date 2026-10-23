@@ -43,7 +43,7 @@ run: check its printed link before trying again.
 To verify the process without publishing:
 
 ```bash
-npm run release -- --dry-run
+npm run release:check
 ```
 
 A dry run creates neither a tag nor a public release. Its ZIP is available as
