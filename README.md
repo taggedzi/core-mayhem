@@ -129,6 +129,10 @@ During development, press **H** to see the available hotkeys. For example, `c / 
 
 ### Contributing and reporting issues
 
+See the [contribution guide](CONTRIBUTING.md) for setup, validation, and pull request
+instructions. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md) when participating
+in the project.
+
 Keep changes focused and describe the behavior being changed. Add or update tests when changing simulation behavior, then run `npm run ci` and `npm run format` before submitting a pull request.
 
 For bug reports, include the browser, reproduction steps, expected behavior, and console errors. For simulation or balance issues, include the relevant configuration and seed when available.
