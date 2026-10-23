@@ -5,6 +5,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "release": "node scripts/release.mjs",
+    "test:release": "node --test scripts/release-version.check.mjs",
     "audio:generate": "node scripts/generate-sfx.mjs",
     "audio:announcer": "node scripts/generate-announcer.mjs",
     "predev": "node scripts/sync-license-notices.mjs",

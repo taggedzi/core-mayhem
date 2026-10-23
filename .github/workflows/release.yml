@@ -1,0 +1,92 @@
+name: Release
+run-name: Release ${{ inputs.request_id || github.run_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact main commit (set automatically by npm run release)
+        type: string
+        default: ""
+      request_id:
+        description: Request identifier (set automatically by npm run release)
+        type: string
+        default: ""
+      dry_run:
+        description: Build and validate without creating a public release
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: core-mayhem
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Verify requested commit
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          if [ -n "$EXPECTED_SHA" ] && [ "$EXPECTED_SHA" != "$GITHUB_SHA" ]; then
+            echo 'main changed before the release started. Run npm run release again.' >&2
+            exit 1
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: core-mayhem/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:release
+      - run: npm run test:coverage
+      - run: npm run build:portable
+      - name: Verify music-free output
+        run: node --input-type=module -e "import {readdirSync,readFileSync} from 'node:fs'; import assert from 'node:assert/strict'; assert.deepEqual(readdirSync('dist/assets/music'), ['playlist.json']); assert.deepEqual(JSON.parse(readFileSync('dist/assets/music/playlist.json','utf8')), []);"
+      - name: Calculate date-based version
+        id: version
+        run: node scripts/release-version.mjs
+      - name: Package site
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cp docs/RELEASE_PROCESS.md dist/DEPLOYMENT.md
+          node --input-type=module -e "import {writeFileSync} from 'node:fs'; writeFileSync('dist/version.json', JSON.stringify({version:process.env.VERSION,commit:process.env.GITHUB_SHA},null,2)+'\n');"
+          cd dist
+          zip -qr "../core-mayhem-$VERSION.zip" .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-site
+          path: core-mayhem/core-mayhem-*.zip
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish release
+        if: ${{ !inputs.dry_run }}
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          REQUEST_ID: ${{ inputs.request_id || github.run_id }}
+        run: |
+          gh release create "$TAG" "core-mayhem-$VERSION.zip" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Core Mayhem $VERSION" --generate-notes --fail-on-no-commits --latest \
+            --notes "Music-free static site. Extract the ZIP, optionally add your own music, and deploy. See DEPLOYMENT.md inside the ZIP.
+
+          <!-- Release request: $REQUEST_ID -->" > release-url.local.txt
+          cat release-url.local.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Dry-run summary
+        if: inputs.dry_run
+        run: echo 'Dry run passed. No tag or public release was created. Download the release-site artifact for the ZIP.' >> "$GITHUB_STEP_SUMMARY"

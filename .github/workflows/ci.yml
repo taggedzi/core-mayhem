@@ -27,9 +27,8 @@ jobs:
           cache: npm
           cache-dependency-path: core-mayhem/package-lock.json
       - run: npm ci
-      - name: Formatting (existing baseline is advisory)
-        continue-on-error: true
-        run: npm run format
+      - run: npm run format
+      - run: npm run test:release
       - run: npm run ci
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()

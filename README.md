@@ -179,11 +179,15 @@ production build. The music is not licensed for redistribution by downstream use
 
 ### Download and customize a built site
 
-GitHub's **Actions → Portable site** workflow produces a music-free static
-site ZIP on manual runs and version tags (`v*`). Download `core-mayhem-site`
-from a successful run, extract it, add your own tracks and
-`assets/music/playlist.json`, then upload the site to your host. No rebuild is
-needed. See the [deployment guide](core-mayhem/docs/RELEASE_PROCESS.md).
+Download the music-free site ZIP from [Releases](https://github.com/taggedzi/core-mayhem/releases),
+extract it, add your own tracks and `assets/music/playlist.json`, then upload
+the site to your host. No rebuild is needed.
+
+To publish a release, commit and push your changes, then run `npm run release`
+inside the inner `core-mayhem/` directory. GitHub runs checks, builds the site,
+assigns a New York date-based version such as `2026.10.23.1`, and publishes the
+ZIP. The command waits and prints the download link. GitHub CLI must be signed
+in; see the [release and deployment guide](core-mayhem/docs/RELEASE_PROCESS.md).
 
 Use `npm run build:portable` for the same music-free output locally. Ordinary
 `npm run build` still includes your ignored local music for personal deployments.

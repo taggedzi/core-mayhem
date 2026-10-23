@@ -25,9 +25,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - name: Formatting (existing baseline is advisory)
-        continue-on-error: true
-        run: npm run format
+      - run: npm run format
+      - run: npm run test:release
       - run: npm run test:coverage
       - run: npm run build:portable
       - name: Verify music-free output
