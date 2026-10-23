@@ -1,4 +1,5 @@
 import { announcerControls } from '../announcer';
+import { RECORDED_ANNOUNCER_AVAILABLE } from '../announcer/config';
 import { audio } from '../audio';
 import { AUDIO_DEFAULTS } from '../audio/config';
 import { sim } from '../state';
@@ -114,6 +115,14 @@ export function initAudioControls(): void {
   const elAnnDuckS = row('Duck SFX', 'annDuckS', annDuckS0, { min: 0, max: 1, step: 0.05 });
   const elAnnRel = row('Duck Release (s)', 'annRel', annRel0, { min: 0.1, max: 2, step: 0.05 });
   const elAnnGap = row('VO Min Gap (s)', 'annGap', annGap0, { min: 2, max: 8, step: 0.5 });
+
+  if (!RECORDED_ANNOUNCER_AVAILABLE) {
+    elAnnToggle.checked = false;
+    elAnnToggleWrap.firstChild!.textContent = 'Recorded announcer unavailable ';
+    for (const control of [elAnnToggle, elAnnVol, elAnnDuckM, elAnnDuckS, elAnnRel, elAnnGap]) {
+      control.disabled = true;
+    }
+  }
 
   document.body.appendChild(pop);
 

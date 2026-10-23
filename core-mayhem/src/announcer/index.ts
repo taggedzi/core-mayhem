@@ -1,6 +1,6 @@
 import { audio } from '../audio';
 
-import { ANNOUNCER_AUDIO, EVENTS, POOLS, type AnnounceEvent } from './config';
+import { ANNOUNCER_AUDIO, EVENTS, POOLS, RECORDED_ANNOUNCER_AVAILABLE, type AnnounceEvent } from './config';
 
 type PoolId = keyof typeof POOLS;
 
@@ -19,7 +19,7 @@ class AnnouncerService {
   private recentByPool = new Map<PoolId, string>();
   private q: QueueItem[] = [];
   private forceNext = false;
-  private enabled = true;
+  private enabled: boolean = RECORDED_ANNOUNCER_AVAILABLE;
   private settings = { ...ANNOUNCER_AUDIO } as {
     announcerVolume: number;
     duckMusic: number;
@@ -65,7 +65,7 @@ class AnnouncerService {
     this.forceNext = false;
   }
 
-  setEnabled(on: boolean): void { this.enabled = !!on; if (!on) try { audio.stopAnnouncer(); } catch { /* ignore */ } }
+  setEnabled(on: boolean): void { this.enabled = on && RECORDED_ANNOUNCER_AVAILABLE; if (!this.enabled) try { audio.stopAnnouncer(); } catch { /* ignore */ } }
   updateSettings(p: Partial<typeof this.settings>): void {
     if (p == null) return;
     this.settings = { ...this.settings, ...p };

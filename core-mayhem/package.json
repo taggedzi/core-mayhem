@@ -1,9 +1,13 @@
 {
   "name": "core-mayhem",
   "private": true,
+  "license": "MIT",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "audio:generate": "node scripts/generate-sfx.mjs",
+    "predev": "node scripts/sync-license-notices.mjs",
+    "prebuild": "node scripts/sync-license-notices.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

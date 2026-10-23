@@ -20,7 +20,7 @@ Two cores face off in a physics-driven arena. Resources bounce through pins, obs
 - **Layered survival:** armor, shields, repairs, buffs, and debuffs affect each round.
 - **Match series:** rounds build toward a series winner, with automatic restarts, random character matchups, and round-robin tournament mode.
 - **Character personality:** configurable personas and event-driven banter bring the rivalry to life.
-- **Audio and statistics:** sound effects, music controls, an announcer, and battle statistics support the action.
+- **Audio and statistics:** sound effects, music controls, and battle statistics support the action.
 
 The game renders on a 1920 × 1080 logical canvas that scales to fit the available space.
 
@@ -154,12 +154,23 @@ See the [release guide](core-mayhem/docs/RELEASE_PROCESS.md) for additional depl
 
 ## Credits and licensing
 
-Audio credits retained from the existing project README:
+Original project code and documentation are licensed under [MIT](LICENSE).
+Music by Matthew Craig is separately copyrighted, with all rights reserved.
+All active combat effects and the alarm are original procedural synthesis
+covered by MIT. Regenerate combat effects with `npm run audio:generate` from
+the application directory.
+See [media licenses and exclusions](MEDIA_LICENSES.md) for file mappings,
+modification notices, sources, and redistribution requirements, and
+[third-party software notices](THIRD_PARTY_NOTICES.txt) for Matter.js.
 
-| Asset                   | Creator      | License                                                       | Source                                                                |
-| ----------------------- | ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Pixel Combat Sound Pack | Helton Yan   | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)     | [itch.io](https://heltonyan.itch.io/pixelcombat)                      |
-| Announcer Voice Pack    | John Carroll | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)     | [itch.io](https://johncarroll.itch.io/announcer-voice-pack)           |
-| Sirens and Alarm Noise  | Robinhood76  | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | [OpenGameArt](https://opengameart.org/content/sirens-and-alarm-noise) |
+Recorded announcer audio is disabled and archived outside the application
+because redistribution permission has not been established. The old alarm
+with conflicting source credits has been replaced by an original synthesized
+MIT-licensed tone. Unused cyborg media is also archived under ignored
+`unused/`; none of these archived files is included in new builds.
 
-These licenses cover the credited assets. No project-wide source-code license is currently included in the repository; consult the maintainer before redistributing or reusing project code. Asset folders are excluded by the repository's root `.gitignore`, so a fresh checkout may require separately supplied media for the complete audiovisual experience.
+The in-game Credits link opens the media notice; code and dependency license
+texts ship alongside it in `licenses/`. Asset folders are excluded by the
+root `.gitignore`; the original generated effects are tracked separately
+under `src/audio/`. No Helton Yan recordings remain in the active game or
+production build. The music is not licensed for redistribution by downstream users.

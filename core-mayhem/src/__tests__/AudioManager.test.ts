@@ -140,6 +140,8 @@ describe('AudioManager', () => {
   });
 
   it('play enforces cooldown and maxConcurrent, and ducks music when configured', async () => {
+    // Keep the first play beyond the cooldown even when the suite starts quickly.
+    vi.spyOn(performance, 'now').mockReturnValue(10000);
     const sounds: Record<SoundKey, SoundSpec> = {
       fire_cannon: { src: 'laser.ogg', cooldownMs: 1000, maxConcurrent: 1, duckMusic: 0.5 },
     } as any;
