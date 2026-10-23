@@ -1,3 +1,5 @@
+import { cancelWeaponTimers } from './sim/weaponTimers';
+
 // state.ts
 import type { Core } from './sim/core';
 import type { Pipe } from './sim/obstacles';
@@ -264,6 +266,7 @@ export const sim: SimState = createSimState();
 
 // Optional: utility to wipe transient/volatile parts between runs
 export function resetSimState(s: SimState = sim): void {
+  if (s === sim) cancelWeaponTimers();
   s.gels.length = 0;
   s.rotors.length = 0;
   s.paddles.length = 0;

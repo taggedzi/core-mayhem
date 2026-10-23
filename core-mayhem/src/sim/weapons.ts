@@ -24,6 +24,12 @@ import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
 import { applyCoreDamage } from './damage';
+import { scheduleWeaponShot } from './weaponTimers';
+
+function scheduleShot(callback: () => void, delay: number): void {
+  const world = sim.world;
+  scheduleWeaponShot(callback, delay, () => !sim.gameOver && sim.world === world);
+}
 // setBanter handled via speakBanterSmart
 
 import type { Vec } from '../types';
@@ -61,7 +67,7 @@ export function queueFireCannon(
   if (sim.gameOver) return;
   // example in queueFireCannon or fireCannon
   if (isDisabled(from, 'cannon')) return;
-  setTimeout(() => {
+  scheduleShot(() => {
     if (sim.gameOver) return;
     fireCannon(from, src, target, burst);
   }, windupMs);
@@ -75,7 +81,7 @@ export function queueFireLaser(
 ): void {
   if (sim.gameOver) return;
   if (isDisabled(from, 'laser')) return;
-  setTimeout(() => {
+  scheduleShot(() => {
     if (sim.gameOver) return;
     // fireLaser takes (side, src, target?) — duration is handled by LASER_FX
     fireLaser(from, src, core);
@@ -128,7 +134,7 @@ export function queueFireMissiles(
   });
 
   // fire after wind-up; pass the same tilt so launch matches the indicator
-  setTimeout(() => {
+  scheduleShot(() => {
     if (sim.gameOver) return;
     fireMissiles(from, src, count, arcTiltDeg, perMs);
   }, windupMs);
@@ -142,7 +148,7 @@ export function queueFireMortar(
 ): void {
   if (sim.gameOver) return;
   if (isDisabled(from, 'mortar')) return;
-  setTimeout(() => {
+  scheduleShot(() => {
     if ((sim as any).gameOver) return;
     fireMortar(from, src, count);
   }, windupMs);
@@ -173,8 +179,7 @@ export function fireCannon(
   const mul = currentDmgMul(from);
 
   for (let i = 0; i < burst; i++)
-    setTimeout(() => {
-      if (sim.gameOver) return;
+    scheduleShot(() => {
       const b = Bodies.circle(src.x, src.y, 4, {
         restitution: 0.2,
         friction: 0.01,
@@ -425,8 +430,7 @@ export function fireMissiles(
 
   const stepMs = Math.max(0, staggerMs ?? MISSILE_STAGGER_MS);
   for (let i = 0; i < count; i++)
-    setTimeout(() => {
-      if (sim.gameOver) return;
+    scheduleShot(() => {
       const m = Bodies.circle(src.x, src.y, 5, { density: 0.003, frictionAir: 0.02 });
       (m as any).plugin = {
         kind: 'projectile',
@@ -474,8 +478,7 @@ export function fireMortar(from: Side, src: { x: number; y: number }, count = 1)
   }
 
   for (let i = 0; i < count; i++) {
-    setTimeout(() => {
-      if (sim.gameOver) return;
+    scheduleShot(() => {
       const shell = Bodies.circle(src.x, src.y, 6, {
         density: 0.004,
         restitution: 0.2,

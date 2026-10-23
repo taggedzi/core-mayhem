@@ -6,6 +6,7 @@ import { GAMEOVER, MATCH_LIMIT } from '../../config';
 import { readGameMode } from '../../gameMode';
 import { setAvatarEmotion } from '../../render/avatar';
 import { updateScoreboard } from '../../render/score';
+import { cancelWeaponTimers } from '../../sim/weaponTimers';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
 import { speakBanterSmart } from '../speakBanterLLM';
@@ -29,6 +30,7 @@ export function declareWinner(winner: Side | 0): void {
   } catch {
     /* Audio failure must not prevent completion. */
   }
+  cancelWeaponTimers();
   // Announcer first: play end-of-match VO immediately so it starts before the banner shows
   try {
     const ev = winner === 0 ? 'match_end_generic' : 'match_end_win';
