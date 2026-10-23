@@ -1,8 +1,10 @@
 import { DEV_KEYS, DEFAULTS } from '../config';
 import { MESMER } from '../config';
+import { clearBanter } from '../render/banter';
 import { fireCannon, fireLaser, fireMissiles, fireMortar } from '../sim/weapons';
 import { sim } from '../state';
 import { SIDE } from '../types';
+import { allowGameShortcut } from '../ui/keyboard';
 
 import { runTriggers } from './systems/triggers';
 
@@ -50,7 +52,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
   };
 
   const onKey = (e: KeyboardEvent): void => {
-    if (!devKeysOn || sim.gameOver) return;
+    if (!devKeysOn || sim.gameOver || !allowGameShortcut(e)) return;
 
     const L = SIDE.LEFT,
       R = SIDE.RIGHT;
@@ -107,16 +109,7 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
         (sim as any).banterEnabled = !(sim as any).banterEnabled;
         const on = (sim as any).banterEnabled !== false;
         toast(`Banter: ${on ? 'on' : 'off'}`);
-        if (!on) {
-          try {
-            const elL = document.getElementById('banterL');
-            const elR = document.getElementById('banterR');
-            if (elL) elL.textContent = '';
-            if (elR) elR.textContent = '';
-          } catch {
-            /* ignore */
-          }
-        }
+        if (!on) clearBanter();
         break;
       }
 
@@ -124,12 +117,14 @@ export function attachDevHotkeys(wepL: WeaponsType, wepR: WeaponsType): () => vo
       case '[': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
         stg.timescale = Math.max(0.5, Math.min(1.5, (stg.timescale ?? 1) - 0.1));
+        if (sim.engine) sim.engine.timing.timeScale = stg.timescale;
         toast(`Time x${(stg.timescale ?? 1).toFixed(2)}`);
         break;
       }
       case ']': {
         const stg = ((sim as any).settings ??= { ...DEFAULTS });
         stg.timescale = Math.max(0.5, Math.min(1.5, (stg.timescale ?? 1) + 0.1));
+        if (sim.engine) sim.engine.timing.timeScale = stg.timescale;
         toast(`Time x${(stg.timescale ?? 1).toFixed(2)}`);
         break;
       }

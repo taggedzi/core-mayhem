@@ -1,6 +1,7 @@
 // world.ts
 import {
   Engine,
+  Events,
   Runner,
   World,
   Bodies,
@@ -121,6 +122,7 @@ export function initWorld(canvas: HTMLCanvasElement): void {
   engine.velocityIterations = 6;
   engine.gravity.y = 0.9; // soft gravity — projectiles are driven manually
 
+  engine.timing.timeScale = sim.settings?.timescale ?? 1;
   sim.engine = engine;
   sim.world = engine.world;
 
@@ -138,6 +140,10 @@ export function initWorld(canvas: HTMLCanvasElement): void {
 
   // Start the runner exactly once, with the same engine
   sim.runner = Runner.create();
+  // Runner.beforeTick precedes Engine.update's delta scaling.
+  Events.on(sim.runner, 'beforeTick', () => {
+    if (!sim.gameOver) engine.timing.timeScale = sim.settings?.timescale ?? 1;
+  });
   Runner.run(sim.runner, engine);
 }
 

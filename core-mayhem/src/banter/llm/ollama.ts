@@ -11,8 +11,12 @@ export async function ollamaChat(
   user: string,
   opts: OllamaOptions,
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   const ctrl = new AbortController();
+  const abort = (): void => ctrl.abort();
+  if (signal?.aborted) return null;
+  signal?.addEventListener('abort', abort, { once: true });
   const t = setTimeout(() => ctrl.abort(), Math.max(300, timeoutMs | 0));
   try {
     const url = baseUrl.replace(/\/$/, '') + '/api/chat';
@@ -45,5 +49,6 @@ export async function ollamaChat(
     return null;
   } finally {
     clearTimeout(t);
+    signal?.removeEventListener('abort', abort);
   }
 }

@@ -3,6 +3,7 @@ import { describe, it, beforeEach, expect, vi } from 'vitest';
 vi.mock('../announcer', () => ({
   announcer: {
     trigger: vi.fn(),
+    reset: vi.fn(),
     run: vi.fn(),
   },
 }));
@@ -114,5 +115,45 @@ describe('systems/announcer runAnnouncer', () => {
     const evs = (announcer.trigger as unknown as vi.Mock).mock.calls.map((c) => c[0]);
     expect(evs).toContain('time_countdown_10');
     expect(evs).toContain('time_countdown_3');
+  });
+  it.each(['L', 'R'])('does not carry a prior %s deficit into a new tied match', (side) => {
+    seedMatch(
+      { centerHP: side === 'L' ? 1000 : 9000, centerHPmax: 10000 },
+      { centerHP: side === 'R' ? 1000 : 9000, centerHPmax: 10000 },
+    );
+    runAnnouncer();
+    vi.mocked(announcer.trigger).mockClear();
+    seedMatch({ centerHP: 9000, centerHPmax: 10000 }, { centerHP: 9000, centerHPmax: 10000 });
+    runAnnouncer();
+    const events = vi.mocked(announcer.trigger).mock.calls.map(([event]) => event);
+    expect(
+      events.some((event) => event.startsWith('comeback_') || event === 'momentum_shift'),
+    ).toBe(false);
+    expect(announcer.reset).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['L', 'R'])('allows the same %s comeback level in successive matches', (side) => {
+    for (let match = 0; match < 2; match++) {
+      seedMatch(
+        { centerHP: side === 'L' ? 1000 : 6000, centerHPmax: 10000 },
+        { centerHP: side === 'R' ? 1000 : 6000, centerHPmax: 10000 },
+      );
+      runAnnouncer();
+      vi.mocked(announcer.trigger).mockClear();
+      if (side === 'L') sim.coreR!.centerHP = 1900;
+      else sim.coreL!.centerHP = 1900;
+      runAnnouncer();
+      expect(announcer.trigger).toHaveBeenCalledWith('comeback_major', expect.any(Object));
+    }
+  });
+
+  it('does not carry a prior advantage sign into a new match', () => {
+    vi.mocked(performance.now).mockReturnValue(20000);
+    seedMatch({ centerHP: 9000, centerHPmax: 10000 }, { centerHP: 1000, centerHPmax: 10000 });
+    runAnnouncer();
+    vi.mocked(announcer.trigger).mockClear();
+    seedMatch({ centerHP: 1000, centerHPmax: 10000 }, { centerHP: 9000, centerHPmax: 10000 });
+    runAnnouncer();
+    expect(announcer.trigger).not.toHaveBeenCalledWith('momentum_shift');
   });
 });

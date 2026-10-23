@@ -21,7 +21,7 @@ class AudioFacade {
       .catch(() => void 0);
   }
   play(key: SoundKey, o?: { volume?: number; rate?: number; detune?: number }): void {
-    void this.get()?.play(key, o);
+    void Promise.resolve(this.get()?.play(key, o)).catch(() => void 0);
   }
   duck(factor: number, ms?: number): void {
     this.get()?.duckMusic(factor, ms);
@@ -30,7 +30,7 @@ class AudioFacade {
     this.get()?.duckBus('sfx', factor, ms);
   }
   startLoop(id: string, key: SoundKey, volume?: number): void {
-    void this.get()?.startLoop(id, key, volume);
+    void Promise.resolve(this.get()?.startLoop(id, key, volume)).catch(() => void 0);
   }
   stopLoop(id: string): void {
     this.get()?.stopLoop(id);
@@ -51,7 +51,9 @@ class AudioFacade {
     url: string,
     opts?: { channel?: Channel; volume?: number; rate?: number; detune?: number },
   ): Promise<void> {
-    await this.get()?.playUrl(url, opts);
+    await this.get()
+      ?.playUrl(url, opts)
+      .catch(() => void 0);
   }
   stopAnnouncer(): void {
     this.get()?.stopChannel('announcer');
@@ -61,7 +63,7 @@ class AudioFacade {
     this.get()?.setMusicPlaylist(urls);
   }
   playMusic(): void {
-    void this.get()?.playMusic();
+    void Promise.resolve(this.get()?.playMusic()).catch(() => void 0);
   }
   stopMusic(): void {
     this.get()?.stopMusic();
