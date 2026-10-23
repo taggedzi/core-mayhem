@@ -23,6 +23,7 @@ import { angleToSeg } from '../sim/core';
 import { sim } from '../state';
 import { SIDE, type Side } from '../types';
 
+import { consumeBody } from './consumeBody';
 import { applyCoreDamage } from './damage';
 // setBanter handled via speakBanterSmart
 
@@ -533,7 +534,7 @@ export function tickHoming(dtMs: number): void {
     }
 
     const plug = (m as any).plugin ?? {};
-    if (plug.ptype !== 'missile') {
+    if (plug.consumed || plug.ptype !== 'missile') {
       sim.homing.splice(i, 1);
       continue;
     }
@@ -543,9 +544,8 @@ export function tickHoming(dtMs: number): void {
       {
         const w = sim.world;
         assertWorld(w);
-        World.remove(w, m);
+        consumeBody(m);
       }
-      sim.homing.splice(i, 1);
       try {
         if (!plug.didDamage) recordMiss(plug.side, 'missile');
       } catch {
@@ -605,10 +605,9 @@ export function tickHoming(dtMs: number): void {
       {
         const w = sim.world;
         assertWorld(w);
-        World.remove(w, m);
+        consumeBody(m);
       }
 
-      sim.homing.splice(i, 1);
       // (visual pop only; real damage still comes from collisions)
       (sim.fxImp ||= []).push({
         x: target.x,
