@@ -25,12 +25,32 @@ function loadProfile(side: SideLR): StoredProfile | null {
     return null;
   }
 }
+
+let manualPersonaCache: { L: string; R: string } | null = null;
+
+/** Drop the saved persona labels so the next name-tag read sees a profile edit. */
+export function invalidateManualPersonaCache(): void {
+  manualPersonaCache = null;
+}
+
+function personaFromStorage(side: SideLR): string {
+  const persona = loadProfile(side)?.persona;
+  return typeof persona === 'string' ? persona : '';
+}
+
+/** Saved profile persona. Storage is parsed once until the profile is saved again. */
+export function manualPersonaKey(side: SideLR): string {
+  manualPersonaCache ??= { L: personaFromStorage('L'), R: personaFromStorage('R') };
+  return manualPersonaCache[side];
+}
+
 function saveProfile(side: SideLR, prof: StoredProfile): void {
   try {
     localStorage.setItem(K[side], JSON.stringify(prof));
   } catch {
     /* ignore */
   }
+  invalidateManualPersonaCache();
 }
 
 function clamp01(n: number): number {

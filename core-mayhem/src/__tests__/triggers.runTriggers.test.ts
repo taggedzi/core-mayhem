@@ -90,4 +90,23 @@ describe('runTriggers', () => {
     // Wind-up FX got appended
     expect((sim as any).fxArm.length).toBeGreaterThanOrEqual(4);
   });
+
+  it('skips a disabled bin or mount and still fires the pairs that remain', () => {
+    (sim as any).binsL.cannon = undefined;
+    (sim as any).wepL.cannon = undefined;
+    (sim as any).wepR.mortar = undefined;
+    (sim as any).binsL.repair = undefined;
+    (sim as any).binsL.shield = undefined;
+
+    expect(() => runTriggers(performance.now())).not.toThrow();
+
+    const cannonSides = vi.mocked(weapons.queueFireCannon).mock.calls.map((call) => call[0]);
+    expect(cannonSides).toEqual([1]);
+    expect(vi.mocked(weapons.queueFireMortar).mock.calls.map((call) => call[0])).toEqual([-1]);
+    expect(vi.mocked(weapons.queueFireLaser)).toHaveBeenCalledTimes(2);
+    expect(repairMod.repair).toHaveBeenCalledTimes(1);
+    expect((sim as any).coreL.shieldHP).toBe(0);
+    expect((sim as any).coreR.shieldHP).toBeGreaterThan(0);
+    expect((sim as any).binsR.cannon.fill).toBe(0);
+  });
 });

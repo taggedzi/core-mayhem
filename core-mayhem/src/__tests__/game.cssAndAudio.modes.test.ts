@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mocks for heavy deps and systems touched by startGame
 vi.mock('matter-js', () => ({
@@ -44,7 +44,10 @@ vi.mock('../sim/world', () => ({
     (sim as any).world = null;
   }),
 }));
-vi.mock('../app/collisions', () => ({ registerCollisions: vi.fn(() => vi.fn()) }));
+vi.mock('../app/collisions', () => ({
+  registerCollisions: vi.fn(() => vi.fn()),
+  resetExplosionLimiter: vi.fn(),
+}));
 vi.mock('../app/devKeys', () => ({ attachDevHotkeys: vi.fn(() => vi.fn()) }));
 vi.mock('../app/stats', () => ({ startNewMatch: vi.fn() }));
 vi.mock('../app/systems/announcer', () => ({ runAnnouncer: vi.fn() }));
@@ -92,6 +95,7 @@ vi.mock('../audio', () => {
 });
 
 import { startGame } from '../app/game';
+import { startMusicForMatch } from '../app/musicStartup';
 import { audio as mockedAudio } from '../audio';
 import { makeCore as mockMakeCore } from '../sim/core';
 import { sim } from '../state';
@@ -109,6 +113,7 @@ describe('game css vars and audio init', () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    mockedAudio.setMusicPlaylist([]);
     // reset tracked playlist state via mock fns
     (mockedAudio.setMusicPlaylist as any).mockClear();
     (mockedAudio.playMusic as any).mockClear();
@@ -127,6 +132,8 @@ describe('game css vars and audio init', () => {
     // Stable seed
     (sim as any).settings = { seed: 123, mirrorArena: false } as any;
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('passes trimmed CSS color vars to makeCore', () => {
     const getComputed = vi.spyOn(window, 'getComputedStyle');
@@ -163,13 +170,51 @@ describe('game css vars and audio init', () => {
     const stop = startGame(canvas);
 
     // Allow async IIFE to run
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => expect(mockedAudio.playMusic).toHaveBeenCalled());
 
     expect(mockedAudio.setMusicPlaylist).toHaveBeenCalled();
     expect(mockedAudio.hasPlaylist()).toBe(true);
     expect(mockedAudio.playMusic).toHaveBeenCalled();
 
     stop();
+  });
+  it.each(['playlist', 'HEAD'])('ignores delayed %s responses after Stop', async (stage) => {
+    vi.stubGlobal('AudioContext', class {});
+    let resolve!: (value: any) => void;
+    const pending = new Promise((done) => {
+      resolve = done;
+    });
+    const fetchMock = vi.fn();
+    if (stage === 'HEAD') fetchMock.mockResolvedValueOnce({ ok: false });
+    fetchMock.mockReturnValueOnce(pending);
+    vi.stubGlobal('fetch', fetchMock);
+    const stop = startGame(document.getElementById('c') as HTMLCanvasElement);
+    if (stage === 'HEAD') await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    stop();
+    resolve({ ok: true, json: async () => ['late.mp3'] });
+    await new Promise((done) => setTimeout(done, 0));
+    expect(mockedAudio.setMusicPlaylist).not.toHaveBeenCalled();
+    expect(mockedAudio.playMusic).not.toHaveBeenCalled();
+  });
+
+  it('shares discovery across rapid restarts and lets only the latest match apply it', async () => {
+    let resolve!: (value: any) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          }),
+      ),
+    );
+    const stopOld = startMusicForMatch();
+    stopOld();
+    const stopNew = startMusicForMatch();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    resolve({ ok: true, json: async () => ['latest.mp3'] });
+    await vi.waitFor(() => expect(mockedAudio.playMusic).toHaveBeenCalledOnce());
+    expect(mockedAudio.setMusicPlaylist).toHaveBeenCalledTimes(1);
+    stopNew();
   });
 });

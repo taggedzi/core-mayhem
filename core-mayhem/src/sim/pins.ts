@@ -3,6 +3,8 @@ import { Bodies, World, Constraint, Body } from 'matter-js';
 import { PINS } from '../config';
 import { sim } from '../state';
 
+import { gameplayRandom } from './rng';
+
 interface PinField {
   mid: number;
   width: number;
@@ -58,12 +60,15 @@ export function makePins(side: -1 | 1, opts?: { anchor?: number; gap?: number })
           restitution: 0.12,
           frictionAir: 0.02,
         });
-        (poly as any).plugin = { kind: 'rotor', spinDir: Math.random() < 0.5 ? -1 : 1 };
+        (poly as any).plugin = { kind: 'rotor', spinDir: gameplayRandom() < 0.5 ? -1 : 1 };
         World.add(world, [
           poly,
           Constraint.create({ pointA: { x, y }, bodyB: poly, length: 0, stiffness: 1 }),
         ]);
-        Body.setAngularVelocity(poly, (poly as any).plugin.spinDir * (0.6 + Math.random() * 0.6));
+        Body.setAngularVelocity(
+          poly,
+          (poly as any).plugin.spinDir * (0.6 + gameplayRandom() * 0.6),
+        );
         sim.rotors.push(poly);
       }
     } else {

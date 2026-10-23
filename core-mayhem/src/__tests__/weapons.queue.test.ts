@@ -2,8 +2,10 @@ import Matter from 'matter-js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import * as stats from '../app/stats';
+import { advanceFixedSimClock, setFixedSimClock } from '../sim/clock';
+import { gameplayRandom, resetGameplayRng } from '../sim/rng';
 import * as weapons from '../sim/weapons';
-import { cancelWeaponTimers } from '../sim/weaponTimers';
+import { cancelWeaponTimers, flushWeaponShots, scheduleWeaponShot } from '../sim/weaponTimers';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
 
@@ -20,6 +22,7 @@ describe('weapons queue functions', () => {
 
   afterEach(() => {
     cancelWeaponTimers();
+    setFixedSimClock(false);
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -69,6 +72,78 @@ describe('weapons queue functions', () => {
     sim.world = Matter.Engine.create().world;
     vi.advanceTimersByTime(2000);
     expect(sim.world.bodies).toHaveLength(0);
+  });
+
+  it('fires fixed-clock shots from the sim clock and ignores wall time', () => {
+    setFixedSimClock(true);
+    queue('cannon');
+    vi.advanceTimersByTime(5000);
+    expect(sim.world!.bodies).toHaveLength(0);
+    advanceFixedSimClock(99);
+    flushWeaponShots();
+    expect(sim.world!.bodies).toHaveLength(0);
+    advanceFixedSimClock(1);
+    flushWeaponShots();
+    flushWeaponShots();
+    expect(sim.world!.bodies.length).toBeGreaterThan(0);
+    const fired = sim.world!.bodies.length;
+    cancelWeaponTimers();
+    advanceFixedSimClock(5000);
+    flushWeaponShots();
+    expect(sim.world!.bodies).toHaveLength(fired);
+  });
+
+  it('keeps the gameplay stream stable when nothing consumes it', () => {
+    flushWeaponShots();
+    resetGameplayRng(5);
+    const first = [gameplayRandom(), gameplayRandom(), gameplayRandom()];
+    resetGameplayRng(5);
+    Math.random();
+    Math.random();
+    expect([gameplayRandom(), gameplayRandom(), gameplayRandom()]).toEqual(first);
+    advanceFixedSimClock(50);
+    expect(gameplayRandom()).toBeTypeOf('number');
+  });
+
+  it('drops later fixed-clock shots when an earlier shot cancels the queue', () => {
+    setFixedSimClock(true);
+    flushWeaponShots();
+    let fired = 0;
+    scheduleWeaponShot(
+      () => {
+        fired += 1;
+      },
+      0,
+      () => false,
+    );
+    advanceFixedSimClock(1);
+    flushWeaponShots();
+    expect(fired).toBe(0);
+    scheduleWeaponShot(
+      () => {
+        fired += 1;
+        cancelWeaponTimers();
+      },
+      0,
+      () => true,
+    );
+    scheduleWeaponShot(
+      () => {
+        fired += 1;
+      },
+      0,
+      () => false,
+    );
+    scheduleWeaponShot(
+      () => {
+        fired += 1;
+      },
+      0,
+      () => true,
+    );
+    advanceFixedSimClock(1);
+    flushWeaponShots();
+    expect(fired).toBe(1);
   });
 
   it('reset cancels pending shots', () => {

@@ -14,6 +14,7 @@ import { LIGHT_PANEL } from '../config';
 import { BADGES } from '../config';
 import { NAME_TAGS } from '../config';
 import { sim } from '../state';
+import { manualPersonaKey } from '../ui/characters';
 
 import { buildAvatarCmds } from './avatar';
 import { colorForAmmo } from './colors';
@@ -1183,13 +1184,13 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     }
   }
 
-  // Beams (legacy fxBeam) — keep support for compatibility
+  // Legacy beams. Only pass: expired entries stay queued until prune and must not draw.
   {
     const list = sim.fxBeam as FxBeam[];
     if (list?.length) {
       for (const b of list) {
         const age = now - b.t0;
-        if (age >= b.ms) continue; // prune expired
+        if (age >= b.ms) continue;
         const t = Math.max(0, Math.min(1, age / Math.max(1, b.ms)));
         const alpha = 0.65 * (1 - t) + 0.15;
         const width = 3 + 2 * Math.sin(t * Math.PI);
@@ -1208,13 +1209,13 @@ export function toDrawCommands(now: number = performance.now()): Scene {
     }
   }
 
-  // Impact / burn FX (legacy fxImp) — compatibility
+  // Legacy impacts. Only pass: one circle per live burst or burn.
   {
     const list = sim.fxImp as FxImpact[];
     if (list?.length) {
       for (const f of list) {
         const age = now - f.t0;
-        if (age >= f.ms) continue; // prune expired
+        if (age >= f.ms) continue;
         const t = Math.max(0, Math.min(1, age / Math.max(1, f.ms)));
         if (f.kind === 'burst') {
           const power = Math.max(0, Number((f as any).power) || 0);
@@ -1651,16 +1652,9 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         if (!c) return null;
         const defaultSideName = side < 0 ? 'Left' : 'Right';
         // Automatic match selections take priority over saved manual profiles.
+        // The saved profile is parsed once until the character controls save again.
         let personaKey = (side < 0 ? (sim as any).matchPersonaL : (sim as any).matchPersonaR) ?? '';
-        try {
-          const raw = localStorage.getItem(side < 0 ? 'cm_char_L' : 'cm_char_R');
-          if (!personaKey && raw) {
-            const obj = JSON.parse(raw);
-            if (obj && typeof obj.persona === 'string') personaKey = obj.persona;
-          }
-        } catch {
-          /* ignore */
-        }
+        if (personaKey.length === 0) personaKey = manualPersonaKey(side < 0 ? 'L' : 'R');
         const personaLabel = (personaKey ?? '').replace(/\s*Core$/i, '').trim();
         const pName0 = String(c.personality?.name ?? '').trim();
         const fallbackLabel = pName0.replace(/\s*Core$/i, '').trim();
@@ -1885,66 +1879,6 @@ export function toDrawCommands(now: number = performance.now()): Scene {
         align: 'center',
         baseline: 'middle',
       });
-    }
-  }
-
-  // Beams (laser lines that fade)
-  {
-    const list = sim.fxBeam as FxBeam[];
-    if (list?.length) {
-      const now = performance.now();
-      for (const b of list) {
-        const t = Math.max(0, Math.min(1, (now - b.t0) / b.ms));
-        const alpha = 0.65 * (1 - t) + 0.15;
-        const width = 3 + 2 * Math.sin(t * Math.PI);
-        const stroke = b.side < 0 ? 'var(--left)' : 'var(--right)';
-        cmds.push({
-          kind: 'line',
-          x1: b.x0,
-          y1: b.y0,
-          x2: b.x1,
-          y2: b.y1,
-          stroke,
-          lineWidth: width,
-          alpha,
-        });
-      }
-    }
-  }
-
-  // Impact / burn FX (approximation using circles)
-  {
-    const list = sim.fxImp as FxImpact[];
-    if (list?.length) {
-      const now = performance.now();
-      for (const f of list) {
-        const t = Math.max(0, Math.min(1, (now - f.t0) / f.ms));
-        if (f.kind === 'burst') {
-          const baseR = 8;
-          const maxR = 48;
-          const r = baseR + (maxR - baseR) * t * 0.82;
-          cmds.push({
-            kind: 'circle',
-            x: f.x,
-            y: f.y,
-            r,
-            stroke: f.color,
-            lineWidth: Math.max(1, 6 - 5 * t),
-            alpha: 0.9 * (1 - t),
-          });
-        } else {
-          const r = 10 + 8 * t;
-          cmds.push({
-            kind: 'circle',
-            x: f.x,
-            y: f.y,
-            r,
-            stroke: f.color,
-            lineWidth: 2,
-            alpha: 0.55 * (1 - t),
-          });
-        }
-      }
     }
   }
 

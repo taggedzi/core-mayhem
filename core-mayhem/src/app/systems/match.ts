@@ -1,8 +1,12 @@
+import { Runner } from 'matter-js';
+
 import { announcer } from '../../announcer';
+import { audio } from '../../audio';
 import { GAMEOVER, MATCH_LIMIT } from '../../config';
 import { readGameMode } from '../../gameMode';
 import { setAvatarEmotion } from '../../render/avatar';
 import { updateScoreboard } from '../../render/score';
+import { simNowMs } from '../../sim/clock';
 import { cancelWeaponTimers } from '../../sim/weaponTimers';
 import { sim } from '../../state';
 import { SIDE, type Side } from '../../types';
@@ -15,6 +19,18 @@ function isDead(core: any): boolean {
 }
 
 export function declareWinner(winner: Side | 0): void {
+  if (sim.gameOver) return;
+  sim.gameOver = true;
+  sim.winner = winner;
+  sim.winnerAt = simNowMs();
+  if (sim.runner) Runner.stop(sim.runner);
+  if (sim.engine) sim.engine.timing.timeScale = 0;
+  try {
+    audio.stopLoop('alarm_L');
+    audio.stopLoop('alarm_R');
+  } catch {
+    /* Audio failure must not prevent completion. */
+  }
   cancelWeaponTimers();
   // Announcer first: play end-of-match VO immediately so it starts before the banner shows
   try {
@@ -24,10 +40,6 @@ export function declareWinner(winner: Side | 0): void {
   } catch {
     // ignore announcer errors
   }
-  (sim as any).winner = winner; // 0 = tie
-  (sim as any).gameOver = true;
-  (sim as any).winnerAt = performance.now();
-
   // Banter: winner speaks a victory line (LLM with fallback)
   try {
     if (winner === SIDE.LEFT) void speakBanterSmart('victory' as any, 'L');
@@ -52,19 +64,14 @@ export function declareWinner(winner: Side | 0): void {
     /* ignore */
   }
 
-  const stats = (sim as any).stats ?? ((sim as any).stats = { leftWins: 0, rightWins: 0, ties: 0 });
-  if (winner === SIDE.LEFT) stats.leftWins++;
-  else if (winner === SIDE.RIGHT) stats.rightWins++;
-  else stats.ties++;
-
-  updateScoreboard();
-
-  // Record match summary into stats
+  // Record the declared result, then draw the scoreboard from that session.
   try {
     recordMatchEnd();
   } catch {
     // ignore stats errors
   }
+
+  updateScoreboard();
 
   // Tournament bookkeeping: advance pairing and record winner
   try {
@@ -114,7 +121,7 @@ export function maybeEndMatch(): void {
 export function checkTimeLimit(): void {
   if (!MATCH_LIMIT.enabled || MATCH_LIMIT.ms <= 0 || (sim as any).gameOver) return;
   const start = (sim as any).matchStart ?? 0;
-  const elapsed = performance.now() - start;
+  const elapsed = simNowMs() - start;
   if (elapsed >= MATCH_LIMIT.ms) {
     declareWinner(0);
   }

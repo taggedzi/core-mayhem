@@ -5,6 +5,8 @@ import { PIPES } from '../config';
 import { PADDLES_LEFT, GELS_LEFT } from '../config';
 import { sim } from '../state';
 
+import { gameplayRandom } from './rng';
+
 import type { World as MatterWorld } from 'matter-js';
 
 export interface Pipe {
@@ -174,7 +176,7 @@ function gelRect(
 
 function addPaddle(x: number, y: number, amp: number, spd: number, dir: number): Body {
   const p = Bodies.rectangle(x, y, 80, 8, { isStatic: true, isSensor: true });
-  (p as any).plugin = { kind: 'paddle', t: Math.random() * 6, amp, spd, dir, x0: x };
+  (p as any).plugin = { kind: 'paddle', t: gameplayRandom() * 6, amp, spd, dir, x0: x };
   {
     const w = sim.world;
     assertWorld(w);

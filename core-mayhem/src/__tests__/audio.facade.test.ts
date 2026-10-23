@@ -91,4 +91,18 @@ describe('audio facade', () => {
     await Promise.resolve();
     expect(manager.preloadAll).toHaveBeenCalledOnce();
   });
+  it('absorbs asynchronous playback and loop failures', async () => {
+    vi.resetModules();
+    vi.stubGlobal('AudioContext', class {});
+    manager.play.mockRejectedValueOnce(new Error('decode failed'));
+    manager.startLoop.mockRejectedValueOnce(new Error('network failed'));
+    manager.playMusic.mockRejectedValueOnce(new Error('play failed'));
+    manager.playUrl.mockRejectedValueOnce(new Error('voice failed'));
+    const { audio } = await import('../audio');
+    audio.play('fire_cannon');
+    audio.startLoop('alarm', 'core_low_hp_alarm');
+    audio.playMusic();
+    await expect(audio.playUrl('voice.wav')).resolves.toBeUndefined();
+    await Promise.resolve();
+  });
 });

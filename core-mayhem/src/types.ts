@@ -45,21 +45,43 @@ export interface Settings {
   mirrorArena?: boolean;
 }
 
-interface Bin {
-  body: Body;
-  accept: readonly AmmoType[]; // ✅ satisfies eslint array-type
-  fill: number; // current amount
-  cap: number; // capacity
-  label: string;
+export type BinId =
+  | 'cannon'
+  | 'laser'
+  | 'missile'
+  | 'mortar'
+  | 'shield'
+  | 'repair'
+  | 'buff'
+  | 'debuff';
+
+/** Fields `makeBins` actually stores. A disabled spec is left undefined. */
+export interface Bin {
+  key: BinId;
+  pos: Vec;
+  box: Body;
+  intake: Body;
+  cap: number;
+  fill: number;
+  accept: readonly AmmoType[];
+  style: {
+    stroke?: string;
+    box?: string;
+    fill?: string;
+    gauge?: string;
+    text?: string;
+    strokePx?: number;
+  };
+  intakeSide: 'top' | 'bottom' | 'left' | 'right';
 }
 
 export interface Bins {
-  cannon: Bin;
-  laser: Bin;
-  missile: Bin;
-  mortar: Bin;
-  shield: Bin;
-  repair: Bin;
-  buff?: Bin;
-  debuff?: Bin;
+  cannon?: Bin | undefined;
+  laser?: Bin | undefined;
+  missile?: Bin | undefined;
+  mortar?: Bin | undefined;
+  shield?: Bin | undefined;
+  repair?: Bin | undefined;
+  buff?: Bin | undefined;
+  debuff?: Bin | undefined;
 }

@@ -1167,6 +1167,11 @@ class Cooldowns {
   constructor(cooldownMs?: number) {
     if (typeof cooldownMs === 'number') this.cd = Math.max(0, cooldownMs);
   }
+  setCooldown(ms: number): void {
+    const next = Math.max(0, ms);
+    for (const [key, until] of this.map) this.map.set(key, until + next - this.cd);
+    this.cd = next;
+  }
   setTime(ms: number): void {
     this.now = ms;
   }
@@ -1205,6 +1210,11 @@ export class BanterSystem {
     this.rng = mulberry32(this.seed);
     this.cds = new Cooldowns(opts.cooldownMs ?? 5000);
     this.sideMinGapMs = Math.max(0, (opts.sideMinGapMs ?? 0) | 0);
+  }
+
+  updatePacing(options: Pick<BanterOptions, 'cooldownMs' | 'sideMinGapMs'>): void {
+    if (options.cooldownMs !== undefined) this.cds.setCooldown(options.cooldownMs);
+    if (options.sideMinGapMs !== undefined) this.sideMinGapMs = Math.max(0, options.sideMinGapMs);
   }
 
   // Advance internal time (ms). Use your game dt.

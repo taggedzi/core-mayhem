@@ -1,7 +1,9 @@
 import Matter, { Bodies, World } from 'matter-js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import { attachDevHotkeys, isDevModeEnabled, setDevModeEnabled } from '../app/devKeys';
 import * as mods from '../app/mods';
+import { BINS_LEFT, WEAPON_MOUNTS_LEFT } from '../config';
 import * as weapons from '../sim/weapons';
 import { sim, resetSimState } from '../state';
 import { SIDE } from '../types';
@@ -32,6 +34,57 @@ describe('weapons edge cases', () => {
     expect(sim.world!.bodies.length).toBe(bodies0);
     expect(sim.homing.length).toBe(h0);
     expect((sim.fxSweep ?? []).length).toBe(sweeps0);
+  });
+
+  it('omits a disabled mount and warns when its bin stays enabled', () => {
+    const mount = WEAPON_MOUNTS_LEFT.find((entry) => entry.id === 'cannon');
+    const bin = BINS_LEFT.find((entry) => entry.id === 'laser');
+    expect(mount && bin).toBeTruthy();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mount!.enabled = false;
+    try {
+      let built = weapons.makeWeapons(SIDE.LEFT);
+      expect(built.cannon).toBeUndefined();
+      expect(built.laser?.pos).toBeTruthy();
+      expect(built.laser?.mount).toBeTruthy();
+      expect(
+        warn.mock.calls.some((call) => String(call[0]).includes('cannon bin is enabled')),
+      ).toBe(true);
+
+      warn.mockClear();
+      mount!.enabled = true;
+      bin!.enabled = false;
+      built = weapons.makeWeapons(SIDE.RIGHT);
+      expect(built.laser?.mount).toBeTruthy();
+      expect(warn).not.toHaveBeenCalled();
+      built = weapons.makeWeapons(SIDE.LEFT);
+      expect(built.laser?.mount).toBeTruthy();
+      expect(
+        warn.mock.calls.some((call) => String(call[0]).includes('laser bin is disabled')),
+      ).toBe(true);
+    } finally {
+      delete mount!.enabled;
+      delete bin!.enabled;
+      warn.mockRestore();
+    }
+  });
+
+  it('ignores dev hotkeys for mounts that were not built', () => {
+    const wasDev = isDevModeEnabled();
+    setDevModeEnabled(true);
+    const detach = attachDevHotkeys({ laser: { pos: { x: 1, y: 2 }, mount: {} as never } }, {});
+    const press = (key: string): void => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    };
+    try {
+      expect(() => press('c')).not.toThrow();
+      expect(() => press('C')).not.toThrow();
+      expect(() => press('m')).not.toThrow();
+      expect(() => press('O')).not.toThrow();
+    } finally {
+      detach();
+      setDevModeEnabled(wasDev);
+    }
   });
 
   it('queue functions respect disabled weapons', () => {

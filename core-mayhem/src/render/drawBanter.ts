@@ -1,7 +1,19 @@
 import { AVATAR } from '../config';
 import { sim } from '../state';
 
+import { beginThemeFrame, cssVar, endThemeFrame } from './theme';
+
 export function drawBanter(ctx: CanvasRenderingContext2D): void {
+  if ((sim as any).banterEnabled === false) return;
+  beginThemeFrame();
+  try {
+    drawBanterFrame(ctx);
+  } finally {
+    endThemeFrame();
+  }
+}
+
+function drawBanterFrame(ctx: CanvasRenderingContext2D): void {
   const ui: any = (sim as any).banterUI;
   if (!ui) return;
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -101,7 +113,7 @@ export function drawBanter(ctx: CanvasRenderingContext2D): void {
 
     // ── Accent outline ─────────────────────────────────────────────────────────
     ctx.lineWidth = 1.6 / scale;
-    ctx.strokeStyle = cssVar(ctx, accent);
+    ctx.strokeStyle = cssVar(accent);
     ctx.stroke();
 
     // ── Text ──────────────────────────────────────────────────────────────────
@@ -195,12 +207,4 @@ function _bubblePath(
   // Left side → top-left corner
   ctx.arcTo(bx, by, bx + bw, by, r);
   ctx.closePath();
-}
-
-function cssVar(_ctx: CanvasRenderingContext2D, v: string): string {
-  if (v.startsWith('var(')) {
-    const name = v.slice(4, -1).trim();
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#000';
-  }
-  return v;
 }

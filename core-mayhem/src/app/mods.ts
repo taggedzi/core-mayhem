@@ -1,4 +1,6 @@
 import { MODS } from '../config';
+import { simNowMs } from '../sim/clock';
+import { gameplayRandom } from '../sim/rng';
 import { sim } from '../state';
 import { SIDE, type Side, type WeaponKind, type SideMods } from '../types';
 
@@ -10,12 +12,12 @@ function modsFor(side: Side): SideMods {
 
 export function currentDmgMul(side: Side): number {
   const m = modsFor(side);
-  return performance.now() < m.dmgUntil ? m.dmgMul : 1;
+  return simNowMs() < m.dmgUntil ? m.dmgMul : 1;
 }
 
 export function isDisabled(side: Side, kind: WeaponKind): boolean {
   const m = modsFor(side);
-  return performance.now() < m.disableUntil && m.disabledType === kind;
+  return simNowMs() < m.disableUntil && m.disabledType === kind;
 }
 
 export function pushBanner(
@@ -31,7 +33,7 @@ export function pushBanner(
     sub: opts?.sub,
     lines: opts?.lines,
     color,
-    t0: performance.now(),
+    t0: simNowMs(),
     ms: opts?.ms ?? 2600,
   });
 }
@@ -50,7 +52,7 @@ export function applyBuff(side: Side): void {
   clearTimedBuff(side);
   const m = modsFor(side);
   m.buffKind = 'damage';
-  m.buffUntil = performance.now() + MODS.buffDurationMs;
+  m.buffUntil = simNowMs() + MODS.buffDurationMs;
   m.dmgMul = MODS.buffMultiplier;
   m.dmgUntil = m.buffUntil; // keep existing UI badge behavior
   try {
@@ -92,7 +94,7 @@ type BuffKind = 'damage' | 'shield' | 'binBoost';
 // Helper: choose a buff from allowed pool and apply it
 export function applyRandomBuff(side: Side): void {
   const pool = ((MODS as any).allowedBuffs as readonly BuffKind[] | undefined) ?? ['damage'];
-  const pick = pool[Math.floor(Math.random() * pool.length)] ?? 'damage';
+  const pick = pool[Math.floor(gameplayRandom() * pool.length)] ?? 'damage';
   if (pick === 'shield') applyShieldBuff(side);
   else if (pick === 'binBoost') applyBinBoostBuff(side);
   else applyBuff(side);
@@ -104,7 +106,7 @@ export function applyCooldownBuff(side: Side, mult?: number): void {
   clearTimedBuff(side);
   const m = modsFor(side);
   m.buffKind = 'cooldown';
-  m.buffUntil = performance.now() + MODS.buffDurationMs;
+  m.buffUntil = simNowMs() + MODS.buffDurationMs;
   m.cooldownMul = Math.max(
     0.2,
     Math.min(1, Number(mult ?? (MODS as any).cooldownBuffMultiplier ?? 0.6)),
@@ -125,7 +127,7 @@ export function applyCooldownBuff(side: Side, mult?: number): void {
 
 export function currentCooldownMul(side: Side): number {
   const m = modsFor(side) as any;
-  const now = performance.now();
+  const now = simNowMs();
   if (m.buffKind === 'cooldown' && now < (m.buffUntil ?? 0))
     return Math.max(0.2, Math.min(1, m.cooldownMul ?? 1));
   return 1;
@@ -146,7 +148,7 @@ export function applyBinBoostBuff(side: Side, mult?: number, durationMs?: number
     1000,
     Math.round(durationMs ?? (MODS as any).binBoostDurationMs ?? MODS.buffDurationMs),
   );
-  m.buffUntil = performance.now() + dur;
+  m.buffUntil = simNowMs() + dur;
   m.binFillMul = Math.max(1, Number(mult ?? (MODS as any).binBoostMultiplier ?? 2));
   try {
     recordBuff(side, 'binBoost');
@@ -161,7 +163,7 @@ export function applyBinBoostBuff(side: Side, mult?: number, durationMs?: number
 
 export function currentBinFillMul(side: Side): number {
   const m = modsFor(side) as any;
-  const now = performance.now();
+  const now = simNowMs();
   if (m.buffKind === 'binBoost' && now < (m.buffUntil ?? 0)) return Math.max(1, m.binFillMul ?? 1);
   return 1;
 }
@@ -172,14 +174,14 @@ export function applyDebuff(targetSide: Side, kind: WeaponKind | null = null): v
   let k: WeaponKind | null = kind;
   if (k === null) {
     if (pool.length > 0) {
-      const idx = Math.floor(Math.random() * pool.length);
+      const idx = Math.floor(gameplayRandom() * pool.length);
       k = pool[idx] ?? null;
     } else {
       k = null;
     }
   }
   m.disabledType = k;
-  m.disableUntil = performance.now() + MODS.debuffDurationMs;
+  m.disableUntil = simNowMs() + MODS.debuffDurationMs;
   try {
     recordDebuff(targetSide, k);
   } catch {

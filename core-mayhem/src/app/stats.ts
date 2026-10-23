@@ -1,4 +1,5 @@
 // Centralized stats collection and CSV export
+import { simNowMs } from '../sim/clock';
 import { sim } from '../state';
 
 import type { Side, WeaponKind } from '../types';
@@ -23,6 +24,8 @@ const ALL_WEAPONS: readonly WeaponKind[] = ['cannon', 'laser', 'missile', 'morta
 interface WeaponAgg {
   shots: number;
   hits: number;
+  /** Shots that dealt armor or center damage. Exported as coreHitRate, separate from damage per shot. */
+  coreHits: number;
   misses: number;
   dmgShield: number;
   dmgSeg: number;
@@ -113,18 +116,105 @@ let session: SessionStats | null = null;
 let inMatch: InMatchState | null = null;
 
 const LS_KEY = 'coreMayhem.stats.v1';
+const LS_HISTORY_KEY = 'coreMayhem.stats.history.v1';
+
+/** Caps for detailed histories. Lifetime weapon, bin, and mod totals are not capped. */
+export const STATS_RETENTION = {
+  matches: 40,
+  damageTimeline: 1200,
+  firstHits: 160,
+  modsPerMatch: 320,
+  missileFirstImpacts: 160,
+  missileCoreDelays: 160,
+} as const;
+
 let savePending = false;
-function scheduleSave(): void {
+let saveGeneration = 0;
+let historyDirty = false;
+let persistenceError: string | null = null;
+let persistenceWarned = false;
+
+function capList<T>(list: T[], max: number): T[] {
+  return list.length > max ? list.slice(list.length - max) : list;
+}
+
+function trimHistory(s: SessionStats): void {
+  s.matches = capList(s.matches, STATS_RETENTION.matches);
+  s.damageTimeline = capList(s.damageTimeline, STATS_RETENTION.damageTimeline);
+  s.firstHits = capList(s.firstHits, STATS_RETENTION.firstHits);
+  s.modsPerMatch = capList(s.modsPerMatch, STATS_RETENTION.modsPerMatch);
+  s.missileFirstImpacts = capList(s.missileFirstImpacts, STATS_RETENTION.missileFirstImpacts);
+  s.missileCoreDelays = capList(s.missileCoreDelays, STATS_RETENTION.missileCoreDelays);
+}
+
+function compactPayload(s: SessionStats): string {
+  return JSON.stringify({
+    version: s.version,
+    sessionId: s.sessionId,
+    createdAt: s.createdAt,
+    weapon: s.weapon,
+    bins: s.bins,
+    buffCounts: s.buffCounts,
+    debuffCounts: s.debuffCounts,
+    nextMatchId: s.nextMatchId,
+  });
+}
+
+function historyPayload(s: SessionStats): string {
+  return JSON.stringify({
+    matches: s.matches,
+    damageTimeline: s.damageTimeline,
+    firstHits: s.firstHits,
+    modsPerMatch: s.modsPerMatch,
+    missileFirstImpacts: s.missileFirstImpacts,
+    missileCoreDelays: s.missileCoreDelays,
+  });
+}
+
+function notePersistenceFailure(err: unknown): void {
+  persistenceError = err instanceof Error ? err.message : 'Statistics could not be saved';
+  if (!persistenceWarned) {
+    persistenceWarned = true;
+    console.warn(`[core-mayhem] statistics were not saved: ${persistenceError}`);
+  }
+}
+
+/** Compact totals on the timer. Match history is written only when it changed. */
+function flushSave(): void {
+  if (!session) return;
+  trimHistory(session);
+  const writeHistory = historyDirty;
+  try {
+    localStorage.setItem(LS_KEY, compactPayload(session));
+    if (writeHistory) localStorage.setItem(LS_HISTORY_KEY, historyPayload(session));
+    historyDirty = false;
+    persistenceError = null;
+    persistenceWarned = false;
+  } catch (err) {
+    notePersistenceFailure(err);
+  }
+}
+
+function scheduleSave(history = false): void {
+  if (history) historyDirty = true;
   if (savePending) return;
   savePending = true;
+  const generation = ++saveGeneration;
   setTimeout(() => {
+    if (generation !== saveGeneration) return;
     savePending = false;
-    try {
-      if (session) localStorage.setItem(LS_KEY, JSON.stringify(session));
-    } catch {
-      /* ignore */
-    }
+    flushSave();
   }, 500);
+}
+
+/** Drop a queued write so a reset cannot be overwritten by a stale timer. */
+function cancelScheduledSave(): void {
+  saveGeneration++;
+  savePending = false;
+}
+
+export function getPersistenceStatus(): { ok: boolean; message: string | null } {
+  return { ok: persistenceError == null, message: persistenceError };
 }
 
 // helpers removed (unused)
@@ -143,6 +233,7 @@ function ensureSessionShape(s: any): SessionStats {
       s.weapon[sk][w] = {
         shots: a.shots ?? 0,
         hits: a.hits ?? 0,
+        coreHits: a.coreHits ?? 0,
         misses: a.misses ?? 0,
         dmgShield: a.dmgShield ?? 0,
         dmgSeg: a.dmgSeg ?? 0,
@@ -188,20 +279,31 @@ export function initStats(): void {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      session = ensureSessionShape(parsed);
+      if (parsed && typeof parsed === 'object') {
+        const legacyCombined =
+          Array.isArray(parsed.matches) || Array.isArray(parsed.damageTimeline);
+        const histRaw = localStorage.getItem(LS_HISTORY_KEY);
+        if (histRaw) Object.assign(parsed, JSON.parse(histRaw));
+        session = ensureSessionShape(parsed);
+        trimHistory(session);
+        if (legacyCombined) scheduleSave(true);
+      }
     }
-  } catch {
-    /* ignore */
+  } catch (err) {
+    notePersistenceFailure(err);
   }
   if (!session) {
     session = ensureSessionShape({});
     scheduleSave();
   }
+  publishScoreboard();
 }
 
 export function startNewMatch(): void {
   initStats();
   if (!session) return;
+  // Replacing an unfinished match drops its unflushed rows. It is not a tie.
+  if (inMatch) abortOpenMatch();
   const id = session.nextMatchId++;
   const startT = (sim as any).matchStart ?? performance.now();
   inMatch = {
@@ -239,12 +341,13 @@ function bumpHit(
   dmgShield: number,
   dmgSeg: number,
   dmgCenter: number,
-  now = performance.now(),
+  now = simNowMs(),
 ): void {
   ensure();
   const sk = sideKey(side);
   const a = session!.weapon[sk][weapon];
   a.hits++;
+  if (dmgSeg > 0 || dmgCenter > 0) a.coreHits++;
   a.dmgShield += Math.max(0, dmgShield);
   a.dmgSeg += Math.max(0, dmgSeg);
   a.dmgCenter += Math.max(0, dmgCenter);
@@ -282,7 +385,7 @@ export function recordProjectileHit(
   dmgShield: number,
   dmgSeg: number,
   dmgCenter: number,
-  now = performance.now(),
+  now = simNowMs(),
 ): void {
   bumpHit(side, weapon, dmgShield, dmgSeg, dmgCenter, now);
 }
@@ -292,7 +395,7 @@ export function recordLaserHit(
   dmgShield: number,
   dmgSeg: number,
   dmgCenter: number,
-  now = performance.now(),
+  now = simNowMs(),
 ): void {
   bumpHit(side, 'laser', dmgShield, dmgSeg, dmgCenter, now);
 }
@@ -307,19 +410,27 @@ export function recordMiss(side: Side, weapon: WeaponKind): void {
 export function recordMissileFirstImpact(side: Side, kind: string): void {
   ensure();
   if (!inMatch) return;
-  session!.missileFirstImpacts.push({ matchId: inMatch.matchId, side: sideKey(side), kind });
-  scheduleSave();
+  session!.missileFirstImpacts = capList(
+    session!.missileFirstImpacts.concat({
+      matchId: inMatch.matchId,
+      side: sideKey(side),
+      kind,
+    }),
+    STATS_RETENTION.missileFirstImpacts,
+  );
 }
 
 export function recordMissileCoreDelay(side: Side, ms: number): void {
   ensure();
   if (!inMatch) return;
-  session!.missileCoreDelays.push({
-    matchId: inMatch.matchId,
-    side: sideKey(side),
-    ms: Math.max(0, ms | 0),
-  });
-  scheduleSave();
+  session!.missileCoreDelays = capList(
+    session!.missileCoreDelays.concat({
+      matchId: inMatch.matchId,
+      side: sideKey(side),
+      ms: Math.max(0, ms | 0),
+    }),
+    STATS_RETENTION.missileCoreDelays,
+  );
 }
 
 export function recordBinDeposit(side: Side, bin: BinId, amount: number, _now?: number): void {
@@ -334,7 +445,7 @@ export function recordBinDeposit(side: Side, bin: BinId, amount: number, _now?: 
   }
 }
 
-export function recordBinCap(side: Side, bin: BinId, now = performance.now()): void {
+export function recordBinCap(side: Side, bin: BinId, now = simNowMs()): void {
   ensure();
   if (!inMatch) return;
   const sk = sideKey(side);
@@ -363,13 +474,13 @@ export function recordMatchEnd(): void {
   const coreL = (sim as any).coreL;
   const coreR = (sim as any).coreR;
   const sumSeg = (arr: number[] | null | undefined): number =>
-    Array.isArray(arr) ? arr.reduce((a, b) => a + (b | 0), 0) : 0;
+    Array.isArray(arr) ? arr.reduce((a, b) => a + Number(b), 0) : 0;
   const leftSegHP = sumSeg(coreL?.segHP);
-  const leftCenterHP = coreL?.centerHP | 0;
-  const leftShieldHP = coreL?.shieldHP | 0;
+  const leftCenterHP = Number(coreL?.centerHP ?? 0);
+  const leftShieldHP = Number(coreL?.shieldHP ?? 0);
   const rightSegHP = sumSeg(coreR?.segHP);
-  const rightCenterHP = coreR?.centerHP | 0;
-  const rightShieldHP = coreR?.shieldHP | 0;
+  const rightCenterHP = Number(coreR?.centerHP ?? 0);
+  const rightShieldHP = Number(coreR?.shieldHP ?? 0);
 
   session!.matches.push({
     matchId,
@@ -408,7 +519,21 @@ export function recordMatchEnd(): void {
       session!.modsPerMatch.push({ matchId, type: 'debuff', side: sk, kind: k, count: v });
   }
 
-  // End the in-match state
+  // End the in-match state. History is saved once per match, not on every projectile.
+  inMatch = null;
+  trimHistory(session!);
+  publishScoreboard();
+  scheduleSave(true);
+}
+
+/**
+ * Stop or replace a match that has no declared winner.
+ * Drops timeline, first-hit, and per-match mod rows for that match.
+ * Does not add a match summary and does not count a tie.
+ * Session totals (shots, deposits, buffs) already recorded stay.
+ */
+export function abortOpenMatch(): void {
+  if (!inMatch) return;
   inMatch = null;
   scheduleSave();
 }
@@ -457,7 +582,9 @@ export function buildCSVs(): Record<string, string> {
         const hitRate = shots ? hits / shots : 0;
         const missPct = shots ? misses / shots : 0;
         const coreDmg = a.dmgSeg + a.dmgCenter;
-        const coreHitRate = shots ? coreDmg / shots : 0;
+        // Share of shots that reached armor or the center, clamped to [0, 1].
+        // Average core damage stays in coreDmgPerShot and may exceed 1.
+        const coreHitRate = shots ? Math.min(1, (a.coreHits ?? 0) / shots) : 0;
         const coreDmgPerShot = shots ? coreDmg / shots : 0;
         rows.push(
           toCsvRow([
@@ -660,15 +787,23 @@ export function exportAllCSVs(): void {
 }
 
 export function resetStats(): void {
-  // Clear localStorage and start a fresh session
+  // Clear saved history. A match that is still being played starts a new
+  // collection so the eventual summary and timeline stay complete.
+  const resumeLiveMatch = inMatch != null;
   try {
     localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(LS_HISTORY_KEY);
   } catch {
     /* ignore */ void 0;
   }
+  cancelScheduledSave();
   session = null;
   inMatch = null;
+  historyDirty = false;
+  persistenceError = null;
+  persistenceWarned = false;
   initStats();
+  if (resumeLiveMatch) startNewMatch();
 }
 
 export function recordBuff(side: Side, kind: string): void {
@@ -696,6 +831,27 @@ export function recordDebuff(targetSide: Side, kind: WeaponKind | null): void {
   scheduleSave();
 }
 
+/** Copy declared match results onto sim.stats so older readers match the Stats panel. */
+function publishScoreboard(): void {
+  if (!session) return;
+  const { leftWins, rightWins, ties } = countDeclaredResults();
+  (sim as any).stats = { leftWins, rightWins, ties };
+}
+
+function countDeclaredResults(): { leftWins: number; rightWins: number; ties: number } {
+  let leftWins = 0;
+  let rightWins = 0;
+  let ties = 0;
+  if (Array.isArray(session?.matches)) {
+    for (const m of session.matches) {
+      if (m.winner === -1) leftWins++;
+      else if (m.winner === 1) rightWins++;
+      else if (m.winner === 0) ties++;
+    }
+  }
+  return { leftWins, rightWins, ties };
+}
+
 // Lightweight summary for UI
 export function getSummary(): {
   matches: number;
@@ -709,16 +865,7 @@ export function getSummary(): {
 } {
   ensure();
   const matches = Array.isArray(session!.matches) ? session!.matches.length : 0;
-  let leftWins = 0,
-    rightWins = 0,
-    ties = 0;
-  if (Array.isArray(session!.matches)) {
-    for (const m of session!.matches) {
-      if (m.winner === -1) leftWins++;
-      else if (m.winner === 1) rightWins++;
-      else ties++;
-    }
-  }
+  const { leftWins, rightWins, ties } = countDeclaredResults();
   const sumVals = (o: Record<string, number> | undefined): number =>
     o ? Object.values(o).reduce((a, b) => a + (b | 0), 0) : 0;
   const buffsL = sumVals(session!.buffCounts?.L);
